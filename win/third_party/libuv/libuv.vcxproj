@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\third_party\libuv\include\uv.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\include\uv\errno.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\include\uv\threadpool.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\include\uv\tree.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\include\uv\version.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\include\uv\win.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\heap-inl.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\idna.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\queue.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\strscpy.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\strtok.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\uv-common.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\win\atomicops-inl.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\win\fs-fd-hash-inl.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\win\handle-inl.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\win\internal.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\win\req-inl.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\win\stream-inl.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\win\winapi.h" />
+    <ClInclude Include="..\..\..\third_party\libuv\src\win\winsock.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\third_party\libuv\src\fs-poll.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\idna.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\inet.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\random.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\strscpy.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\strtok.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\threadpool.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\timer.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\uv-common.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\uv-data-getter-setters.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\version.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\async.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\core.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\detect-wakeup.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\dl.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\error.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\fs-event.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\fs.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\getaddrinfo.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\getnameinfo.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\handle.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\loop-watcher.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\pipe.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\poll.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\process-stdio.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\process.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\signal.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\snprintf.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\stream.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\tcp.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\thread.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\tty.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\udp.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\util.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\winapi.c" />
+    <ClCompile Include="..\..\..\third_party\libuv\src\win\winsock.c" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{1832BDD2-DCD3-480D-B5D8-EBCB7CA28930}</ProjectGuid>
+    <RootNamespace>libuv</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\..\..\third_party\libuv\include;..\..\..\third_party\libuv\src</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
