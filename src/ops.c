@@ -144,7 +144,7 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
 }
 
 //启动服务端
-static int init_server(ops_global* global) {
+static int init_global(ops_global* global) {
     struct sockaddr_in _addr;
 
     //web管理
@@ -198,7 +198,7 @@ int main() {
     //加载参数
     load_config(global);
     //初始化服务
-    init_server(global);
+    init_global(global);
     //刷新配置
     service_reload(global);
 

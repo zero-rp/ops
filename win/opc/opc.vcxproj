@@ -123,7 +123,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libuv.lib;cJSON.lib;ws2_32.lib;Iphlpapi.lib;Psapi.lib;Userenv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libuv.lib;cJSON.lib;ws2_32.lib;Iphlpapi.lib;Psapi.lib;Userenv.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

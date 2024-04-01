@@ -16,12 +16,12 @@ typedef struct _ops_global {
 
 }ops_global;
 //
-typedef struct _ops_server {
+typedef struct _ops_bridge {
     uv_tcp_t tcp;       //
     ops_global* global;
     struct databuffer m_buffer;         //接收缓冲
 
-}ops_server;
+}ops_bridge;
 //
 
 
@@ -34,9 +34,9 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 }
 
 //
-static void client_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
-    ops_server* server = (ops_server*)tcp->data;
-    ops_global* global = server->global;
+static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+    ops_bridge* bridge = (ops_bridge*)tcp->data;
+    ops_global* global = bridge->global;
     if (nread <= 0) {
         if (UV_EOF != nread) {
             //连接异常断开
@@ -49,22 +49,22 @@ static void client_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
         return;
     }
     //记录到缓冲区
-    databuffer_push(&server->m_buffer, &global->m_mp, buf, nread);
+    databuffer_push(&bridge->m_buffer, &global->m_mp, buf, nread);
     for (;;) {
-        int size = databuffer_readheader(&server->m_buffer, &global->m_mp, 4);
+        int size = databuffer_readheader(&bridge->m_buffer, &global->m_mp, 4);
         if (size < 0) {
             return 0;
         }
 
 
 
-        databuffer_reset(&server->m_buffer);
+        databuffer_reset(&bridge->m_buffer);
     }
 }
 
 //连接返回
-static void client_connect(uv_connect_t* req, int status) {
-    ops_server* server = (ops_server*)req->data;
+static void bridge_connect(uv_connect_t* req, int status) {
+    ops_bridge* bridge = (ops_bridge*)req->data;
     if (status < 0) {
         //连接失败
         printf("out_remote_connect_error\r\n");
@@ -73,27 +73,27 @@ static void client_connect(uv_connect_t* req, int status) {
         return;
     }
     //连接成功,
-    uv_read_start((uv_stream_t*)&server->tcp, alloc_buffer, client_read_cb);
+    uv_read_start((uv_stream_t*)&bridge->tcp, alloc_buffer, bridge_read_cb);
 }
 //启动连接
 static int start_connect(ops_global *global) {
-    ops_server* server = (ops_server*)malloc(sizeof(*server));
-    if (server == NULL)
+    ops_bridge* bridge = (ops_bridge*)malloc(sizeof(*bridge));
+    if (bridge == NULL)
         return 0;
-    memset(server, 0, sizeof(*server));
-    server->global = global;
+    memset(bridge, 0, sizeof(*bridge));
+    bridge->global = global;
     uv_connect_t* req = (uv_connect_t*)malloc(sizeof(uv_connect_t));
     if (req == NULL) {
-        free(server);
+        free(req);
         return 0;
     }
     memset(req, 0, sizeof(uv_connect_t));
 
-    uv_tcp_init(loop, &server->tcp);
-    req->data = server;
+    uv_tcp_init(loop, &bridge->tcp);
+    req->data = bridge;
     struct sockaddr_in _addr;
     uv_ip4_addr("127.0.0.1", 1664, &_addr);
-    uv_tcp_connect(req, &server->tcp,&_addr, client_connect);
+    uv_tcp_connect(req, &bridge->tcp,&_addr, bridge_connect);
 
 }
 //
