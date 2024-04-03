@@ -19,24 +19,17 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\data.c" />
-    <ClCompile Include="..\..\src\databuffer.c" />
-    <ClCompile Include="..\..\src\ops.c" />
-    <ClCompile Include="..\..\src\sds.c" />
+    <ClCompile Include="..\..\..\third_party\http-parser\http_parser.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\common.h" />
-    <ClInclude Include="..\..\src\data.h" />
-    <ClInclude Include="..\..\src\databuffer.h" />
-    <ClInclude Include="..\..\src\sds.h" />
+    <ClInclude Include="..\..\..\third_party\http-parser\http_parser.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{09A1DE89-E260-4ACF-8541-620BEF9D3A76}</ProjectGuid>
-    <RootNamespace>server</RootNamespace>
+    <ProjectGuid>{ADB90271-FF4D-41C1-A673-1E936A0EF693}</ProjectGuid>
+    <RootNamespace>http-parser</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>ops</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -53,7 +46,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
@@ -119,16 +112,15 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\third_party\http-parser;..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libuv.lib;cJSON.lib;ws2_32.lib;Iphlpapi.lib;Psapi.lib;Userenv.lib;Dbghelp.lib;http-parser.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

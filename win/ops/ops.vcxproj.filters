@@ -3,9 +3,13 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\databuffer.c" />
     <ClCompile Include="..\..\src\ops.c" />
+    <ClCompile Include="..\..\src\data.c" />
+    <ClCompile Include="..\..\src\sds.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\databuffer.h" />
     <ClInclude Include="..\..\src\common.h" />
+    <ClInclude Include="..\..\src\data.h" />
+    <ClInclude Include="..\..\src\sds.h" />
   </ItemGroup>
 </Project>

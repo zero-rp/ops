@@ -19,11 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\data.c" />
     <ClCompile Include="..\..\src\databuffer.c" />
     <ClCompile Include="..\..\src\opc.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\common.h" />
+    <ClInclude Include="..\..\src\data.h" />
     <ClInclude Include="..\..\src\databuffer.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
