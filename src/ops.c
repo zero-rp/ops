@@ -93,7 +93,7 @@ static int _ops_bridge_compare(ops_bridge* w1, ops_bridge* w2) {
 RB_GENERATE_STATIC(_ops_bridge_tree_s, _ops_bridge, entry, _ops_bridge_compare)
 
 //添加转发器
-static void add_forward(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char *dst) {
+static void add_forward(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char *dst, uint16_t dst_port) {
     ops_forward ths = {
         .id = id
     };
@@ -114,6 +114,7 @@ static void add_forward(ops_global* global, uint32_t id, uint16_t src_id, uint16
     forward->src.type = type;
     forward->src.port = src_port;
     forward->dst.type = type;
+    forward->dst.port = dst_port;
     strncpy(forward->dst.dst, dst, sizeof(forward->dst.dst)-1);
     forward->dst.dst[sizeof(forward->dst.dst)-1] = 0;
 }
@@ -122,7 +123,7 @@ static void add_forward(ops_global* global, uint32_t id, uint16_t src_id, uint16
 //重载服务
 static service_reload(ops_global* global) {
     //
-    add_forward(global, 1, 1, 2, 1, 1088, "www.baidu.com");
+    add_forward(global, 1, 1, 2, 1, 1088, "www.baidu.com", 80);
 
 
 

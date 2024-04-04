@@ -9,18 +9,20 @@
 //转发隧道来源
 typedef struct _opc_forward_tunnel_src {
     RB_ENTRY(_opc_forward_tunnel_src) entry;    //
-    uint32_t stream_id;                     //流ID
-    uint32_t id;                            //转发服务ID
-    uv_tcp_t tcp;                           //
+    uint32_t stream_id;                         //流ID
+    uint32_t pree_id;                           //对端流ID
+    uint32_t id;                                //转发服务ID
+    uv_tcp_t tcp;                               //
     struct _opc_forward_src* src;
 }opc_forward_tunnel_src;
 RB_HEAD(_opc_forward_tunnel_src_tree_s, _opc_forward_tunnel_src);
 //转发隧道目标
 typedef struct _opc_forward_tunnel_dst {
     RB_ENTRY(_opc_forward_tunnel_dst) entry;    //
-    uint32_t stream_id;                     //流ID
-    uint32_t id;                            //转发服务ID
-    uv_tcp_t tcp;                           //
+    uint32_t stream_id;                         //流ID
+    uint32_t pree_id;                           //对端流ID
+    uint32_t id;                                //转发服务ID
+    uv_tcp_t tcp;                               //
     uv_connect_t req;
     uv_getaddrinfo_t req_info;
     struct _opc_forward_dst* dst;
@@ -37,6 +39,7 @@ typedef struct _opc_forward_dst {
     RB_ENTRY(_opc_forward_dst) entry;    //
     uint32_t id;                        //转发服务ID
     uv_tcp_t tcp;                       //监听
+    uint16_t port;
     char dst[256];                      //目标
     struct _opc_bridge* bridge;
 }opc_forward_dst;
@@ -141,6 +144,37 @@ static void forward_connection_cb(uv_stream_t* tcp, int status) {
         uv_read_start((uv_stream_t*)&tunnel->tcp, alloc_buffer, forward_tunnel_src_read_cb);
     }
 }
+
+//转发隧道目标数据到达
+static void forward_tunnel_dst_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+    opc_forward_tunnel_dst* tunnel = (opc_forward_tunnel_dst*)tcp->data;
+    if (nread <= 0) {
+        if (UV_EOF != nread) {
+            //连接异常断开
+
+        }
+        else {
+            //shutdown
+
+        }
+        //回收资源
+
+        return;
+    }
+
+}
+//连接返回
+static void forward_connect_cb(uv_connect_t* req, int status) {
+    opc_forward_tunnel_dst* tunnel = req->data;
+    if (status < 0) {
+        //连接失败
+        return;
+    }
+    //连接远端成功
+    uv_read_start((uv_stream_t*)&tunnel->tcp, alloc_buffer, forward_tunnel_dst_read_cb);
+    //
+    
+}
 //转发隧道解析目标主机
 static void forward_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
     opc_forward_tunnel_dst* tunnel = req->data;
@@ -148,8 +182,10 @@ static void forward_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct add
 
         return;
     }
+    tunnel->tcp.data = tunnel;
+    tunnel->req.data = tunnel;
     uv_tcp_init(loop, &tunnel->tcp);
-    uv_tcp_connect(&tunnel->req, &tunnel->tcp, res->ai_addr, bridge_connect);
+    uv_tcp_connect(&tunnel->req, &tunnel->tcp, res->ai_addr, forward_connect_cb);
 }
 
 
@@ -218,6 +254,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
                 memcpy(&dst, pos, sizeof(dst));
                 pos += sizeof(dst);
                 dst.sid = ntohl(dst.sid);
+                dst.port = ntohs(dst.port);
 
                 opc_forward_dst* d = (opc_forward_dst*)malloc(sizeof(*d));
                 memset(d, 0, sizeof(*d));
@@ -225,7 +262,8 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
                 d->bridge = bridge;
                 memcpy(d->dst, dst.dst, sizeof(d->dst));
                 d->dst[sizeof(d->dst) - 1] = 0;
-                
+                d->port = dst.port;
+
                 RB_INSERT(_opc_forward_dst_tree_s, &bridge->forward_dst, d);
             }
             else {
@@ -264,12 +302,13 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
         memset(tunnel, 0, sizeof(*tunnel));
         tunnel->dst = dst;
         tunnel->stream_id = bridge->forward_tunnel_id++;
+        tunnel->pree_id = packet->stream_id;
         RB_INSERT(_opc_forward_tunnel_dst_tree_s, &bridge->tunnel_dst, tunnel);
         //开始连接,解析主机
-        tunnel->tcp.data = tunnel;
-        tunnel->req.data = tunnel;
         tunnel->req_info.data = tunnel;
-        uv_getaddrinfo(loop, &tunnel->req_info, forward_getaddrinfo_cb, dst->dst, NULL, NULL);
+        char buf[10] = { 0 };
+        snprintf(buf, sizeof(buf), "%d", dst->port);
+        uv_getaddrinfo(loop, &tunnel->req_info, forward_getaddrinfo_cb, dst->dst, buf, NULL);
         break;
     }
     default:
@@ -337,7 +376,7 @@ void bridge_re_timer_cb(uv_timer_t* handle) {
     start_connect((opc_global*)handle->data);
 }
 //连接返回
-static void bridge_connect(uv_connect_t* req, int status) {
+static void bridge_connect_cb(uv_connect_t* req, int status) {
     opc_bridge* bridge = (opc_bridge*)req->data;
     free(req);
     if (status < 0) {
@@ -373,7 +412,7 @@ static int start_connect(opc_global* global) {
     req->data = bridge;
     struct sockaddr_in _addr;
     uv_ip4_addr("127.0.0.1", 1664, &_addr);
-    uv_tcp_connect(req, &bridge->tcp, &_addr, bridge_connect);
+    uv_tcp_connect(req, &bridge->tcp, &_addr, bridge_connect_cb);
 }
 //全局初始化
 static int init_global(opc_global* global) {

@@ -13,7 +13,7 @@ enum ops_packet_type
     ops_packet_ping,                        //延迟测试和保活
     ops_packet_forward,                     //转发服务
     ops_packet_forward_open,                //打开转发隧道
-
+    ops_packet_forward_data,                //隧道数据
 };
 //包定义
 typedef struct _ops_packet {
