@@ -37,6 +37,7 @@ typedef struct _ops_config {
     uint16_t https_proxy_port;  //域名代理https代理监听端口
     uint16_t http_proxy_port;   //域名代理http代理监听端口
     const char* auth_key;       //web api密钥
+    const char* db_file;
 }ops_config;
 //
 typedef struct _ops_global {
@@ -365,12 +366,12 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
             //查找ID是否存在
             ops_bridge* p = RB_FIND(_ops_bridge_tree_s, &bridge->global->bridge, &ths);
             if (p != NULL) {
-                bridge_send(bridge, ops_packet_auth,0, 0, NULL, 0);
+                bridge_send(bridge, ops_packet_auth, 0, 0, NULL, 0);
             }
             else {
                 char buf[1];
                 buf[0] = 1;//鉴权成功
-                bridge_send(bridge, ops_packet_auth,0, 0, buf, 1);
+                bridge_send(bridge, ops_packet_auth, 0, 0, buf, 1);
                 //记录客户端
                 bridge->id = client_id;
                 RB_INSERT(_ops_bridge_tree_s, &bridge->global->bridge, bridge);
@@ -535,7 +536,8 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
 //全局初始化
 static int init_global(ops_global* global) {
     struct sockaddr_in _addr;
-
+    //
+    data_init(global->config.db_file);
     //web管理
     global->listen.web.data = global;
     uv_tcp_init(loop, &global->listen.web);
@@ -566,6 +568,7 @@ static int init_global(ops_global* global) {
 }
 //加载配置
 static load_config(ops_global* global) {
+    global->config.db_file = "data.db";
     global->config.bridge_port = 1664;
     global->config.web_port = 8088;
     global->config.https_proxy_port = 443;

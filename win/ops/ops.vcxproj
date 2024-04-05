@@ -121,13 +121,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\third_party\http-parser;..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\third_party\sqlite;..\..\third_party\http-parser;..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libuv.lib;cJSON.lib;ws2_32.lib;Iphlpapi.lib;Psapi.lib;Userenv.lib;Dbghelp.lib;http-parser.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libuv.lib;cJSON.lib;ws2_32.lib;Iphlpapi.lib;Psapi.lib;Userenv.lib;Dbghelp.lib;http-parser.lib;sqlite.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

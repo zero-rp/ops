@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
+int data_init(const char* file);
 uint16_t data_find_auth_key(const char* key, int key_len);
 void data_get_forward(uint16_t id);
 
