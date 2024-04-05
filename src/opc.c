@@ -11,7 +11,6 @@ typedef struct _opc_forward_tunnel_src {
     RB_ENTRY(_opc_forward_tunnel_src) entry;    //
     uint32_t stream_id;                         //流ID
     uint32_t pree_id;                           //对端流ID
-    uint32_t id;                                //转发服务ID
     uv_tcp_t tcp;                               //
     struct _opc_forward_src* src;
 }opc_forward_tunnel_src;
@@ -21,7 +20,6 @@ typedef struct _opc_forward_tunnel_dst {
     RB_ENTRY(_opc_forward_tunnel_dst) entry;    //
     uint32_t stream_id;                         //流ID
     uint32_t pree_id;                           //对端流ID
-    uint32_t id;                                //转发服务ID
     uv_tcp_t tcp;                               //
     uv_connect_t req;
     uv_getaddrinfo_t req_info;
@@ -99,7 +97,7 @@ static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
 
-static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t stream_id, const char* data, uint32_t len);
+static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 
 //转发隧道来源数据到达
 static void forward_tunnel_src_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
@@ -117,7 +115,9 @@ static void forward_tunnel_src_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
 
         return;
     }
-
+    //转发
+    bridge_send(tunnel->src->bridge, ops_packet_forward_data_local, tunnel->src->id, tunnel->pree_id, buf->base, nread);
+    free(buf->base);
 }
 //转发连接进入
 static void forward_connection_cb(uv_stream_t* tcp, int status) {
@@ -126,22 +126,20 @@ static void forward_connection_cb(uv_stream_t* tcp, int status) {
     if (!tunnel)
         return;
     memset(tunnel, 0, sizeof(*tunnel));
-    tunnel->src = src;
-    tunnel->stream_id = src->bridge->forward_tunnel_id++;
-    RB_INSERT(_opc_forward_tunnel_src_tree_s, &src->bridge->tunnel_src, tunnel);
-
-    //打开转发隧道
-    char buf[4];
-    *(uint32_t*)buf = htonl(src->id);
-    bridge_send(src->bridge, ops_packet_forward_open, tunnel->stream_id, buf, sizeof(buf));
-
 
     uv_tcp_init(loop, &tunnel->tcp);//初始化tcp bridge句柄
     tunnel->tcp.data = tunnel;
 
     if (uv_accept(tcp, (uv_stream_t*)&tunnel->tcp) == 0) {
-        //新转发
-        uv_read_start((uv_stream_t*)&tunnel->tcp, alloc_buffer, forward_tunnel_src_read_cb);
+        //记录
+        tunnel->src = src;
+        tunnel->stream_id = src->bridge->forward_tunnel_id++;
+        RB_INSERT(_opc_forward_tunnel_src_tree_s, &src->bridge->tunnel_src, tunnel);
+
+        //打开转发隧道
+        uint8_t buf[1];
+        buf[0] = 0x01;//发起请求
+        bridge_send(src->bridge, ops_packet_forward_ctl, src->id,tunnel->stream_id, buf, sizeof(buf));
     }
 }
 
@@ -161,7 +159,9 @@ static void forward_tunnel_dst_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
 
         return;
     }
-
+    //转发
+    bridge_send(tunnel->dst->bridge, ops_packet_forward_data_remote, tunnel->dst->id, tunnel->pree_id, buf->base, nread);
+    free(buf->base);
 }
 //连接返回
 static void forward_connect_cb(uv_connect_t* req, int status) {
@@ -170,10 +170,13 @@ static void forward_connect_cb(uv_connect_t* req, int status) {
         //连接失败
         return;
     }
+    //通知成功
+    uint8_t buf[5];
+    buf[0] = 0x02;//连接成功
+    *(uint32_t*)(&buf[1]) = htonl(tunnel->stream_id);
+    bridge_send(tunnel->dst->bridge, ops_packet_forward_ctl, tunnel->dst->id, tunnel->pree_id, buf, sizeof(buf));
     //连接远端成功
     uv_read_start((uv_stream_t*)&tunnel->tcp, alloc_buffer, forward_tunnel_dst_read_cb);
-    //
-    
 }
 //转发隧道解析目标主机
 static void forward_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
@@ -198,7 +201,7 @@ static void bridge_connect_end(opc_bridge* bridge) {
         return;
     *(uint16_t*)(buf) = htons(size - 2);
     memcpy(buf + 2, bridge->global->config.auth_key, size - 2);
-    bridge_send(bridge, ops_packet_auth, 0, buf, size);
+    bridge_send(bridge, ops_packet_auth, 0, 0, buf, size);
     free(buf);
 }
 //收到服务端来的数据
@@ -206,10 +209,12 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     if (size < sizeof(ops_packet))
         return;
     ops_packet* packet = (ops_packet*)data;
+    packet->service_id = ntohl(packet->service_id);
+    packet->stream_id = ntohl(packet->stream_id);
     size -= sizeof(ops_packet);
     switch (packet->type)
     {
-    case ops_packet_auth: {
+    case ops_packet_auth: {//鉴权数据
         if (size == 1 && packet->data[0] == 0x01) {
             printf("Auth Ok!\r\n");
         }
@@ -221,7 +226,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     case ops_packet_ping: {
         break;
     }
-    case ops_packet_forward: {
+    case ops_packet_forward: {//下发转发服务
         //读取数量
         int count = ntohl(*(uint32_t*)&packet->data[0]);
         char* pos = &packet->data[4];
@@ -275,40 +280,101 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
 
         break;
     }
-    case ops_packet_forward_open: {
-        //打开远端失败
-        if (size == 0) {
-
-
+    case ops_packet_forward_ctl: {//转发控制指令
+        uint8_t type = packet->data[0];
+        switch (type)
+        {
+        case 0x01: {//发起请求
+            //查找目标服务
+            opc_forward_dst ths = {
+                   .id = packet->service_id
+            };
+            opc_forward_dst* dst = RB_FIND(_opc_forward_dst_tree_s, &bridge->forward_dst, &ths);
+            if (dst == NULL) {
+                bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
+                break;
+            }
+            //请求连接远端
+            opc_forward_tunnel_dst* tunnel = (opc_forward_tunnel_dst*)malloc(sizeof(*tunnel));//为tcp tunnel申请资源
+            if (!tunnel)
+                return;
+            memset(tunnel, 0, sizeof(*tunnel));
+            tunnel->dst = dst;
+            tunnel->stream_id = bridge->forward_tunnel_id++;
+            tunnel->pree_id = packet->stream_id;
+            RB_INSERT(_opc_forward_tunnel_dst_tree_s, &bridge->tunnel_dst, tunnel);
+            //开始连接,解析主机
+            tunnel->req_info.data = tunnel;
+            char buf[10] = { 0 };
+            snprintf(buf, sizeof(buf), "%d", dst->port);
+            uv_getaddrinfo(loop, &tunnel->req_info, forward_getaddrinfo_cb, dst->dst, buf, NULL);
+            break;
+        }
+        case 0x02: {//连接成功
+            opc_forward_tunnel_src the = {
+                .stream_id = packet->stream_id
+            };
+            opc_forward_tunnel_src* tunnel = RB_FIND(_opc_forward_tunnel_src_tree_s, &bridge->tunnel_src, &the);
+            if (!tunnel)
+                break;
+            //读取对端流ID
+            tunnel->pree_id = ntohl(*(uint32_t*)(& packet->data[1]));
+            //开始接收本地数据
+            uv_read_start((uv_stream_t*)&tunnel->tcp, alloc_buffer, forward_tunnel_src_read_cb);
 
             break;
         }
-        //读取服务ID
-        int id = ntohl(*(uint32_t*)&packet->data[0]);
-        //查找目标服务
-        opc_forward_dst ths = {
-               .id = id
+        default:
+            break;
+        }
+        break;
+    }
+    case ops_packet_forward_data_local: {//本地来的转发数据
+        opc_forward_tunnel_dst  the = {
+                .stream_id = packet->stream_id
         };
-        opc_forward_dst* dst = RB_FIND(_opc_forward_dst_tree_s, &bridge->forward_dst, &ths);
-        if (dst == NULL) {
-            bridge_send(bridge, ops_packet_forward_open, packet->stream_id, NULL, 0);
+        opc_forward_tunnel_dst* tunnel = RB_FIND(_opc_forward_tunnel_dst_tree_s, &bridge->tunnel_dst, &the);
+        if (!tunnel)
+            break;
+        //转发数据到远程
+        uv_buf_t buf[] = { 0 };
+        buf->len = size;
+        buf->base = malloc(size);
+        if (buf->base == NULL) {
             break;
         }
-
-        //请求连接远端
-        opc_forward_tunnel_dst* tunnel = (opc_forward_tunnel_dst*)malloc(sizeof(*tunnel));//为tcp tunnel申请资源
-        if (!tunnel)
+        memcpy(buf->base, packet->data, size);
+        uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+        if (req == NULL) {
+            free(buf->base);
             return;
-        memset(tunnel, 0, sizeof(*tunnel));
-        tunnel->dst = dst;
-        tunnel->stream_id = bridge->forward_tunnel_id++;
-        tunnel->pree_id = packet->stream_id;
-        RB_INSERT(_opc_forward_tunnel_dst_tree_s, &bridge->tunnel_dst, tunnel);
-        //开始连接,解析主机
-        tunnel->req_info.data = tunnel;
-        char buf[10] = { 0 };
-        snprintf(buf, sizeof(buf), "%d", dst->port);
-        uv_getaddrinfo(loop, &tunnel->req_info, forward_getaddrinfo_cb, dst->dst, buf, NULL);
+        }
+        req->data = buf->base;
+        uv_write(req, &tunnel->tcp, &buf, 1, write_cb);
+        break;
+    }
+    case ops_packet_forward_data_remote: {//远程来的转发数据
+        opc_forward_tunnel_src  the = {
+                .stream_id = packet->stream_id
+        };
+        opc_forward_tunnel_src* tunnel = RB_FIND(_opc_forward_tunnel_src_tree_s, &bridge->tunnel_src, &the);
+        if (!tunnel)
+            break;
+        //转发数据到本地
+        uv_buf_t buf[] = { 0 };
+        buf->len = size;
+        buf->base = malloc(size);
+        if (buf->base == NULL) {
+            break;
+        }
+        memcpy(buf->base, packet->data, size);
+        uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+        if (req == NULL) {
+            free(buf->base);
+            return;
+        }
+        req->data = buf->base;
+        uv_write(req, &tunnel->tcp, &buf, 1, write_cb);
         break;
     }
     default:
@@ -319,7 +385,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
 
 
 //向服务器发送数据
-static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t stream_id, const char* data, uint32_t len) {
+static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
     uv_buf_t buf[] = { 0 };
     buf->len = 4 + sizeof(ops_packet) + len;
     buf->base = malloc(buf->len);
@@ -329,7 +395,8 @@ static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t stream_id, c
     *(uint32_t*)(buf->base) = htonl(buf->len - 4);
     ops_packet* pack = (ops_packet*)(buf->base + 4);
     pack->type = type;
-    pack->stream_id = stream_id;
+    pack->service_id = htonl(service_id);
+    pack->stream_id = htonl(stream_id);
     memcpy(pack->data, data, len);
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     if (req == NULL) {

@@ -12,14 +12,16 @@ enum ops_packet_type
     ops_packet_auth = 1,                    //鉴权
     ops_packet_ping,                        //延迟测试和保活
     ops_packet_forward,                     //转发服务
-    ops_packet_forward_open,                //打开转发隧道
-    ops_packet_forward_data,                //隧道数据
+    ops_packet_forward_ctl,                 //转发隧道控制包
+    ops_packet_forward_data_remote,         //隧道数据
+    ops_packet_forward_data_local,
 };
 //包定义
 typedef struct _ops_packet {
     uint8_t type;                           //包类型
     uint32_t stream_id;                     //流ID
-    char data[];                            //数据
+    uint32_t service_id;                    //服务编号
+    uint8_t data[];                         //数据
 }ops_packet;
 
 //转发服务来源

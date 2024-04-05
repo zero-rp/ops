@@ -52,7 +52,14 @@ typedef struct _ops_global {
     struct _ops_forward_tree_s forward; //转发器
     struct _ops_bridge_tree_s bridge;   //客户端
 }ops_global;
-//HTTP
+//web管理连接
+typedef struct _ops_web {
+    ops_global* global;
+    uv_tcp_t tcp;               //连接
+    struct http_parser parser;  //解析器
+    sds path;
+}ops_web;
+//HTTP连接
 typedef struct _ops_http {
     ops_global* global;
     uv_tcp_t tcp;               //连接
@@ -76,9 +83,6 @@ typedef struct _ops_service {
 
 static uv_loop_t* loop = NULL;
 
-
-
-
 static int _ops_forward_compare(ops_forward* w1, ops_forward* w2) {
     if (w1->id < w2->id) return -1;
     if (w1->id > w2->id) return 1;
@@ -93,7 +97,7 @@ static int _ops_bridge_compare(ops_bridge* w1, ops_bridge* w2) {
 RB_GENERATE_STATIC(_ops_bridge_tree_s, _ops_bridge, entry, _ops_bridge_compare)
 
 //添加转发器
-static void add_forward(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char *dst, uint16_t dst_port) {
+static void add_forward(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* dst, uint16_t dst_port) {
     ops_forward ths = {
         .id = id
     };
@@ -115,9 +119,10 @@ static void add_forward(ops_global* global, uint32_t id, uint16_t src_id, uint16
     forward->src.port = src_port;
     forward->dst.type = type;
     forward->dst.port = dst_port;
-    strncpy(forward->dst.dst, dst, sizeof(forward->dst.dst)-1);
-    forward->dst.dst[sizeof(forward->dst.dst)-1] = 0;
+    strncpy(forward->dst.dst, dst, sizeof(forward->dst.dst) - 1);
+    forward->dst.dst[sizeof(forward->dst.dst) - 1] = 0;
 }
+//
 
 
 //重载服务
@@ -144,47 +149,99 @@ static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
 //----------------------------------------------------------------------------------------------------------------------WEB管理处理
-static void web_connection_cb(uv_stream_t* tcp, int status) {
-
-}
-//----------------------------------------------------------------------------------------------------------------------HTTP端口处理
 //HTTP应答解析回调
 //消息完毕
-static int on_message_complete(http_parser* p) {
+static int web_on_message_complete(http_parser* p) {
     struct ops_http* http = (struct ops_http*)p->data;
 
     return 0;
 }
 //解析到消息体
-static int on_body(http_parser* p, const char* buf, size_t len) {
+static int web_on_body(http_parser* p, const char* buf, size_t len) {
+    struct ops_http* http = (struct ops_http*)p->data;
+
+    return 0;
+}
+//解析到域名
+static int web_on_url(http_parser* p, const char* buf, size_t len) {
+    return 0;
+}
+static http_parser_settings web_parser_settings = { NULL, web_on_url, NULL, NULL, NULL, NULL, web_on_body, web_on_message_complete, NULL, NULL };
+//读取到数据
+static void web_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+    ops_web* web = (ops_web*)tcp->data;
+    ops_global* global = web->global;
+    if (nread <= 0) {
+        if (UV_EOF != nread) {
+            //连接异常断开
+
+        }
+        else {
+            //shutdown
+
+        }
+        return;
+    }
+    http_parser_execute(&web->parser, &web_parser_settings, buf->base, nread);
+    free(buf->base);
+}
+static void web_connection_cb(uv_stream_t* tcp, int status) {
+    ops_global* global = (ops_global*)tcp->data;
+    ops_web* web = (ops_web*)malloc(sizeof(ops_web));//为tcp bridge申请资源
+    if (!web)
+        return;
+    memset(web, 0, sizeof(*web));
+    web->global = global;
+
+    http_parser_init(&web->parser, HTTP_REQUEST);//初始化解析器
+    web->parser.data = web;
+
+    uv_tcp_init(loop, &web->tcp);//初始化tcp bridge句柄
+    web->tcp.data = web;
+
+    if (uv_accept(tcp, (uv_stream_t*)&web->tcp) == 0) {
+        uv_read_start((uv_stream_t*)&web->tcp, alloc_buffer, web_read_cb);
+    }
+
+}
+//----------------------------------------------------------------------------------------------------------------------HTTP端口处理
+//HTTP应答解析回调
+//消息完毕
+static int http_on_message_complete(http_parser* p) {
+    struct ops_http* http = (struct ops_http*)p->data;
+
+    return 0;
+}
+//解析到消息体
+static int http_on_body(http_parser* p, const char* buf, size_t len) {
     struct ops_http* http = (struct ops_http*)p->data;
 
     return 0;
 }
 //解析到头V
-static int on_header_value(http_parser* p, const char* buf, size_t len) {
+static int http_on_header_value(http_parser* p, const char* buf, size_t len) {
     struct ops_http* http = (struct ops_http*)p->data;
 
     return 0;
 }
 //解析到头K
-static int on_header_field(http_parser* p, const char* buf, size_t len) {
+static int http_on_header_field(http_parser* p, const char* buf, size_t len) {
     struct ops_http* http = (struct ops_http*)p->data;
 
     return 0;
 }
 //头部解析完毕
-static int on_headers_complete(http_parser* p) {
+static int http_on_headers_complete(http_parser* p) {
 
     return 0;
 }
 //解析开始
-static int on_message_begin(http_parser* p) {
+static int http_on_message_begin(http_parser* p) {
     struct ops_http* http = (struct ops_http*)p->data;
 
     return 0;
 }
-static http_parser_settings parser_settings = { on_message_begin, NULL, NULL, on_header_field, on_header_value, on_headers_complete, on_body, on_message_complete, NULL, NULL };
+static http_parser_settings parser_settings = { http_on_message_begin, NULL, NULL, http_on_header_field, http_on_header_value, http_on_headers_complete, http_on_body, http_on_message_complete, NULL, NULL };
 //读取到数据
 static void http_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ops_http* http = (ops_http*)tcp->data;
@@ -203,6 +260,7 @@ static void http_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     http_parser_execute(&http->parser, &parser_settings, buf->base, nread);
     free(buf->base);
 }
+//http连接进入
 static void http_connection_cb(uv_stream_t* tcp, int status) {
     ops_global* global = (ops_global*)tcp->data;
     ops_http* http = (ops_http*)malloc(sizeof(ops_http));//为tcp bridge申请资源
@@ -223,7 +281,7 @@ static void http_connection_cb(uv_stream_t* tcp, int status) {
 }
 //----------------------------------------------------------------------------------------------------------------------客户端处理
 //向客户发送数据
-static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t stream_id, const char* data, uint32_t len) {
+static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
     uv_buf_t buf[] = { 0 };
     buf->len = 4 + sizeof(ops_packet) + len;
     buf->base = malloc(buf->len);
@@ -233,7 +291,8 @@ static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t stream_id, c
     *(uint32_t*)(buf->base) = htonl(buf->len - 4);
     ops_packet* pack = (ops_packet*)(buf->base + 4);
     pack->type = type;
-    pack->stream_id = stream_id;
+    pack->service_id = htonl(service_id);
+    pack->stream_id = htonl(stream_id);
     if (data && len) {
         memcpy(pack->data, data, len);
     }
@@ -275,7 +334,7 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     }
     *(uint32_t*)pack = htonl(count);
     //下发转发服务
-    bridge_send(bridge, ops_packet_forward, 0, pack, sdslen(pack));
+    bridge_send(bridge, ops_packet_forward, 0, 0, pack, sdslen(pack));
     sdsfree(pack);
 
 
@@ -287,6 +346,8 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
     if (size < sizeof(ops_packet))
         return;
     ops_packet* packet = (ops_packet*)data;
+    packet->service_id = ntohl(packet->service_id);
+    packet->stream_id = ntohl(packet->stream_id);
     size -= sizeof(ops_packet);
     switch (packet->type)
     {
@@ -295,7 +356,7 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         uint16_t key_len = ntohs(*(uint16_t*)(&packet->data));
         uint16_t client_id = data_find_auth_key(packet->data + 2, key_len);
         if (client_id == 0) {
-            bridge_send(bridge, ops_packet_auth, 0, NULL, 0);
+            bridge_send(bridge, ops_packet_auth, 0, 0, NULL, 0);
         }
         else {
             ops_forward ths = {
@@ -304,12 +365,12 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
             //查找ID是否存在
             ops_bridge* p = RB_FIND(_ops_bridge_tree_s, &bridge->global->bridge, &ths);
             if (p != NULL) {
-                bridge_send(bridge, ops_packet_auth, 0, NULL, 0);
+                bridge_send(bridge, ops_packet_auth,0, 0, NULL, 0);
             }
             else {
                 char buf[1];
                 buf[0] = 1;//鉴权成功
-                bridge_send(bridge, ops_packet_auth, 0, buf, 1);
+                bridge_send(bridge, ops_packet_auth,0, 0, buf, 1);
                 //记录客户端
                 bridge->id = client_id;
                 RB_INSERT(_ops_bridge_tree_s, &bridge->global->bridge, bridge);
@@ -322,16 +383,83 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
 
         break;
     }
-    case ops_packet_forward_open: {
-        //读取服务ID
-        int id = ntohl(*(uint32_t*)&packet->data[0]);
+    case ops_packet_forward_ctl: {//转发控制指令
         //查找服务
         ops_forward ths = {
-               .id = id
+               .id = packet->service_id
         };
         ops_forward* p = RB_FIND(_ops_forward_tree_s, &bridge->global->forward, &ths);
         if (p == NULL) {
-            bridge_send(bridge, ops_packet_forward_open, packet->stream_id, NULL, 0);
+            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
+            break;
+        }
+        uint8_t type = packet->data[0];
+        switch (type)
+        {
+        case 0x01: {//发起请求
+            //查找目标客户端是否存在
+            ops_bridge ths_b = {
+                    .id = p->dst_id
+            };
+            ops_bridge* b = RB_FIND(_ops_bridge_tree_s, &bridge->global->bridge, &ths_b);
+            if (b == NULL) {
+                bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
+                break;
+            }
+            //发送
+            bridge_send(b, ops_packet_forward_ctl, packet->service_id, packet->stream_id, packet->data, size);
+            break;
+        }
+        case 0x02: {
+            //查找来源客户端是否存在
+            ops_bridge ths_b = {
+                    .id = p->src_id
+            };
+            ops_bridge* b = RB_FIND(_ops_bridge_tree_s, &bridge->global->bridge, &ths_b);
+            if (b == NULL) {
+                bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
+                break;
+            }
+            //发送
+            bridge_send(b, ops_packet_forward_ctl, packet->service_id, packet->stream_id, packet->data, size);
+            break;
+        }
+        default:
+            break;
+        }
+        break;
+    }
+    case ops_packet_forward_data_remote: {//远程来的转发数据
+        //查找服务
+        ops_forward ths = {
+               .id = packet->service_id
+        };
+        ops_forward* p = RB_FIND(_ops_forward_tree_s, &bridge->global->forward, &ths);
+        if (p == NULL) {
+            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
+            break;
+        }
+        //查找来源客户端是否存在
+        ops_bridge ths_b = {
+                .id = p->src_id
+        };
+        ops_bridge* b = RB_FIND(_ops_bridge_tree_s, &bridge->global->bridge, &ths_b);
+        if (b == NULL) {
+            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
+            break;
+        }
+        //发送
+        bridge_send(b, ops_packet_forward_data_remote, packet->service_id, packet->stream_id, packet->data, size);
+        break;
+    }
+    case ops_packet_forward_data_local: {//本地来的转发数据
+        //查找服务
+        ops_forward ths = {
+               .id = packet->service_id
+        };
+        ops_forward* p = RB_FIND(_ops_forward_tree_s, &bridge->global->forward, &ths);
+        if (p == NULL) {
+            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
             break;
         }
         //查找目标客户端是否存在
@@ -340,11 +468,11 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         };
         ops_bridge* b = RB_FIND(_ops_bridge_tree_s, &bridge->global->bridge, &ths_b);
         if (b == NULL) {
-            bridge_send(bridge, ops_packet_forward_open, packet->stream_id, NULL, 0);
+            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
             break;
         }
         //发送
-        bridge_send(b, ops_packet_forward_open, packet->stream_id, packet->data, size);
+        bridge_send(b, ops_packet_forward_data_local, packet->service_id, packet->stream_id, packet->data, size);
         break;
     }
     default:
