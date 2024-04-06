@@ -5,8 +5,7 @@ project(ops)
 #
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
-#
-set(BUILD_SHARED_AND_STATIC_LIBS on)
+
 
 #添加包含目录
 include_directories(third_party/libuv/include)
@@ -26,10 +25,11 @@ add_executable(ops
 	src/databuffer.c
 	src/data.c
 )
-target_link_libraries(ops uv http-parser sqlite cjson-static ${LIBS})
+target_link_libraries(ops uv http-parser sqlite ${LIBS})
 add_executable(opc
     src/opc.c
 	src/sds.c
 	src/databuffer.c
 )
 target_link_libraries(opc uv ${LIBS})
+

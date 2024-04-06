@@ -339,7 +339,7 @@ static int http_on_headers_complete(http_parser* p) {
     };
     ops_host* host = RB_FIND(_ops_host_tree, &s->conn->global->host, &the);
     if (host == NULL) {
-        return;
+        return 0;
     }
     //查找目标客户端是否在线
     ops_bridge ths_b = {
@@ -348,7 +348,7 @@ static int http_on_headers_complete(http_parser* p) {
     ops_bridge* b = RB_FIND(_ops_bridge_tree, &s->conn->global->bridge, &ths_b);
     if (b == NULL) {
 
-        return;
+        return 0;
     }
     //发起请求
     bridge_send(b, ops_packet_host_ctl, host->id, req->id, NULL, 0);
@@ -871,7 +871,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
     for (;;) {
         int size = databuffer_readheader(&bridge->m_buffer, &global->m_mp, 4);
         if (size < 0) {
-            return 0;
+            return;
         }
         char* temp = malloc(size);
         databuffer_read(&bridge->m_buffer, &global->m_mp, temp, size);
