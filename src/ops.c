@@ -17,6 +17,7 @@
 typedef struct _ops_host {
     RB_ENTRY(_ops_forward) entry;       //
     const char* host;                   //主机
+    const char* host_rewrite;           //重写主机
     uint32_t id;                        //服务ID
     uint16_t dst_id;                    //目标客户ID
     ops_host_dst dst;                   //目标信息
@@ -54,6 +55,7 @@ typedef struct _ops_request {
     uint32_t id;                            //请求ID
     uint32_t pree_id;                       //对端流ID
     struct _ops_http* http;                 //关联的连接
+    ops_host* host;
 }ops_request;
 RB_HEAD(_ops_request_tree_s, _ops_request);
 
@@ -287,6 +289,9 @@ static int http_on_header_field(http_parser* p, const char* buf, size_t len) {
 static int http_on_headers_complete(http_parser* p) {
     ops_http* http = (ops_http*)p->data;
     http->cur_header = NULL;
+    //日志
+    printf("New Request %s %s\r\n", http->host, http->url);
+
     //查找域名转发
     ops_host the = {
         .host = http->host
@@ -312,6 +317,7 @@ static int http_on_headers_complete(http_parser* p) {
     memset(req, 0, sizeof(*req));
     req->id = http->global->request_id++;
     req->http = http;
+    req->host = host;
     RB_INSERT(_ops_request_tree_s, &http->global->request, req);
     //发起请求
     bridge_send(b, ops_packet_host_ctl, host->id, req->id, NULL, 0);
@@ -617,8 +623,8 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
                 d = sdscatsds(d, header->key);
                 d = sdscat(d, ": ");
                 //重写host
-                if (strcasecmp(header->key, "host") == 0) {
-                    d = sdscat(d, "www.baidu.com");
+                if (strcasecmp(header->key, "host") == 0 && req->host->host_rewrite && req->host->host_rewrite[0] != 0) {
+                    d = sdscat(d, req->host->host_rewrite);
                 }
                 else {
                     d = sdscatsds(d, header->value);
@@ -661,6 +667,19 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
 
 
 }
+//关闭
+static void bridge_close_cb(uv_handle_t* handle) {
+    ops_bridge* bridge = (ops_bridge*)handle->data;
+
+
+    databuffer_clear(&bridge->m_buffer, &bridge->global->m_mp);
+    free(bridge);
+}
+static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
+    ops_bridge* bridge = (ops_bridge*)req->data;
+    uv_close(&bridge->tcp, bridge_close_cb);
+    free(req);
+}
 //读取到数据
 static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ops_bridge* bridge = (ops_bridge*)tcp->data;
@@ -668,13 +687,22 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
     if (nread <= 0) {
         if (UV_EOF != nread) {
             //连接异常断开
-
+            uv_close(tcp, bridge_close_cb);
         }
         else {
             //shutdown
-
+            uv_shutdown_t* req = (uv_shutdown_t*)malloc(sizeof(*req));
+            if (req != NULL) {
+                memset(req, 0, sizeof(*req));
+                req->data = bridge;
+                uv_shutdown(req, tcp, bridge_shutdown_cb);
+            }
+            else {
+                //分配内存失败,直接强制关闭
+                uv_close(tcp, bridge_close_cb);
+            }
         }
-        //
+        //从句柄树中移除
         if (bridge->id) {
             RB_REMOVE(_ops_bridge_tree_s, &bridge->global->bridge, bridge);
         }
@@ -771,7 +799,7 @@ static void data_forward_del(ops_global* global, uint32_t id) {
     RB_REMOVE(_ops_forward_tree_s, &global->forward, forward);
 }
 //
-static void data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* dst, uint16_t dst_port) {
+static void data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* dst, uint16_t dst_port, const char* host_rewrite) {
     ops_host* host = malloc(sizeof(*host));
     if (host == NULL)
         return;
@@ -782,6 +810,9 @@ static void data_host_add(ops_global* global, uint32_t id, const char* src_host,
     host->dst.sid = id;
     host->dst.type = type;
     host->dst.port = dst_port;
+    if (host_rewrite) {
+        host->host_rewrite = strdup(host_rewrite);
+    }
     strncpy(host->dst.dst, dst, sizeof(host->dst.dst) - 1);
     host->dst.dst[sizeof(host->dst.dst) - 1] = 0;
     RB_INSERT(_ops_host_tree_s, &global->host, host);
@@ -824,16 +855,40 @@ static int init_global(ops_global* global) {
     uv_listen((uv_stream_t*)&global->listen.https, DEFAULT_BACKLOG, http_connection_cb);
 }
 //加载配置
-static load_config(ops_global* global) {
+static load_config(ops_global* global, int argc, char* argv[]) {
+    //默认参数
     global->config.db_file = "data.db";
     global->config.bridge_port = 1664;
     global->config.web_port = 8088;
     global->config.https_proxy_port = 443;
     global->config.http_proxy_port = 80;
 
+    //从命令行加载参数
+    for (size_t i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-p") == 0) {
+            i++;
+            global->config.bridge_port = atoi(argv[i]);
+        }
+        else if (strcmp(argv[i], "-w") == 0) {
+            i++;
+            global->config.web_port = atoi(argv[i]);
+        }
+        else if (strcmp(argv[i], "-h") == 0) {
+            i++;
+            global->config.http_proxy_port = atoi(argv[i]);
+        }
+        else if (strcmp(argv[i], "-s") == 0) {
+            i++;
+            global->config.https_proxy_port = atoi(argv[i]);
+        }
+        else if (strcmp(argv[i], "-d") == 0) {
+            i++;
+            global->config.db_file = strdup(argv[i]);
+        }
+    }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     loop = uv_default_loop();
     //启动监听
     ops_global* global = (ops_global*)malloc(sizeof(*global));
@@ -841,7 +896,7 @@ int main() {
         return;
     memset(global, 0, sizeof(*global));
     //加载参数
-    load_config(global);
+    load_config(global, argc, argv);
     //初始化
     init_global(global);
     //

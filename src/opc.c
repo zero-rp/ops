@@ -80,6 +80,8 @@ typedef struct _opc_bridge {
 //配置
 typedef struct _opc_config {
     const char* auth_key;       //web api密钥
+    const char* server_ip;      //服务器IP
+    uint16_t server_port;       //服务器端口
 }opc_config;
 //
 typedef struct _opc_global {
@@ -637,7 +639,7 @@ static int start_connect(opc_global* global) {
     bridge->tcp.data = bridge;
     req->data = bridge;
     struct sockaddr_in _addr;
-    uv_ip4_addr("127.0.0.1", 1664, &_addr);
+    uv_ip4_addr(global->config.server_ip, global->config.server_port, &_addr);
     uv_tcp_connect(req, &bridge->tcp, &_addr, bridge_connect_cb);
 }
 //全局初始化
@@ -647,21 +649,44 @@ static int init_global(opc_global* global) {
 
 }
 //加载配置
-static load_config(opc_global* global) {
-    char* buf = malloc(500);
-    scanf("%s", buf);
-    global->config.auth_key = buf;
+static load_config(opc_global* global, int argc, char* argv[]) {
+    //默认参数
+    global->config.server_ip = "127.0.0.1";
+    global->config.server_port = 1664;
 
+    //从命令行加载参数
+    for (size_t i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0) {
+            i++;
+            global->config.server_ip = strdup(argv[i]);
+        }
+        else if (strcmp(argv[i], "-p") == 0) {
+            i++;
+            global->config.server_port = atoi(argv[i]);
+        }
+        else if (strcmp(argv[i], "-a") == 0) {
+            i++;
+            global->config.auth_key = strdup(argv[i]);
+        }
+        else if (strcmp(argv[i], "-c") == 0) {
+
+        }
+        else if (strcmp(argv[i], "-i") == 0) {
+            char* buf = malloc(500);
+            scanf("%s", buf);
+            global->config.auth_key = buf;
+        }
+    }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     loop = uv_default_loop();
     opc_global* global = (opc_global*)malloc(sizeof(opc_global));
     if (global == NULL)
         return 0;
     memset(global, 0, sizeof(*global));
     //加载参数
-    load_config(global);
+    load_config(global, argc, argv);
     //初始化
     init_global(global);
     //开始连接

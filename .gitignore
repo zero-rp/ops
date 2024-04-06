@@ -2,3 +2,4 @@ win/.vs/*
 *.vcxproj.user
 build/
 bin/
+win/ops/data.db

@@ -34,7 +34,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{09A1DE89-E260-4ACF-8541-620BEF9D3A76}</ProjectGuid>
-    <RootNamespace>server</RootNamespace>
+    <RootNamespace>ops</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>ops</ProjectName>
   </PropertyGroup>
