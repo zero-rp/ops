@@ -1051,7 +1051,7 @@ int main(int argc, char* argv[]) {
     //启动监听
     ops_global* global = (ops_global*)malloc(sizeof(*global));
     if (global == NULL)
-        return;
+        return 0;
     memset(global, 0, sizeof(*global));
     //加载参数
     load_config(global, argc, argv);
