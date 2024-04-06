@@ -5,6 +5,8 @@ project(ops)
 #
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+#
+set(BUILD_SHARED_AND_STATIC_LIBS on)
 
 #添加包含目录
 include_directories(third_party/libuv/include)

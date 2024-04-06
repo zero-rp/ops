@@ -571,6 +571,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
     opc_bridge* bridge = (opc_bridge*)tcp->data;
     opc_global* global = bridge->global;
     if (nread <= 0) {
+        printf("Server Disconnected\r\n");
         if (UV_EOF != nread) {
             //连接异常断开
 
