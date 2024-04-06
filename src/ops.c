@@ -62,14 +62,14 @@ typedef struct _ops_http_request {
     struct _ops_http_stream* stream;            //关联的流
 
     uint32_t method;                            //请求方式
-    sds host;                   //主机
-    sds url;                    //请求地址
-    sds body;                   //请求数据
-    ops_http_header* header;    //请求头
-    ops_http_header* cur_header;//
+    sds host;                                   //主机
+    sds url;                                    //请求地址
+    sds body;                                   //请求数据
+    ops_http_header* header;                    //请求头
+    ops_http_header* cur_header;                //
 
     uint32_t pree_id;                           //对端流ID
-    //ops_host* host;
+    ops_host* service;
 }ops_http_request;
 RB_HEAD(_ops_http_request_tree, _ops_http_request);
 //HTTP流
@@ -200,6 +200,7 @@ static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, 
 static int web_on_message_complete(http_parser* p) {
     struct ops_http* http = (struct ops_http*)p->data;
 
+
     return 0;
 }
 //解析到消息体
@@ -251,6 +252,36 @@ static void web_connection_cb(uv_stream_t* tcp, int status) {
 
 }
 //----------------------------------------------------------------------------------------------------------------------HTTP端口处理
+static void http_request_clean(ops_http_request* req) {
+    if (req->body) {
+        sdsfree(req->body);
+        req->body = NULL;
+    }
+    if (req->url) {
+        sdsfree(req->url);
+        req->url = NULL;
+    }
+    if (req->host) {
+        sdsfree(req->host);
+        req->host = NULL;
+    }
+    req->service = NULL;
+    req->pree_id = 0;
+
+    ops_http_header* header = req->header;
+    ops_http_header* next;
+    while (header) {
+        if (header->key)
+            sdsfree(header->key);
+        if (header->value)
+            sdsfree(header->value);
+        next = header->next;
+        free(header);
+        header = next;
+    }
+    req->header = NULL;
+
+}
 //
 static int http_send(ops_http_conn* conn, char* data, uint32_t size) {
     //转发数据到远程
@@ -264,7 +295,7 @@ static int http_send(ops_http_conn* conn, char* data, uint32_t size) {
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     if (req == NULL) {
         free(buf->base);
-        return;
+        return -1;
     }
     req->data = buf->base;
     return uv_write(req, &conn->tcp, &buf, 1, write_cb);
@@ -273,6 +304,31 @@ static int http_send(ops_http_conn* conn, char* data, uint32_t size) {
 //消息完毕
 static int http_on_message_complete(http_parser* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
+    ops_http_request* req = s->request;
+
+    //日志
+    printf("New Request %s %s\r\n", req->host, req->url);
+
+    //查找域名转发
+    ops_host the = {
+        .host = req->host
+    };
+    ops_host* host = RB_FIND(_ops_host_tree, &s->conn->global->host, &the);
+    if (host == NULL) {
+        return 0;
+    }
+    //查找目标客户端是否在线
+    ops_bridge ths_b = {
+        .id = host->dst_id
+    };
+    ops_bridge* b = RB_FIND(_ops_bridge_tree, &s->conn->global->bridge, &ths_b);
+    if (b == NULL) {
+        return 0;
+    }
+    //给请求关联对应的服务
+    req->service = host;
+    //发起请求
+    bridge_send(b, ops_packet_host_ctl, host->id, req->id, NULL, 0);
 
     return 0;
 }
@@ -330,28 +386,6 @@ static int http_on_headers_complete(http_parser* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
     req->cur_header = NULL;
-    //日志
-    printf("New Request %s %s\r\n", req->host, req->url);
-
-    //查找域名转发
-    ops_host the = {
-        .host = req->host
-    };
-    ops_host* host = RB_FIND(_ops_host_tree, &s->conn->global->host, &the);
-    if (host == NULL) {
-        return 0;
-    }
-    //查找目标客户端是否在线
-    ops_bridge ths_b = {
-        .id = host->dst_id
-    };
-    ops_bridge* b = RB_FIND(_ops_bridge_tree, &s->conn->global->bridge, &ths_b);
-    if (b == NULL) {
-
-        return 0;
-    }
-    //发起请求
-    bridge_send(b, ops_packet_host_ctl, host->id, req->id, NULL, 0);
     return 0;
 }
 //
@@ -548,12 +582,12 @@ static void host_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
             d = sdscatsds(d, header->key);
             d = sdscat(d, ": ");
             //重写host
-            //if (strcasecmp(header->key, "host") == 0 && req->host->host_rewrite && req->host->host_rewrite[0] != 0) {
-            //    d = sdscat(d, req->host->host_rewrite);
-            //}
-            //else {
+            if (strcasecmp(header->key, "host") == 0 && req->service->host_rewrite && req->service->host_rewrite[0] != 0) {
+                d = sdscat(d, req->service->host_rewrite);
+            }
+            else {
                 d = sdscatsds(d, header->value);
-            //}
+            }
             d = sdscat(d, "\r\n");
             header = header->next;
         }
@@ -564,15 +598,7 @@ static void host_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
             d = sdscatsds(d, req->body);
         }
         //释放资源
-        if (req->body) {
-            sdsfree(req->body);
-            req->body = NULL;
-        }
-        if (req->url) {
-            sdsfree(req->url);
-            req->url = NULL;
-        }
-
+        http_request_clean(req);
 
         //发送数据
         bridge_send(bridge, ops_packet_host_data, packet->service_id, req->pree_id, d, sdslen(d));
