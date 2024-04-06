@@ -19,13 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\data.c" />
     <ClCompile Include="..\..\src\databuffer.c" />
     <ClCompile Include="..\..\src\opc.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\common.h" />
-    <ClInclude Include="..\..\src\data.h" />
     <ClInclude Include="..\..\src\databuffer.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -119,7 +117,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\third_party\sqlite;..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>

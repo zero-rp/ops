@@ -15,6 +15,9 @@ enum ops_packet_type
     ops_packet_forward_ctl,                 //转发隧道控制包
     ops_packet_forward_data_remote,         //隧道数据
     ops_packet_forward_data_local,
+    ops_packet_host,
+    ops_packet_host_ctl,                    //域名转发控制包
+    ops_packet_host_data,
 };
 //包定义
 typedef struct _ops_packet {
@@ -37,6 +40,12 @@ typedef struct _ops_forward_dst {
     uint16_t port;                           //转发的目标端口
     char dst[256];                           //转发的目标地址
 }ops_forward_dst;
-
+//域名服务目标
+typedef struct _ops_host_dst {
+    uint32_t sid;                            //服务编号
+    uint8_t type;                            //服务类型,1 HTTP, 2 HTTPS
+    uint16_t port;                           //转发的目标端口
+    char dst[256];                           //转发的目标地址
+}ops_host_dst;
 
 #endif

@@ -7,7 +7,21 @@
 #include "data.h"
 #include "sds.h"
 
+#if (defined(_WIN32) || defined(_WIN64))
+#define strcasecmp stricmp
+#define strncasecmp  strnicmp
+#endif
+
 #define DEFAULT_BACKLOG 128
+//域名服务
+typedef struct _ops_host {
+    RB_ENTRY(_ops_forward) entry;       //
+    const char* host;                   //主机
+    uint32_t id;                        //服务ID
+    uint16_t dst_id;                    //目标客户ID
+    ops_host_dst dst;                   //目标信息
+}ops_host;
+RB_HEAD(_ops_host_tree_s, _ops_host);
 //转发服务
 typedef struct _ops_forward {
     RB_ENTRY(_ops_forward) entry;       //
@@ -27,6 +41,22 @@ typedef struct _ops_bridge {
     struct databuffer m_buffer;         //接收缓冲
 }ops_bridge;
 RB_HEAD(_ops_bridge_tree_s, _ops_bridge);
+//授权信息
+typedef struct _ops_auth {
+    RB_ENTRY(_ops_auth) entry;          //
+    const char* key;                    //
+    uint16_t id;                        //客户端ID
+}ops_auth;
+RB_HEAD(_ops_auth_tree_s, _ops_auth);
+//http请求
+typedef struct _ops_request {
+    RB_ENTRY(_ops_request) entry;           //
+    uint32_t id;                            //请求ID
+    uint32_t pree_id;                       //对端流ID
+    struct _ops_http* http;                 //关联的连接
+}ops_request;
+RB_HEAD(_ops_request_tree_s, _ops_request);
+
 //配置
 typedef struct _ops_config {
     uint16_t web_port;          //web管理端口
@@ -46,12 +76,15 @@ typedef struct _ops_global {
         uv_tcp_t bridge;                    //客户端
         uv_tcp_t https;                     //
         uv_tcp_t http;                      //
-    }listen;                            //
-    struct messagepool m_mp;            //接收缓冲
+    }listen;
+    struct messagepool m_mp;                //接收缓冲
     ops_config config;
-    //服务列表
-    struct _ops_forward_tree_s forward; //转发器
-    struct _ops_bridge_tree_s bridge;   //客户端
+    struct _ops_auth_tree_s auth;           //授权数据
+    struct _ops_forward_tree_s forward;     //转发器
+    struct _ops_host_tree_s host;           //域名
+    struct _ops_bridge_tree_s bridge;       //客户端
+    struct _ops_request_tree_s request;     //
+    uint32_t request_id;                    //
 }ops_global;
 //web管理连接
 typedef struct _ops_web {
@@ -60,30 +93,36 @@ typedef struct _ops_web {
     struct http_parser parser;  //解析器
     sds path;
 }ops_web;
+//http请求头
+typedef struct _ops_http_header {
+    sds key;
+    sds value;
+    struct _ops_http_header* next;
+}ops_http_header;
 //HTTP连接
 typedef struct _ops_http {
     ops_global* global;
     uv_tcp_t tcp;               //连接
     struct http_parser parser;  //解析器
+    sds host;                   //主机
+    sds url;                    //请求地址
+    sds body;                   //请求数据
+    ops_http_header* header;    //请求头
+    ops_http_header* cur_header;//
 }ops_http;
-//服务类型
-enum ops_service_type
-{
-    ops_service_http = 1,
-    ops_service_https,
-    ops_service_socks,
-};
-//服务定义
-typedef struct _ops_service {
-    enum ops_service_type type; //服务类型
-    uint16_t bridge_id;         //关联的客户端ID
 
-
-}ops_service;
 
 
 static uv_loop_t* loop = NULL;
 
+static int _ops_auth_compare(ops_auth* w1, ops_auth* w2) {
+    return strcmp(w1->key, w2->key);
+}
+RB_GENERATE_STATIC(_ops_auth_tree_s, _ops_auth, entry, _ops_auth_compare)
+static int _ops_host_compare(ops_host* w1, ops_host* w2) {
+    return strcasecmp(w1->host, w2->host);
+}
+RB_GENERATE_STATIC(_ops_host_tree_s, _ops_host, entry, _ops_host_compare)
 static int _ops_forward_compare(ops_forward* w1, ops_forward* w2) {
     if (w1->id < w2->id) return -1;
     if (w1->id > w2->id) return 1;
@@ -96,49 +135,12 @@ static int _ops_bridge_compare(ops_bridge* w1, ops_bridge* w2) {
     return 0;
 }
 RB_GENERATE_STATIC(_ops_bridge_tree_s, _ops_bridge, entry, _ops_bridge_compare)
-
-//添加转发器
-static void add_forward(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* dst, uint16_t dst_port) {
-    ops_forward ths = {
-        .id = id
-    };
-    //查找ID是否存在
-    ops_forward* forward = RB_FIND(_ops_forward_tree_s, &global->forward, &ths);
-    if (forward == NULL) {
-        forward = malloc(sizeof(*forward));
-        if (forward == NULL)
-            return;
-        memset(forward, 0, sizeof(*forward));
-        forward->id = id;
-        RB_INSERT(_ops_forward_tree_s, &global->forward, forward);
-    }
-    forward->src_id = src_id;
-    forward->dst_id = dst_id;
-    forward->src.sid = id;
-    forward->dst.sid = id;
-    forward->src.type = type;
-    forward->src.port = src_port;
-    forward->dst.type = type;
-    forward->dst.port = dst_port;
-    strncpy(forward->dst.dst, dst, sizeof(forward->dst.dst) - 1);
-    forward->dst.dst[sizeof(forward->dst.dst) - 1] = 0;
+static int _ops_request_compare(ops_request* w1, ops_request* w2) {
+    if (w1->id < w2->id) return -1;
+    if (w1->id > w2->id) return 1;
+    return 0;
 }
-//
-
-
-//重载服务
-static service_reload(ops_global* global) {
-    //
-    add_forward(global, 1, 1, 2, 1, 1088, "www.baidu.com", 80);
-
-
-
-
-
-
-
-}
-
+RB_GENERATE_STATIC(_ops_request_tree_s, _ops_request, entry, _ops_request_compare)
 
 //分配内存
 static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
@@ -149,6 +151,10 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
+
+
+//向客户发送数据
+static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //----------------------------------------------------------------------------------------------------------------------WEB管理处理
 //HTTP应答解析回调
 //消息完毕
@@ -206,43 +212,130 @@ static void web_connection_cb(uv_stream_t* tcp, int status) {
 
 }
 //----------------------------------------------------------------------------------------------------------------------HTTP端口处理
+//
+static int http_send(ops_http* http, char* data, uint32_t size) {
+    //转发数据到远程
+    uv_buf_t buf[] = { 0 };
+    buf->len = size;
+    buf->base = malloc(size);
+    if (buf->base == NULL) {
+        return -1;
+    }
+    memcpy(buf->base, data, size);
+    uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+    if (req == NULL) {
+        free(buf->base);
+        return;
+    }
+    req->data = buf->base;
+    return uv_write(req, &http->tcp, &buf, 1, write_cb);
+}
 //HTTP应答解析回调
 //消息完毕
 static int http_on_message_complete(http_parser* p) {
-    struct ops_http* http = (struct ops_http*)p->data;
+    ops_http* http = (ops_http*)p->data;
 
     return 0;
 }
 //解析到消息体
 static int http_on_body(http_parser* p, const char* buf, size_t len) {
-    struct ops_http* http = (struct ops_http*)p->data;
-
+    ops_http* http = (ops_http*)p->data;
+    if (http->body) {
+        http->body = sdsnewlen(buf, len);
+    }
+    else {
+        http->body = sdscatlen(http->body, buf, len);
+    }
     return 0;
 }
 //解析到头V
 static int http_on_header_value(http_parser* p, const char* buf, size_t len) {
-    struct ops_http* http = (struct ops_http*)p->data;
-
+    ops_http* http = (ops_http*)p->data;
+    if (http->cur_header->value == NULL)
+        http->cur_header->value = sdsempty();
+    http->cur_header->value = sdscatlen(http->cur_header->value, buf, len);
     return 0;
 }
 //解析到头K
 static int http_on_header_field(http_parser* p, const char* buf, size_t len) {
-    struct ops_http* http = (struct ops_http*)p->data;
+    ops_http* http = (ops_http*)p->data;
+    if (http->header == NULL) {
+        http->header = malloc(sizeof(ops_http_header));
+        memset(http->header, 0, sizeof(ops_http_header));
+        http->cur_header = http->header;
+    }
+    //上一个kv解析完毕
+    if (http->cur_header->value != NULL) {
+        //
+        if (strcasecmp(http->cur_header->key, "host") == 0) {
+            http->host = sdsdup(http->cur_header->value);
+        }
 
+
+        //分配新的kv
+        http->cur_header->next = malloc(sizeof(ops_http_header));
+        memset(http->cur_header->next, 0, sizeof(ops_http_header));
+        http->cur_header = http->cur_header->next;
+    }
+    //
+    if (http->cur_header->key == NULL)
+        http->cur_header->key = sdsempty();
+    http->cur_header->key = sdscatlen(http->cur_header->key, buf, len);
     return 0;
 }
 //头部解析完毕
 static int http_on_headers_complete(http_parser* p) {
+    ops_http* http = (ops_http*)p->data;
+    http->cur_header = NULL;
+    //查找域名转发
+    ops_host the = {
+        .host = http->host
+    };
+    ops_host* host = RB_FIND(_ops_host_tree_s, &http->global->host, &the);
+    if (host == NULL) {
+        return;
+    }
+    //查找目标客户端是否在线
+    ops_bridge ths_b = {
+        .id = host->dst_id
+    };
+    ops_bridge* b = RB_FIND(_ops_bridge_tree_s, &http->global->bridge, &ths_b);
+    if (b == NULL) {
 
+        return;
+    }
+    //创建请求
+    ops_request* req = (ops_request*)malloc(sizeof(*req));
+    if (req == NULL) {
+        return;
+    }
+    memset(req, 0, sizeof(*req));
+    req->id = http->global->request_id++;
+    req->http = http;
+    RB_INSERT(_ops_request_tree_s, &http->global->request, req);
+    //发起请求
+    bridge_send(b, ops_packet_host_ctl, host->id, req->id, NULL, 0);
     return 0;
 }
+//
+static int http_on_url(http_parser* p, const char* buf, size_t len) {
+    ops_http* http = (ops_http*)p->data;
+    if (http->url == NULL) {
+        http->url = sdsnewlen(buf, len);
+    }
+    else {
+        http->url = sdscatlen(http->url, buf, len);
+    }
+    return 0;
+}
+
 //解析开始
 static int http_on_message_begin(http_parser* p) {
     struct ops_http* http = (struct ops_http*)p->data;
 
     return 0;
 }
-static http_parser_settings parser_settings = { http_on_message_begin, NULL, NULL, http_on_header_field, http_on_header_value, http_on_headers_complete, http_on_body, http_on_message_complete, NULL, NULL };
+static http_parser_settings parser_settings = { http_on_message_begin, http_on_url, NULL, http_on_header_field, http_on_header_value, http_on_headers_complete, http_on_body, http_on_message_complete, NULL, NULL };
 //读取到数据
 static void http_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ops_http* http = (ops_http*)tcp->data;
@@ -280,7 +373,7 @@ static void http_connection_cb(uv_stream_t* tcp, int status) {
         uv_read_start((uv_stream_t*)&http->tcp, alloc_buffer, http_read_cb);
     }
 }
-//----------------------------------------------------------------------------------------------------------------------客户端处理
+//----------------------------------------------------------------------------------------------------------------------bridge
 //向客户发送数据
 static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
     uv_buf_t buf[] = { 0 };
@@ -304,7 +397,7 @@ static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, 
 //客户端鉴权成功
 static void bridge_auth_ok(ops_bridge* bridge) {
     sds pack = sdsnewlen(NULL, 4);//预留数量
-    char buf[1 + sizeof(ops_forward_dst) + sizeof(ops_forward_src)];
+    char buf[1 + sizeof(ops_forward_dst) + sizeof(ops_forward_src) + sizeof(ops_host_dst)];
     int count = 0;
     //查询客户端转发服务
     ops_forward* tc = NULL;
@@ -337,8 +430,26 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     //下发转发服务
     bridge_send(bridge, ops_packet_forward, 0, 0, pack, sdslen(pack));
     sdsfree(pack);
-
-
+    //查询主机服务
+    pack = sdsnewlen(NULL, 4);//预留数量
+    count = 0;
+    ops_host* hc = NULL;
+    RB_FOREACH(hc, _ops_host_tree_s, &bridge->global->host) {
+        if (hc->dst_id == bridge->id) {
+            ops_host_dst dst;
+            dst.port = htons(hc->dst.port);
+            dst.sid = htonl(hc->dst.sid);
+            dst.type = hc->dst.type;
+            memcpy(dst.dst, hc->dst.dst, sizeof(dst.dst));
+            memcpy(&buf, &dst, sizeof(dst));
+            pack = sdscatlen(pack, buf, sizeof(ops_host_dst));
+            count++;
+        }
+    }
+    *(uint32_t*)pack = htonl(count);
+    //下发主机服务
+    bridge_send(bridge, ops_packet_host, 0, 0, pack, sdslen(pack));
+    sdsfree(pack);
 
 
 }
@@ -355,13 +466,17 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
     case ops_packet_auth: {
         //读取key长度
         uint16_t key_len = ntohs(*(uint16_t*)(&packet->data));
-        uint16_t client_id = data_find_auth_key(packet->data + 2, key_len);
-        if (client_id == 0) {
+        packet->data[key_len + 2] = 0;
+        ops_auth _auth = {
+            .key = packet->data + 2
+        };
+        ops_auth* auth = RB_FIND(_ops_auth_tree_s, &bridge->global->auth, &_auth);
+        if (auth == NULL) {
             bridge_send(bridge, ops_packet_auth, 0, 0, NULL, 0);
         }
         else {
             ops_forward ths = {
-                .id = client_id
+                .id = auth->id
             };
             //查找ID是否存在
             ops_bridge* p = RB_FIND(_ops_bridge_tree_s, &bridge->global->bridge, &ths);
@@ -373,7 +488,7 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
                 buf[0] = 1;//鉴权成功
                 bridge_send(bridge, ops_packet_auth, 0, 0, buf, 1);
                 //记录客户端
-                bridge->id = client_id;
+                bridge->id = auth->id;
                 RB_INSERT(_ops_bridge_tree_s, &bridge->global->bridge, bridge);
                 bridge_auth_ok(bridge);
             }
@@ -476,6 +591,70 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         bridge_send(b, ops_packet_forward_data_local, packet->service_id, packet->stream_id, packet->data, size);
         break;
     }
+    case ops_packet_host_ctl: {//域名控制命令
+        ops_request the = {
+            .id = packet->stream_id
+        };
+        ops_request* req = RB_FIND(_ops_request_tree_s, &bridge->global->request, &the);
+        if (req == NULL) {
+            break;
+        }
+        //读取类型
+        uint8_t type = packet->data[0];
+        switch (type)
+        {
+        case 0x01: {//连接远端成功
+            //读取对端流ID
+            req->pree_id = ntohl(*(uint32_t*)(&packet->data[1]));
+            //生成新请求数据
+            //生成数据
+            sds d = sdscatprintf(sdsempty(),
+                "%s %s HTTP/%d.%d\r\n",
+                http_method_str(req->http->parser.method), req->http->url, req->http->parser.http_major, req->http->parser.http_minor);
+
+            ops_http_header* header = req->http->header;
+            while (header) {
+                d = sdscatsds(d, header->key);
+                d = sdscat(d, ": ");
+                //重写host
+                if (strcasecmp(header->key, "host") == 0) {
+                    d = sdscat(d, "www.baidu.com");
+                }
+                else {
+                    d = sdscatsds(d, header->value);
+                }
+                d = sdscat(d, "\r\n");
+                header = header->next;
+            }
+            //请求结束
+            d = sdscatprintf(d, "\r\n");
+            //数据
+            if (req->http->body) {
+                d = sdscatsds(d, req->http->body);
+            }
+            //发送数据
+            bridge_send(bridge, ops_packet_host_data, packet->service_id, req->pree_id, d, sdslen(d));
+            sdsfree(d);
+            break;
+        }
+        default:
+            break;
+        }
+
+
+        break;
+    }
+    case ops_packet_host_data: {//域名转发数据
+        ops_request the = {
+            .id = packet->stream_id
+        };
+        ops_request* req = RB_FIND(_ops_request_tree_s, &bridge->global->request, &the);
+        if (req == NULL) {
+            break;
+        }
+        http_send(req->http, packet->data, size);
+        break;
+    }
     default:
         break;
     }
@@ -532,12 +711,90 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
         uv_read_start((uv_stream_t*)&bridge->tcp, alloc_buffer, bridge_read_cb);
     }
 }
+//----------------------------------------------------------------------------------------------------------------------data
+//用户发生改变
+static void data_key_add(ops_global* global, uint16_t id, const char* key) {
+    ops_auth* auth = malloc(sizeof(*auth));
+    if (auth == NULL)
+        return;
+    memset(auth, 0, sizeof(*auth));
+    auth->id = id;
+    auth->key = strdup(key);
+    RB_INSERT(_ops_auth_tree_s, &global->auth, auth);
+}
+static void data_key_del(ops_global* global, const char* key) {
+    ops_auth _auth = {
+           .key = key
+    };
+    ops_auth* auth = RB_FIND(_ops_auth_tree_s, &global->auth, &_auth);
+    if (auth == NULL) {
+        return;
+    }
+    free(auth->key);
+    //踢出相关客户端
+
+    RB_REMOVE(_ops_auth_tree_s, &global->auth, auth);
+}
+//通道发生改变
+static void data_forward_add(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* dst, uint16_t dst_port) {
+    ops_forward* forward = malloc(sizeof(*forward));
+    if (forward == NULL)
+        return;
+    memset(forward, 0, sizeof(*forward));
+    forward->id = id;
+    forward->src_id = src_id;
+    forward->dst_id = dst_id;
+    forward->src.sid = id;
+    forward->dst.sid = id;
+    forward->src.type = type;
+    forward->src.port = src_port;
+    forward->dst.type = type;
+    forward->dst.port = dst_port;
+    strncpy(forward->dst.dst, dst, sizeof(forward->dst.dst) - 1);
+    forward->dst.dst[sizeof(forward->dst.dst) - 1] = 0;
+    RB_INSERT(_ops_forward_tree_s, &global->forward, forward);
+    //下发到相关通道
+
+}
+static void data_forward_del(ops_global* global, uint32_t id) {
+    ops_forward ths = {
+    .id = id
+    };
+    //查找ID是否存在
+    ops_forward* forward = RB_FIND(_ops_forward_tree_s, &global->forward, &ths);
+    if (forward == NULL) {
+        return;
+    }
+    //通知相关客户端当前服务已移除
+
+
+    RB_REMOVE(_ops_forward_tree_s, &global->forward, forward);
+}
+//
+static void data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* dst, uint16_t dst_port) {
+    ops_host* host = malloc(sizeof(*host));
+    if (host == NULL)
+        return;
+    memset(host, 0, sizeof(*host));
+    host->id = id;
+    host->host = strdup(src_host);
+    host->dst_id = dst_id;
+    host->dst.sid = id;
+    host->dst.type = type;
+    host->dst.port = dst_port;
+    strncpy(host->dst.dst, dst, sizeof(host->dst.dst) - 1);
+    host->dst.dst[sizeof(host->dst.dst) - 1] = 0;
+    RB_INSERT(_ops_host_tree_s, &global->host, host);
+
+    //下发
+}
+struct data_settings data_settings = { data_key_add, data_key_del, data_forward_add, data_forward_del, data_host_add };
 //----------------------------------------------------------------------------------------------------------------------
 //全局初始化
 static int init_global(ops_global* global) {
     struct sockaddr_in _addr;
-    //
-    data_init(global->config.db_file);
+    //初始化数据
+    data_init(global->config.db_file, global, &data_settings);
     //web管理
     global->listen.web.data = global;
     uv_tcp_init(loop, &global->listen.web);
@@ -587,11 +844,7 @@ int main() {
     load_config(global);
     //初始化
     init_global(global);
-    //刷新配置
-    service_reload(global);
-
-
-
+    //
     uv_run(loop, UV_RUN_DEFAULT);
     return 0;
 }
