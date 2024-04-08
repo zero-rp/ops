@@ -1,0 +1,1376 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="boringssl">
+      <UniqueIdentifier>{22bf32a0-dbbe-4979-832e-1671a493bfec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\ssl">
+      <UniqueIdentifier>{e96ae08f-247d-439a-81f5-72183332e281}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\include">
+      <UniqueIdentifier>{f95f925d-ce4a-459a-a35c-acbaddd0b68c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\include\openssl">
+      <UniqueIdentifier>{be25dff3-ea5b-4dc8-84e6-f46989f449f8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto">
+      <UniqueIdentifier>{34788837-7006-4b0e-a66d-e56d8ee560c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\stack">
+      <UniqueIdentifier>{45ebeeb2-737a-48bc-a839-080063054a92}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\bytestring">
+      <UniqueIdentifier>{e29ba1ef-7a6c-4413-8dfb-7394b7b15f1b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\buf">
+      <UniqueIdentifier>{9a42e217-2e27-46b0-aeb8-5c0a69a99467}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\evp">
+      <UniqueIdentifier>{da1f3d0f-8582-482c-b20c-b546697a493f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule">
+      <UniqueIdentifier>{50e592d7-3270-42ec-940c-cf16134a2271}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\cipher">
+      <UniqueIdentifier>{cc624afd-fe5d-47bf-a55f-03a0e67125a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\ec">
+      <UniqueIdentifier>{a6f09bf5-68c8-4fd0-ba4e-ef5eda3ca52d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\sha">
+      <UniqueIdentifier>{aa571e36-5c99-4dea-b932-002329f6f781}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\bn">
+      <UniqueIdentifier>{e15b3602-2ef0-418a-bc52-dee7892fc0db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\digest">
+      <UniqueIdentifier>{7abf6d6b-bc8d-4a07-a320-292019780802}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\x509">
+      <UniqueIdentifier>{91ed6c72-dd58-420d-a88d-3b710339bb28}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\asn1">
+      <UniqueIdentifier>{be83f773-be83-473f-84d8-5ab635fc63eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\obj">
+      <UniqueIdentifier>{643f80aa-750a-4ec7-87d1-5c2c60d7a00b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\bio">
+      <UniqueIdentifier>{53bdbb56-6453-442b-accb-78be933ded40}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\err">
+      <UniqueIdentifier>{fdc3fe47-09ba-46f7-8dc0-5f324d353db8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\hmac">
+      <UniqueIdentifier>{533588d3-b7b4-4810-99df-ab2e5ababff8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\cipher_extra">
+      <UniqueIdentifier>{d44feee1-5b30-4bc7-abed-52a098a42b68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\rand_extra">
+      <UniqueIdentifier>{eebf9cda-4120-4d05-ac44-0b6f57881245}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\dsa">
+      <UniqueIdentifier>{2c086571-0368-4d63-bcfd-68711b2c789d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\pem">
+      <UniqueIdentifier>{af12fd85-2db1-4972-928c-f217249101e0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\pkcs7">
+      <UniqueIdentifier>{f316888e-358c-4cdf-b868-0477480242dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\pkcs8">
+      <UniqueIdentifier>{d4c61c69-b718-4b1a-94c5-09b55e6a7440}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\rsa_extra">
+      <UniqueIdentifier>{51412d5d-f4b4-4f0b-9e04-3eab31151756}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\rsa">
+      <UniqueIdentifier>{be0bf773-af14-4909-8f22-bb801da16c68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\hkpe">
+      <UniqueIdentifier>{d27a97ab-3c02-4c7f-94e4-57987777552f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\pool">
+      <UniqueIdentifier>{5ea18008-d55a-4aed-8c4d-1b931b5d352e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\md5">
+      <UniqueIdentifier>{9c563d96-120f-43c0-a9a3-1e5b830caac0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\base64">
+      <UniqueIdentifier>{80673f77-4197-4c5b-9021-42ab0eab82da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\curve25519">
+      <UniqueIdentifier>{417479ff-35c6-466b-8afe-42544a286834}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\ec_extra">
+      <UniqueIdentifier>{5f6df401-eec6-4f0a-bb87-39bc6ac2d8e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\engine">
+      <UniqueIdentifier>{30bee5c0-52d2-42c3-a5ef-c3de9127d6b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\dh_extra">
+      <UniqueIdentifier>{6ae9878b-fb4a-497f-a488-41861aac4ebb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\rand">
+      <UniqueIdentifier>{2084fa6b-d584-496a-82bb-23dd4d672bec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\modes">
+      <UniqueIdentifier>{f7b699ef-4083-4c18-b42d-f2036606b7ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\md4">
+      <UniqueIdentifier>{975fc564-31d8-42b4-8d62-2ada311289a1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\dh">
+      <UniqueIdentifier>{e63c3a49-44c2-4d8c-9699-372af3a964c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\aes">
+      <UniqueIdentifier>{d4411462-157f-4d74-99fb-b825de37179e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\lhash">
+      <UniqueIdentifier>{31974c1a-b83a-4dbf-838b-f187b3663a22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\bn_extra">
+      <UniqueIdentifier>{83cb22a4-ec55-4cea-9bd8-ba18034b2507}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\poly1305">
+      <UniqueIdentifier>{5291389f-e3f0-4c79-be56-e59644f6ed76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\ecdsa_extra">
+      <UniqueIdentifier>{c82f5250-8a98-4be5-a21e-df47bef0c7f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\ecdsa">
+      <UniqueIdentifier>{3c6d3d1c-e90d-4414-be92-e753a9f8b3e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\chacha">
+      <UniqueIdentifier>{f0f12e3d-f7ce-4eae-863f-11542fef33fe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\hrss">
+      <UniqueIdentifier>{b3910aaa-39ae-4d41-9cec-e46d037d30a9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\conf">
+      <UniqueIdentifier>{18589718-8af1-44a9-b979-32fcc4d59803}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\ecdh_extra">
+      <UniqueIdentifier>{182a6010-e130-4d13-a4cc-8f634b018f76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\ecdh">
+      <UniqueIdentifier>{552b80b5-e88e-4d8f-b135-ab7f913b3c18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\digest_extra">
+      <UniqueIdentifier>{545e3d80-fadd-421b-b2e3-a7a917849621}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\rc4">
+      <UniqueIdentifier>{9a1ce195-8399-4b1d-8a16-53d2800359c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\blake2">
+      <UniqueIdentifier>{6d17d74e-a847-46c2-b644-830014d3b0c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\fipsmodule\tls">
+      <UniqueIdentifier>{e279eb20-7e04-483e-806d-80438e2fef69}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\decrepit">
+      <UniqueIdentifier>{d99188b6-a5d0-4828-9857-3bfafcec8452}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\decrepit\bio">
+      <UniqueIdentifier>{89974647-6093-4c2c-9377-f503e7720f8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\crypto\siphash">
+      <UniqueIdentifier>{de315acb-669c-4c43-91a7-874a4241f19d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\third_party\boringssl\ssl\internal.h">
+      <Filter>boringssl\ssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\aead.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\aes.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\arm_arch.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\asn1.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\asn1_mac.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\asn1t.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\base.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\base64.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\bio.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\blake2.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\blowfish.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\bn.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\buf.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\buffer.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\bytestring.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\cast.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\chacha.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\cipher.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\cmac.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\conf.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\cpu.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\crypto.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\curve25519.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\des.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\dh.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\digest.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\dsa.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\dtls1.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\e_os2.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ec.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ec_key.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ecdh.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ecdsa.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\engine.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\err.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\evp.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\evp_errors.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ex_data.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\hkdf.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\hmac.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\hpke.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\hrss.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\is_boringssl.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\lhash.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\md4.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\md5.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\mem.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\nid.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\obj.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\obj_mac.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\objects.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\opensslconf.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\opensslv.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ossl_typ.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pem.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pkcs7.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pkcs8.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pkcs12.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\poly1305.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pool.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\rand.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\rc4.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ripemd.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\rsa.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\safestack.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\sha.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\siphash.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\span.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\srtp.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ssl.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ssl3.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\stack.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\thread.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\tls1.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\trust_token.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\type_check.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\x509.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\x509_vfy.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\x509v3.h">
+      <Filter>boringssl\include\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\bytestring\internal.h">
+      <Filter>boringssl\crypto\bytestring</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\internal.h">
+      <Filter>boringssl\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\evp\internal.h">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\cipher\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\cipher</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\p256_table.h">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\sha\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\sha</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\rsaz_exp.h">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\digest\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\digest</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\digest\md32_common.h">
+      <Filter>boringssl\crypto\fipsmodule\digest</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\x509\internal.h">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\asn1\internal.h">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\obj\obj_dat.h">
+      <Filter>boringssl\crypto\obj</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\bio\internal.h">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\cipher_extra\internal.h">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\dsa\internal.h">
+      <Filter>boringssl\crypto\dsa</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\pkcs7\internal.h">
+      <Filter>boringssl\crypto\pkcs7</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\pkcs8\internal.h">
+      <Filter>boringssl\crypto\pkcs8</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\rsa</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\pool\internal.h">
+      <Filter>boringssl\crypto\pool</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\md5\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\md5</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\curve25519\curve25519_tables.h">
+      <Filter>boringssl\crypto\curve25519</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\curve25519\internal.h">
+      <Filter>boringssl\crypto\curve25519</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\ec_extra\internal.h">
+      <Filter>boringssl\crypto\ec_extra</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\fork_detect.h">
+      <Filter>boringssl\crypto\fipsmodule\rand</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\getrandom_fillin.h">
+      <Filter>boringssl\crypto\fipsmodule\rand</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\rand</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\modes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\aes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\lhash\internal.h">
+      <Filter>boringssl\crypto\lhash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\poly1305\internal.h">
+      <Filter>boringssl\crypto\poly1305</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ecdsa\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\ecdsa</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\chacha\internal.h">
+      <Filter>boringssl\crypto\chacha</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\hrss\internal.h">
+      <Filter>boringssl\crypto\hrss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\conf\conf_def.h">
+      <Filter>boringssl\crypto\conf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\conf\internal.h">
+      <Filter>boringssl\crypto\conf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\tls\internal.h">
+      <Filter>boringssl\crypto\fipsmodule\tls</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\bio_ssl.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_both.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_lib.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_pkt.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_srtp.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\dtls_method.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\dtls_record.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\encrypted_client_hello.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\extensions.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\handoff.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\handshake.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\handshake_client.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\handshake_server.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\s3_both.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\s3_lib.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\s3_pkt.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_aead_ctx.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_asn1.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_buffer.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_cert.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_cipher.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_file.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_key_share.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_lib.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_privkey.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_session.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_stat.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_transcript.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_versions.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_x509.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\t1_enc.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls_method.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls_record.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls13_both.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls13_client.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls13_enc.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls13_server.cc">
+      <Filter>boringssl\ssl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\stack\stack.c">
+      <Filter>boringssl\crypto\stack</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\asn1_compat.c">
+      <Filter>boringssl\crypto\bytestring</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\ber.c">
+      <Filter>boringssl\crypto\bytestring</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\cbb.c">
+      <Filter>boringssl\crypto\bytestring</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\cbs.c">
+      <Filter>boringssl\crypto\bytestring</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\unicode.c">
+      <Filter>boringssl\crypto\bytestring</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\buf\buf.c">
+      <Filter>boringssl\crypto\buf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cpu_intel.c">
+      <Filter>boringssl\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\crypto.c">
+      <Filter>boringssl\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ex_data.c">
+      <Filter>boringssl\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\mem.c">
+      <Filter>boringssl\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\thread.c">
+      <Filter>boringssl\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\thread_win.c">
+      <Filter>boringssl\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\evp.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\evp_asn1.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\evp_ctx.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_dsa_asn1.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_ec.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_ec_asn1.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_ed25519.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_ed25519_asn1.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_rsa.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_rsa_asn1.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_x25519.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_x25519_asn1.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\pbkdf.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\print.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\scrypt.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\sign.c">
+      <Filter>boringssl\crypto\evp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\cipher\aead.c">
+      <Filter>boringssl\crypto\fipsmodule\cipher</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\cipher\cipher.c">
+      <Filter>boringssl\crypto\fipsmodule\cipher</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\cipher\e_aes.c">
+      <Filter>boringssl\crypto\fipsmodule\cipher</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\ec.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\ec_key.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\ec_montgomery.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\felem.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\oct.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\p224-64.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\p256.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\scalar.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\simple.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\simple_mul.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\util.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\wnaf.c">
+      <Filter>boringssl\crypto\fipsmodule\ec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\sha\sha1.c">
+      <Filter>boringssl\crypto\fipsmodule\sha</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\sha\sha256.c">
+      <Filter>boringssl\crypto\fipsmodule\sha</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\sha\sha512.c">
+      <Filter>boringssl\crypto\fipsmodule\sha</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\add.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\bn.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\bytes.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\cmp.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\ctx.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\div.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\div_extra.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\exponentiation.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\gcd.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\gcd_extra.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\generic.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\jacobi.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\montgomery.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\montgomery_inv.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\mul.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\prime.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\random.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\rsaz_exp.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\shift.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\sqrt.c">
+      <Filter>boringssl\crypto\fipsmodule\bn</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\digest\digest.c">
+      <Filter>boringssl\crypto\fipsmodule\digest</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\digest\digests.c">
+      <Filter>boringssl\crypto\fipsmodule\digest</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\a_digest.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\a_sign.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\a_verify.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\algorithm.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\asn1_gen.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\by_dir.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\by_file.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\i2d_pr.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\name_print.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\rsa_pss.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\t_crl.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\t_req.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\t_x509.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\t_x509a.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_algor.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_all.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_attrib.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_crl.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_exten.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_name.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_pubkey.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_req.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_sig.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_spki.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_val.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_x509.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_x509a.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_att.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_cmp.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_d2.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_def.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_ext.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_lu.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_obj.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_req.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_set.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_trs.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_txt.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_v3.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_vfy.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_vpm.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509cset.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509name.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509rset.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509spki.c">
+      <Filter>boringssl\crypto\x509</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_bitstr.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_bool.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_d2i_fp.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_dup.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_gentm.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_i2d_fp.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_int.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_mbstr.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_object.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_octet.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_strex.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_strnid.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_time.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_type.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_utctm.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\asn_pack.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\asn1_lib.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\asn1_par.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\f_int.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\f_string.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_dec.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_enc.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_fre.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_new.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_typ.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_utl.c">
+      <Filter>boringssl\crypto\asn1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\obj\obj.c">
+      <Filter>boringssl\crypto\obj</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\obj\obj_xref.c">
+      <Filter>boringssl\crypto\obj</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\bio.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\bio_mem.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\connect.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\fd.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\file.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\hexdump.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\pair.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\printf.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\socket.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\socket_helper.c">
+      <Filter>boringssl\crypto\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\err\err.c">
+      <Filter>boringssl\crypto\err</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\hmac\hmac.c">
+      <Filter>boringssl\crypto\fipsmodule\hmac</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\cipher_extra.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\derive_key.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_aesctrhmac.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_aesgcmsiv.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_chacha20poly1305.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_null.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_rc2.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_rc4.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_tls.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\tls_cbc.c">
+      <Filter>boringssl\crypto\cipher_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\deterministic.c">
+      <Filter>boringssl\crypto\rand_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\forkunsafe.c">
+      <Filter>boringssl\crypto\rand_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\passive.c">
+      <Filter>boringssl\crypto\rand_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\rand_extra.c">
+      <Filter>boringssl\crypto\rand_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\windows.c">
+      <Filter>boringssl\crypto\rand_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\dsa\dsa.c">
+      <Filter>boringssl\crypto\dsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\dsa\dsa_asn1.c">
+      <Filter>boringssl\crypto\dsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_all.c">
+      <Filter>boringssl\crypto\pem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_info.c">
+      <Filter>boringssl\crypto\pem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_lib.c">
+      <Filter>boringssl\crypto\pem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_oth.c">
+      <Filter>boringssl\crypto\pem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_pk8.c">
+      <Filter>boringssl\crypto\pem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_pkey.c">
+      <Filter>boringssl\crypto\pem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_x509.c">
+      <Filter>boringssl\crypto\pem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_xaux.c">
+      <Filter>boringssl\crypto\pem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs7\pkcs7.c">
+      <Filter>boringssl\crypto\pkcs7</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs7\pkcs7_x509.c">
+      <Filter>boringssl\crypto\pkcs7</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs8\p5_pbev2.c">
+      <Filter>boringssl\crypto\pkcs8</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs8\pkcs8.c">
+      <Filter>boringssl\crypto\pkcs8</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs8\pkcs8_x509.c">
+      <Filter>boringssl\crypto\pkcs8</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rsa_extra\rsa_asn1.c">
+      <Filter>boringssl\crypto\rsa_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rsa_extra\rsa_print.c">
+      <Filter>boringssl\crypto\rsa_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\blinding.c">
+      <Filter>boringssl\crypto\fipsmodule\rsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\padding.c">
+      <Filter>boringssl\crypto\fipsmodule\rsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\rsa.c">
+      <Filter>boringssl\crypto\fipsmodule\rsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\rsa_impl.c">
+      <Filter>boringssl\crypto\fipsmodule\rsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\hpke\hpke.c">
+      <Filter>boringssl\crypto\hkpe</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pool\pool.c">
+      <Filter>boringssl\crypto\pool</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\md5\md5.c">
+      <Filter>boringssl\crypto\fipsmodule\md5</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\base64\base64.c">
+      <Filter>boringssl\crypto\base64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\curve25519\curve25519.c">
+      <Filter>boringssl\crypto\curve25519</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\curve25519\spake25519.c">
+      <Filter>boringssl\crypto\curve25519</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ec_extra\ec_asn1.c">
+      <Filter>boringssl\crypto\ec_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ec_extra\ec_derive.c">
+      <Filter>boringssl\crypto\ec_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ec_extra\hash_to_curve.c">
+      <Filter>boringssl\crypto\ec_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\engine\engine.c">
+      <Filter>boringssl\crypto\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\dh_extra\dh_asn1.c">
+      <Filter>boringssl\crypto\dh_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\dh_extra\params.c">
+      <Filter>boringssl\crypto\dh_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\ctrdrbg.c">
+      <Filter>boringssl\crypto\fipsmodule\rand</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\fork_detect.c">
+      <Filter>boringssl\crypto\fipsmodule\rand</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\rand.c">
+      <Filter>boringssl\crypto\fipsmodule\rand</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\urandom.c">
+      <Filter>boringssl\crypto\fipsmodule\rand</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\cbc.c">
+      <Filter>boringssl\crypto\fipsmodule\modes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\cfb.c">
+      <Filter>boringssl\crypto\fipsmodule\modes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\ctr.c">
+      <Filter>boringssl\crypto\fipsmodule\modes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\gcm.c">
+      <Filter>boringssl\crypto\fipsmodule\modes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\gcm_nohw.c">
+      <Filter>boringssl\crypto\fipsmodule\modes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\ofb.c">
+      <Filter>boringssl\crypto\fipsmodule\modes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\polyval.c">
+      <Filter>boringssl\crypto\fipsmodule\modes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\md4\md4.c">
+      <Filter>boringssl\crypto\fipsmodule\md4</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\dh\check.c">
+      <Filter>boringssl\crypto\fipsmodule\dh</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\dh\dh.c">
+      <Filter>boringssl\crypto\fipsmodule\dh</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\aes.c">
+      <Filter>boringssl\crypto\fipsmodule\aes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\aes_nohw.c">
+      <Filter>boringssl\crypto\fipsmodule\aes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\key_wrap.c">
+      <Filter>boringssl\crypto\fipsmodule\aes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\mode_wrappers.c">
+      <Filter>boringssl\crypto\fipsmodule\aes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\lhash\lhash.c">
+      <Filter>boringssl\crypto\lhash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bn_extra\bn_asn1.c">
+      <Filter>boringssl\crypto\bn_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bn_extra\convert.c">
+      <Filter>boringssl\crypto\bn_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\poly1305\poly1305.c">
+      <Filter>boringssl\crypto\poly1305</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\poly1305\poly1305_arm.c">
+      <Filter>boringssl\crypto\poly1305</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\poly1305\poly1305_vec.c">
+      <Filter>boringssl\crypto\poly1305</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ecdsa_extra\ecdsa_asn1.c">
+      <Filter>boringssl\crypto\ecdsa_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ecdsa\ecdsa.c">
+      <Filter>boringssl\crypto\fipsmodule\ecdsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\chacha\chacha.c">
+      <Filter>boringssl\crypto\chacha</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\hrss\hrss.c">
+      <Filter>boringssl\crypto\hrss</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\conf\conf.c">
+      <Filter>boringssl\crypto\conf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ecdh_extra\ecdh_extra.c">
+      <Filter>boringssl\crypto\ecdh_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ecdh\ecdh.c">
+      <Filter>boringssl\crypto\fipsmodule\ecdh</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\digest_extra\digest_extra.c">
+      <Filter>boringssl\crypto\digest_extra</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rc4\rc4.c">
+      <Filter>boringssl\crypto\rc4</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\blake2\blake2.c">
+      <Filter>boringssl\crypto\blake2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\tls\kdf.c">
+      <Filter>boringssl\crypto\fipsmodule\tls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\decrepit\bio\base64_bio.c">
+      <Filter>boringssl\decrepit\bio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\siphash\siphash.c">
+      <Filter>boringssl\crypto\siphash</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\third_party\boringssl\crypto\poly1305\poly1305_arm_asm.S">
+      <Filter>boringssl\crypto\poly1305</Filter>
+    </None>
+  </ItemGroup>
+</Project>

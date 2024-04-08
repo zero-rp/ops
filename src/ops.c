@@ -2,6 +2,10 @@
 #include <cJSON.h>
 #include <http_parser.h>
 #include <uv/tree.h>
+#include <openssl/ssl.h>
+#include <openssl/sha.h>
+#include <openssl/base64.h>
+#include <openssl/bio.h>
 #include "databuffer.h"
 #include "common.h"
 #include "data.h"
@@ -104,6 +108,11 @@ typedef struct _ops_http_conn {
 
     uint32_t sid;                           //当前分配到的ID
     struct _ops_http_stream_tree stream;   //流
+    struct {
+        SSL* ssl;
+        BIO* rio;
+        BIO* wio;
+    }ssl;
 }ops_http_conn;
 
 //配置
@@ -123,8 +132,11 @@ typedef struct _ops_global {
     struct {
         uv_tcp_t web;                       //web界面
         uv_tcp_t bridge;                    //客户端
-        uv_tcp_t https;                     //
         uv_tcp_t http;                      //
+        struct {
+            SSL_CTX* ctx;
+            uv_tcp_t tcp;                     //
+        }https;
     }listen;
     struct messagepool m_mp;                //接收缓冲
     ops_config config;
@@ -619,6 +631,29 @@ static void host_data(ops_bridge* bridge, ops_packet* packet, int size) {
     }
     http_send(req->stream->conn, packet->data, size);
 }
+
+//----------------------------------------------------------------------------------------------------------------------https
+//https连接进入
+static void https_connection_cb(uv_stream_t* tcp, int status) {
+    ops_global* global = (ops_global*)tcp->data;
+    ops_http_conn* conn = (ops_http_conn*)malloc(sizeof(ops_http_conn));//为tcp bridge申请资源
+    if (!conn)
+        return;
+    memset(conn, 0, sizeof(*conn));
+    conn->global = global;
+
+    uv_tcp_init(loop, &conn->tcp);//初始化tcp bridge句柄
+    conn->tcp.data = conn;
+
+    if (uv_accept(tcp, (uv_stream_t*)&conn->tcp) == 0) {
+        //默认协议版本是1.1
+        conn->http_major = 1;
+        conn->http_minor = 1;
+
+        uv_read_start((uv_stream_t*)&conn->tcp, alloc_buffer, http_read_cb);
+    }
+}
+
 //----------------------------------------------------------------------------------------------------------------------bridge
 //向客户发送数据
 static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
@@ -1032,11 +1067,11 @@ static int init_global(ops_global* global) {
     uv_listen((uv_stream_t*)&global->listen.http, DEFAULT_BACKLOG, http_connection_cb);
 
     //https端口
-    global->listen.https.data = global;
+    global->listen.https.tcp.data = global;
     uv_tcp_init(loop, &global->listen.https);
     uv_ip4_addr("0.0.0.0", global->config.https_proxy_port, &_addr);
-    uv_tcp_bind(&global->listen.https, &_addr, 0);
-    uv_listen((uv_stream_t*)&global->listen.https, DEFAULT_BACKLOG, http_connection_cb);
+    uv_tcp_bind(&global->listen.https.tcp, &_addr, 0);
+    uv_listen((uv_stream_t*)&global->listen.https.tcp, DEFAULT_BACKLOG, https_connection_cb);
 }
 //加载配置
 static load_config(ops_global* global, int argc, char* argv[]) {

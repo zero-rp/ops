@@ -590,7 +590,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
     for (;;) {
         int size = databuffer_readheader(&bridge->m_buffer, &global->m_mp, 4);
         if (size < 0) {
-            return 0;
+            return;
         }
         char* temp = malloc(size);
         databuffer_read(&bridge->m_buffer, &global->m_mp, temp, size);

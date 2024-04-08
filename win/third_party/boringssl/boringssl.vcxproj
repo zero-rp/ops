@@ -1,0 +1,594 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\asn1\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\bio\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\bytestring\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\chacha\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\cipher_extra\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\conf\conf_def.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\conf\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\curve25519\curve25519_tables.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\curve25519\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\dsa\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\ec_extra\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\evp\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\rsaz_exp.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\cipher\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\digest\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\digest\md32_common.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ecdsa\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\p256_table.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\md5\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\fork_detect.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\getrandom_fillin.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\sha\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\fipsmodule\tls\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\hrss\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\lhash\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\obj\obj_dat.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\pkcs7\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\pkcs8\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\poly1305\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\pool\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\crypto\x509\internal.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\aead.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\aes.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\arm_arch.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\asn1.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\asn1t.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\asn1_mac.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\base.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\base64.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\bio.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\blake2.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\blowfish.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\bn.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\buf.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\buffer.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\bytestring.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\cast.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\chacha.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\cipher.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\cmac.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\conf.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\cpu.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\crypto.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\curve25519.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\des.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\dh.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\digest.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\dsa.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\dtls1.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ec.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ecdh.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ecdsa.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ec_key.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\engine.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\err.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\evp.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\evp_errors.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ex_data.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\e_os2.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\hkdf.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\hmac.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\hpke.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\hrss.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\is_boringssl.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\lhash.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\md4.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\md5.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\mem.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\nid.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\obj.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\objects.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\obj_mac.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\opensslconf.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\opensslv.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ossl_typ.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pem.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pkcs12.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pkcs7.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pkcs8.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\poly1305.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\pool.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\rand.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\rc4.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ripemd.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\rsa.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\safestack.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\sha.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\siphash.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\span.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\srtp.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ssl.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\ssl3.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\stack.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\thread.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\tls1.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\trust_token.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\type_check.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\x509.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\x509v3.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\include\openssl\x509_vfy.h" />
+    <ClInclude Include="..\..\..\third_party\boringssl\ssl\internal.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\asn1_lib.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\asn1_par.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\asn_pack.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_bitstr.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_bool.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_d2i_fp.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_dup.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_gentm.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_i2d_fp.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_int.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_mbstr.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_object.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_octet.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_strex.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_strnid.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_time.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_type.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\a_utctm.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\f_int.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\f_string.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_dec.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_enc.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_fre.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_new.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_typ.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\asn1\tasn_utl.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\base64\base64.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\bio.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\bio_mem.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\connect.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\fd.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\file.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\hexdump.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\pair.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\printf.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\socket.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bio\socket_helper.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\blake2\blake2.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bn_extra\bn_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bn_extra\convert.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\buf\buf.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\asn1_compat.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\ber.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\cbb.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\cbs.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\bytestring\unicode.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\chacha\chacha.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\cipher_extra.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\derive_key.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_aesctrhmac.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_aesgcmsiv.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_chacha20poly1305.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_null.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_rc2.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_rc4.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\e_tls.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cipher_extra\tls_cbc.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\conf\conf.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\cpu_intel.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\crypto.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\curve25519\curve25519.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\curve25519\spake25519.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\dh_extra\dh_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\dh_extra\params.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\digest_extra\digest_extra.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\dsa\dsa.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\dsa\dsa_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ecdh_extra\ecdh_extra.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ecdsa_extra\ecdsa_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ec_extra\ec_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ec_extra\ec_derive.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ec_extra\hash_to_curve.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\engine\engine.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\err\err.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\evp.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\evp_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\evp_ctx.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\pbkdf.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\print.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_dsa_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_ec.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_ec_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_ed25519.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_ed25519_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_rsa.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_rsa_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_x25519.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\p_x25519_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\scrypt.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\evp\sign.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\ex_data.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\aes.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\aes_nohw.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\key_wrap.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\aes\mode_wrappers.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\add.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\bn.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\bytes.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\cmp.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\ctx.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\div.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\div_extra.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\exponentiation.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\gcd.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\gcd_extra.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\generic.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\jacobi.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\montgomery.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\montgomery_inv.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\mul.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\prime.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\random.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\rsaz_exp.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\shift.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\bn\sqrt.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\cipher\aead.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\cipher\cipher.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\cipher\e_aes.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\dh\check.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\dh\dh.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\digest\digest.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\digest\digests.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ecdh\ecdh.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ecdsa\ecdsa.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\ec.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\ec_key.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\ec_montgomery.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\felem.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\oct.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\p224-64.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\p256.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\scalar.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\simple.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\simple_mul.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\util.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\ec\wnaf.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\hmac\hmac.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\md4\md4.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\md5\md5.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\cbc.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\cfb.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\ctr.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\gcm.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\gcm_nohw.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\ofb.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\modes\polyval.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\ctrdrbg.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\fork_detect.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\rand.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rand\urandom.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\blinding.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\padding.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\rsa.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\rsa\rsa_impl.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\sha\sha1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\sha\sha256.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\sha\sha512.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\fipsmodule\tls\kdf.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\hpke\hpke.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\hrss\hrss.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\lhash\lhash.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\mem.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\obj\obj.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\obj\obj_xref.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_all.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_info.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_lib.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_oth.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_pk8.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_pkey.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_x509.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pem\pem_xaux.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs7\pkcs7.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs7\pkcs7_x509.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs8\p5_pbev2.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs8\pkcs8.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pkcs8\pkcs8_x509.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\poly1305\poly1305.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\poly1305\poly1305_arm.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\poly1305\poly1305_vec.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\pool\pool.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\deterministic.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\forkunsafe.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\passive.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\rand_extra.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rand_extra\windows.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rc4\rc4.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rsa_extra\rsa_asn1.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\rsa_extra\rsa_print.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\siphash\siphash.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\stack\stack.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\thread.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\thread_win.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\algorithm.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\asn1_gen.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\a_digest.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\a_sign.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\a_verify.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\by_dir.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\by_file.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\i2d_pr.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\name_print.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\rsa_pss.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\t_crl.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\t_req.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\t_x509.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\t_x509a.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509cset.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509name.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509rset.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509spki.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_att.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_cmp.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_d2.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_def.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_ext.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_lu.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_obj.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_req.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_set.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_trs.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_txt.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_v3.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_vfy.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x509_vpm.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_algor.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_all.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_attrib.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_crl.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_exten.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_name.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_pubkey.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_req.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_sig.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_spki.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_val.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_x509.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_x509a.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\decrepit\bio\base64_bio.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\bio_ssl.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_both.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_lib.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_pkt.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_srtp.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\dtls_method.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\dtls_record.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\encrypted_client_hello.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\extensions.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\handoff.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\handshake.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\handshake_client.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\handshake_server.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\s3_both.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\s3_lib.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\s3_pkt.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_aead_ctx.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_asn1.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_buffer.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_cert.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_cipher.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_file.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_key_share.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_lib.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_privkey.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_session.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_stat.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_transcript.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_versions.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\ssl_x509.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\t1_enc.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls13_both.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls13_client.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls13_enc.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls13_server.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls_method.cc" />
+    <ClCompile Include="..\..\..\third_party\boringssl\ssl\tls_record.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\third_party\boringssl\crypto\poly1305\poly1305_arm_asm.S" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D5B91005-8DBB-4439-B7A2-3F21B04CB6C0}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectName>boringssl</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)..\out\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)..\out\tmp\$(ProjectName)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)..\..\bin\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)..\..\bin\$(Configuration)\obj\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>../../../third_party/boringssl/include;../../../ztask/;../../../third_party/zlib</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>openssl.lib;Ws2_32.lib;Wldap32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Lib>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
+    <Lib />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../../../third_party/boringssl/include;../../../ztask/;../../../third_party/zlib</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;4146</DisableSpecificWarnings>
+      <AdditionalOptions>/std:c11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>../../../ztask/;../../../third_party/zlib/</AdditionalIncludeDirectories>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <StringPooling>true</StringPooling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <ExceptionHandling>false</ExceptionHandling>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../../../third_party/boringssl/include;../../../ztask/;../../../third_party/zlib</AdditionalIncludeDirectories>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <ExceptionHandling>false</ExceptionHandling>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <OmitFramePointers>true</OmitFramePointers>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
