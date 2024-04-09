@@ -20,6 +20,8 @@ add_executable(ops
     src/sds.c
     src/databuffer.c
     src/data.c
+    third_party/cJSON/cJSON.c
+    third_party/cJSON/cJSON_Utils.c
 )
 target_link_libraries(ops uv http-parser sqlite ${LIBS})
 add_executable(opc
