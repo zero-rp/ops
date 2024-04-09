@@ -72,7 +72,6 @@ typedef struct _ops_http_request {
     ops_http_header* header;                    //请求头
     ops_http_header* cur_header;                //
 
-    uint32_t pree_id;                           //对端流ID
     ops_host* service;
 }ops_http_request;
 RB_HEAD(_ops_http_request_tree, _ops_http_request);
@@ -278,7 +277,6 @@ static void http_request_clean(ops_http_request* req) {
         req->host = NULL;
     }
     req->service = NULL;
-    req->pree_id = 0;
 
     ops_http_header* header = req->header;
     ops_http_header* next;
@@ -417,7 +415,7 @@ static int http_on_url(http_parser* p, const char* buf, size_t len) {
 static int http_on_message_begin(http_parser* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
-
+    req->method = p->method;
     return 0;
 }
 static http_parser_settings parser_settings = { http_on_message_begin, http_on_url, NULL, http_on_header_field, http_on_header_value, http_on_headers_complete, http_on_body, http_on_message_complete, NULL, NULL };
@@ -582,7 +580,7 @@ static void host_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
     {
     case 0x01: {//连接远端成功
         //读取对端流ID
-        req->pree_id = ntohl(*(uint32_t*)(&packet->data[1]));
+        uint32_t pree_id = ntohl(*(uint32_t*)(&packet->data[1]));
         //生成新请求数据
         //生成数据
         sds d = sdscatprintf(sdsempty(),
@@ -613,7 +611,7 @@ static void host_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
         http_request_clean(req);
 
         //发送数据
-        bridge_send(bridge, ops_packet_host_data, packet->service_id, req->pree_id, d, sdslen(d));
+        bridge_send(bridge, ops_packet_host_data, packet->service_id, pree_id, d, sdslen(d));
         sdsfree(d);
         break;
     }
@@ -1068,7 +1066,7 @@ static int init_global(ops_global* global) {
 
     //https端口
     global->listen.https.tcp.data = global;
-    uv_tcp_init(loop, &global->listen.https);
+    uv_tcp_init(loop, &global->listen.https.tcp);
     uv_ip4_addr("0.0.0.0", global->config.https_proxy_port, &_addr);
     uv_tcp_bind(&global->listen.https.tcp, &_addr, 0);
     uv_listen((uv_stream_t*)&global->listen.https.tcp, DEFAULT_BACKLOG, https_connection_cb);
