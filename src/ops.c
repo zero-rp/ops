@@ -280,7 +280,7 @@ static void web_write_cb(uv_write_t* req, int status) {
     sdsfree(req->data);
 }
 //
-static void web_respose_raw(ops_web* web, sds data) {
+static int web_respose_raw(ops_web* web, sds data) {
     //转发数据到远程
     uv_buf_t buf[] = { 0 };
     buf->len = sdslen(data);

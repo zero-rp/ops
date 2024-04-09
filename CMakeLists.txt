@@ -23,7 +23,7 @@ add_executable(ops
     third_party/cJSON/cJSON.c
     third_party/cJSON/cJSON_Utils.c
 )
-target_link_libraries(ops uv http-parser sqlite ${LIBS})
+target_link_libraries(ops uv http-parser sqlite crypto ${LIBS})
 add_executable(opc
     src/opc.c
     src/sds.c
