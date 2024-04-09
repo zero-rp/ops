@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 
 
 #添加包含目录
+include_directories(third_party/boringssl/include)
 include_directories(third_party/libuv/include)
 include_directories(third_party/http-parser)
 include_directories(third_party/cJSON)
