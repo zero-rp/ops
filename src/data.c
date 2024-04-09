@@ -19,6 +19,7 @@ static int _host_callback(void* NotUsed, int argc, char** argv, char** azColName
     settings->on_host_add(userdata, atoi(argv[0]), argv[1], atoi(argv[2]), atoi(argv[3]), argv[4], atoi(argv[5]), argv[6]);
     return 0;
 }
+//初始化
 int data_init(const char* file, void* ud, struct data_settings* set) {
     sqlite3_initialize();
     int ret = sqlite3_open_v2(file, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
@@ -42,7 +43,90 @@ int data_init(const char* file, void* ud, struct data_settings* set) {
     return 0;
 }
 
+//获取转发列表
+static int _get_json_callback(void* argument, int argc, char** argv, char** azColName) {
+    cJSON* list = (cJSON*)argument;
+    cJSON* item = cJSON_CreateObject();
+    for (size_t i = 0; i < argc; i++) {
+        cJSON_AddStringToObject(item, azColName[i], argv[i]);
+    }
+    cJSON_AddItemToArray(list, item);
+    return 0;
+}
 
+cJSON* data_bridge_get() {
+    char* zErrMsg = 0;
+    cJSON* list = cJSON_CreateArray();
+    sqlite3_exec(db, "SELECT * FROM bridge;", _get_json_callback, list, &zErrMsg);
+    return list;
+}
+int data_bridge_add(const char* key) {
+    char sql[256] = { 0 };
+    snprintf(sql, sizeof(sql), "INSERT INTO bridge (`key`)VALUES(\"%s\");", key);
+    char* zErrMsg = 0;
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        //查询
+        uint32_t id = sqlite3_last_insert_rowid(db);
+        if (id > 0) {
+            //触发回调
+            settings->on_key_add(userdata, id, key);
+            return 0;
+        }
+    }
+    else {
+        return -1;
+    }
+}
+int data_bridge_del(uint16_t id) {
+    char* zErrMsg = 0;
+    char sql[256] = { 0 };
+    char key[33] = { 0 };
+    snprintf(sql, sizeof(sql), "SELECT key FROM bridge WHERE id = %d;", id);
+    cJSON* list = cJSON_CreateArray();
+    if (sqlite3_exec(db, sql, _get_json_callback, list, &zErrMsg) == SQLITE_OK) {
+        if (cJSON_GetArraySize(list) != 1) {
+            cJSON_free(list);
+            return -1;
+        }
+        cJSON*item = cJSON_GetArrayItem(list, 0);
+        if (!item) {
+            cJSON_free(list);
+            return -1;
+        }
+        cJSON* k = cJSON_GetObjectItem(item, "key");
+        if (!k || !k->valuestring) {
+            cJSON_free(list);
+            return -1;
+        }
+        strncpy(key, k->valuestring, 32);
+    }
+    cJSON_free(list);
+    //删除
+    snprintf(sql, sizeof(sql), "DELETE FROM bridge WHERE id = %d;", id);
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        if (sqlite3_changes(db) == 1) {
+            //触发回调
+            settings->on_key_del(userdata, key);
+            return 0;
+        }
+    }
+    else {
+        return -1;
+    }
+}
+
+cJSON* data_get_forward() {
+    char* zErrMsg = 0;
+    cJSON* list = cJSON_CreateArray();
+    sqlite3_exec(db, "SELECT * FROM forward;", _get_json_callback, list, &zErrMsg);
+    return list;
+}
+cJSON* data_get_host() {
+    char* zErrMsg = 0;
+    cJSON* list = cJSON_CreateArray();
+    sqlite3_exec(db, "SELECT * FROM host;", _get_json_callback, list, &zErrMsg);
+    return list;
+}
 //添加数据
 
 

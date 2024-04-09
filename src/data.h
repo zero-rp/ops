@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <cJSON.h>
+
 
 typedef void (*data_key_add_cb) (void*, uint16_t id, const char *key);
 typedef void (*data_key_del_cb) (void*, const char* key);
@@ -20,6 +21,11 @@ struct data_settings {
 };
 
 int data_init(const char* file, void* userdata, struct data_settings *settings);
+cJSON* data_bridge_get();
+int data_bridge_add(const char* key);
+int data_bridge_del(uint16_t id);
+cJSON* data_get_forward();
+cJSON* data_get_host();
 
 
 #endif

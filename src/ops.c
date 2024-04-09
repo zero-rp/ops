@@ -6,6 +6,8 @@
 #include <openssl/sha.h>
 #include <openssl/base64.h>
 #include <openssl/bio.h>
+#include <openssl/rand.h>
+#include <openssl/crypto.h>
 #include "databuffer.h"
 #include "common.h"
 #include "data.h"
@@ -19,7 +21,7 @@
 #define DEFAULT_BACKLOG 128
 //域名服务
 typedef struct _ops_host {
-    RB_ENTRY(_ops_forward) entry;       //
+    RB_ENTRY(_ops_host) entry;       //
     const char* host;                   //主机
     const char* host_rewrite;           //重写主机
     uint32_t id;                        //服务ID
@@ -47,12 +49,12 @@ typedef struct _ops_bridge {
 }ops_bridge;
 RB_HEAD(_ops_bridge_tree, _ops_bridge);
 //授权信息
-typedef struct _ops_auth {
-    RB_ENTRY(_ops_auth) entry;          //
+typedef struct _ops_key {
+    RB_ENTRY(_ops_key) entry;          //
     const char* key;                    //
     uint16_t id;                        //客户端ID
-}ops_auth;
-RB_HEAD(_ops_auth_tree, _ops_auth);
+}ops_key;
+RB_HEAD(_ops_key_tree, _ops_key);
 //HTTP请求头
 typedef struct _ops_http_header {
     sds key;
@@ -124,12 +126,24 @@ typedef struct _ops_config {
     uint16_t https_proxy_port;  //域名代理https代理监听端口
     uint16_t http_proxy_port;   //域名代理http代理监听端口
     const char* auth_key;       //web api密钥
+    const char* admin_user;
+    const char* admin_pass;
     const char* db_file;
 }ops_config;
-//
+//授权信息
+typedef struct _ops_auth {
+    RB_ENTRY(_ops_auth) entry;          //
+    char token[65];                     //
+    time_t time;                        //时间
+}ops_auth;
+RB_HEAD(_ops_auth_tree, _ops_auth);
+//全局
 typedef struct _ops_global {
     struct {
-        uv_tcp_t web;                       //web界面
+        struct {
+            uv_tcp_t tcp;                       
+            struct _ops_auth_tree auth;
+        } web;//web界面
         uv_tcp_t bridge;                    //客户端
         uv_tcp_t http;                      //
         struct {
@@ -139,19 +153,25 @@ typedef struct _ops_global {
     }listen;
     struct messagepool m_mp;                //接收缓冲
     ops_config config;
-    struct _ops_auth_tree auth;           //授权数据
+    struct _ops_key_tree key;           //授权数据
     struct _ops_forward_tree forward;     //转发器
     struct _ops_host_tree host;           //域名
     struct _ops_bridge_tree bridge;       //客户端
     struct _ops_http_request_tree request;     //
     uint32_t request_id;                    //
+    struct {
+        uint32_t bridge_count;              //客户端数量
+        uint32_t bridge_online;             //在线客户端数量
+
+    } count;
 }ops_global;
-//web管理连接
+//web管理连接,只使用http1
 typedef struct _ops_web {
     ops_global* global;
-    uv_tcp_t tcp;               //连接
-    struct http_parser parser;  //解析器
-    sds path;
+    uv_tcp_t tcp;                               //连接
+    struct http_parser parser;                  //解析器
+    sds url;                                    //请求地址
+    sds body;                                   //请求数据
 }ops_web;
 
 
@@ -160,9 +180,13 @@ typedef struct _ops_web {
 static uv_loop_t* loop = NULL;
 
 static int _ops_auth_compare(ops_auth* w1, ops_auth* w2) {
-    return strcmp(w1->key, w2->key);
+    return strcmp(w1->token, w2->token);
 }
 RB_GENERATE_STATIC(_ops_auth_tree, _ops_auth, entry, _ops_auth_compare)
+static int _ops_key_compare(ops_key* w1, ops_key* w2) {
+    return strcmp(w1->key, w2->key);
+}
+RB_GENERATE_STATIC(_ops_key_tree, _ops_key, entry, _ops_key_compare)
 static int _ops_host_compare(ops_host* w1, ops_host* w2) {
     return strcasecmp(w1->host, w2->host);
 }
@@ -202,26 +226,260 @@ static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
 
+static unsigned char hex_val(char hex) {
+    if ((hex >= '0') && (hex <= '9'))
+        return (hex - '0');
+    else if ((hex >= 'a') && (hex <= 'f'))
+        return (hex - 'a' + 10);
+    else if ((hex >= 'A') && (hex <= 'F'))
+        return (hex - 'A' + 10);
+    return 0;
+}
+static unsigned char str2hex(char* str, unsigned char len, unsigned char buf[]) {
+    int i;
+    unsigned char sz, j;
+    char* p;
+    p = str;
+    if (*p == '0' && (*(p + 1) == 'x' || *(p + 1) == 'X'))
+        p += 2;
+    sz = len >> 1;
+    j = 0;
+    for (i = 0; i < sz; i++) {
+        buf[i] = (hex_val(p[j++]) << 4);
+        buf[i] |= hex_val(p[j++]);
+    }
+    return sz;
+}
+static unsigned char hex2str(unsigned char* buf, unsigned char len, char* str) {
+    unsigned char i, j;
+    unsigned char b;
+    j = 0;
+    for (i = 0; i < len; i++) {
+        b = buf[i] >> 4;
+        if (b <= 9)
+            str[j++] = '0' + b;
+        else {
+            str[j++] = 'a' + b - 10;
+        }
+        b = buf[i] & 0x0f;
+        if (b <= 9)
+            str[j++] = '0' + b;
+        else {
+            str[j++] = 'a' + b - 10;
+        }
+    }
+    str[j] = 0;
+    return j;
+}
 
 //向客户发送数据
 static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //----------------------------------------------------------------------------------------------------------------------WEB管理处理
+//发送回调
+static void web_write_cb(uv_write_t* req, int status) {
+    sdsfree(req->data);
+}
+//
+static void web_respose_raw(ops_web* web, sds data) {
+    //转发数据到远程
+    uv_buf_t buf[] = { 0 };
+    buf->len = sdslen(data);
+    buf->base = data;
+    uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+    if (req == NULL) {
+        sdsfree(buf->base);
+        return -1;
+    }
+    req->data = data;
+    return uv_write(req, &web->tcp, &buf, 1, web_write_cb);
+}
+//
+static void web_respose_html(ops_web* web, const char* html, int len) {
+    //生成应答头
+    sds data = sdscatprintf(sdsempty(),
+        "HTTP/1.1 %d %s\r\n"
+        "Content-Length: %u\r\n"
+        "Content-Type: text/html;charset=utf-8;\r\n"
+        "\r\n",
+        200, "OK", len);
+    //数据
+    data = sdscatlen(data, html, len);
+    web_respose_raw(web, data);
+}
+//web管理应答
+static void web_respose_json(ops_web* web, int code, const char* msg, cJSON* json) {
+    cJSON* resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "code", code);
+    cJSON_AddStringToObject(resp, "msg", msg);
+    cJSON_AddItemToObject(resp, "data", json);
+    char* str = cJSON_Print(resp);
+    int str_len = strlen(str);
+    //生成应答头
+    sds data = sdscatprintf(sdsempty(),
+        "HTTP/1.1 %d %s\r\n"
+        "Content-Length: %u\r\n"
+        "Content-Type: application/json;charset=utf-8;\r\n"
+        "\r\n",
+        200, "OK", str_len);
+
+    //数据
+    data = sdscatlen(data, str, str_len);
+    web_respose_raw(web, data);
+}
+//web管理请求
+static void web_on_request(ops_web* web, cJSON* body) {
+    cJSON* data = cJSON_CreateObject();
+    char* url = web->url;
+    if (url[0] != '/')
+        goto err;
+    switch (url[1])
+    {
+    case 0x00:
+        return web_respose_html(web, "a", 1);
+    case 'a':
+        if (url[2] != 'p' || url[3] != 'i' || url[4] != '/')
+            goto err;
+        else
+            url += 5;
+        break;
+    default:
+        goto err;
+        break;
+    }
+    if (!body) {
+        return web_respose_json(web, -2, "NO BODY", data);
+    }
+    // 登录
+    if (url[0] == 'a' && url[1] == 'u' && url[2] == 't' && url[3] == 'h') {
+        cJSON* user = cJSON_GetObjectItem(body, "user");
+        cJSON* pass = cJSON_GetObjectItem(body, "pass");
+        if (!user || !pass || !user->valuestring || !pass->valuestring) {
+            return web_respose_json(web, -3, "user or pass is null", data);
+        }
+        if (strcmp(user->valuestring, web->global->config.admin_user) != 0 || strcmp(pass->valuestring, web->global->config.admin_pass) != 0) {
+            return web_respose_json(web, -4, "user or pass is error", data);
+        }
+        //生成token
+        char buf[16];
+        RAND_bytes(buf, 16);
+        //记录TOKEN
+        ops_auth* auth = (ops_auth*)malloc(sizeof(*auth));
+        memset(auth, 0, sizeof(*auth));
+        hex2str(buf, 16, auth->token);
+        auth->time = time(NULL);
+        RB_INSERT(_ops_auth_tree, &web->global->listen.web.auth, auth);
+        cJSON_AddStringToObject(data, "token", auth->token);
+        return web_respose_json(web, 0, "ok", data);
+    }
+    //鉴权
+    cJSON*token = cJSON_GetObjectItem(body, "token");
+    if (!token || !token->valuestring) {
+        return web_respose_json(web, 403, "NO AUTH", data);
+    }
+    ops_auth _auth = { 0 };
+    strncpy(_auth.token, token->valuestring, 32);
+    ops_auth *auth = RB_FIND(_ops_auth_tree, &web->global->listen.web.auth, &_auth);
+    if (!auth || (time(NULL) - auth->time) > 60 * 30) {
+        return web_respose_json(web, 403, "NO AUTH", data);
+    }
+    auth->time = time(NULL);
+    //服务器信息
+    if (strcmp(url, "info") == 0) {
+        cJSON* config = cJSON_AddObjectToObject(data, "config");
+        cJSON_AddNumberToObject(config, "web_port", web->global->config.web_port);
+        cJSON_AddNumberToObject(config, "http_port", web->global->config.http_proxy_port);
+        cJSON_AddNumberToObject(config, "https_port", web->global->config.https_proxy_port);
+
+        return web_respose_json(web, 0, "ok", data);
+    }
+    //客户列表
+    else if (strcmp(url, "bridge") == 0) {
+        cJSON* list = data_bridge_get();
+        cJSON_AddItemToObject(data, "list", list);
+
+        return web_respose_json(web, 0, "ok", data);
+    }
+    //添加客户端
+    else if (strcmp(url, "bridge_add") == 0) {
+        //生成key
+        char buf[16];
+        char key[33];
+        RAND_bytes(buf, 16);
+        hex2str(buf, 16, key);
+        //记录数据
+        if (data_bridge_add(key) == 0) {
+            return web_respose_json(web, 0, "ok", data);
+        }
+        else {
+            return web_respose_json(web, -1, "add error", data);
+        }
+    }
+    //删除客户端
+    else if (strcmp(url, "bridge_del") == 0) {
+        cJSON* id = cJSON_GetObjectItem(body, "id");
+        if (!id) {
+            return web_respose_json(web, -1, "no id", data);
+        }
+        if (id->valueint == 0) {
+            return web_respose_json(web, -1, "no id", data);
+        }
+        if (data_bridge_del(id->valueint) == 0) {
+            return web_respose_json(web, 0, "ok", data);
+        }
+        else {
+            return web_respose_json(web, -1, "add error", data);
+        }
+    }
+    //转发列表
+    else if (strcmp(url, "forward") == 0) {
+        cJSON* list = data_get_forward();
+        cJSON_AddItemToObject(data, "list", list);
+
+        return web_respose_json(web, 0, "ok", data);
+    }
+    //主机列表
+    else if (strcmp(url, "host") == 0) {
+        cJSON* list = data_get_host();
+        cJSON_AddItemToObject(data, "list", list);
+
+        return web_respose_json(web, 0, "ok", data);
+    }
+    //未识别的地址
+err:
+    web_respose_json(web, 404, "NO URL", data);
+}
 //HTTP应答解析回调
 //消息完毕
 static int web_on_message_complete(http_parser* p) {
-    struct ops_http* http = (struct ops_http*)p->data;
-
-
+    ops_web* web = (ops_web*)p->data;
+    cJSON* body = NULL;
+    if (web->body) {
+        body = cJSON_ParseWithLength(web->body, sdslen(web->body));
+    }
+    web_on_request(web, body);
+    cJSON_free(body);
     return 0;
 }
 //解析到消息体
 static int web_on_body(http_parser* p, const char* buf, size_t len) {
-    struct ops_http* http = (struct ops_http*)p->data;
-
+    ops_web* web = (ops_web*)p->data;
+    if (web->body == NULL) {
+        web->body = sdsnewlen(buf, len);
+    }
+    else {
+        web->body = sdscatlen(web->body, buf, len);
+    }
     return 0;
 }
 //解析到域名
 static int web_on_url(http_parser* p, const char* buf, size_t len) {
+    ops_web* web = (ops_web*)p->data;
+    if (web->url == NULL) {
+        web->url = sdsnewlen(buf, len);
+    }
+    else {
+        web->url = sdscatlen(web->url, buf, len);
+    }
     return 0;
 }
 static http_parser_settings web_parser_settings = { NULL, web_on_url, NULL, NULL, NULL, NULL, web_on_body, web_on_message_complete, NULL, NULL };
@@ -251,16 +509,15 @@ static void web_connection_cb(uv_stream_t* tcp, int status) {
     memset(web, 0, sizeof(*web));
     web->global = global;
 
-    http_parser_init(&web->parser, HTTP_REQUEST);//初始化解析器
-    web->parser.data = web;
-
     uv_tcp_init(loop, &web->tcp);//初始化tcp bridge句柄
     web->tcp.data = web;
 
     if (uv_accept(tcp, (uv_stream_t*)&web->tcp) == 0) {
+        http_parser_init(&web->parser, HTTP_REQUEST);//初始化解析器
+        web->parser.data = web;
+
         uv_read_start((uv_stream_t*)&web->tcp, alloc_buffer, web_read_cb);
     }
-
 }
 //----------------------------------------------------------------------------------------------------------------------HTTP端口处理
 static void http_request_clean(ops_http_request* req) {
@@ -746,16 +1003,16 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         //读取key长度
         uint16_t key_len = ntohs(*(uint16_t*)(&packet->data));
         packet->data[key_len + 2] = 0;
-        ops_auth _auth = {
+        ops_key _key = {
             .key = packet->data + 2
         };
-        ops_auth* auth = RB_FIND(_ops_auth_tree, &bridge->global->auth, &_auth);
-        if (auth == NULL) {
+        ops_key* key = RB_FIND(_ops_key_tree, &bridge->global->key, &_key);
+        if (key == NULL) {
             bridge_send(bridge, ops_packet_auth, 0, 0, NULL, 0);
         }
         else {
-            ops_forward ths = {
-                .id = auth->id
+            ops_bridge ths = {
+                .id = key->id
             };
             //查找ID是否存在
             ops_bridge* p = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths);
@@ -767,7 +1024,7 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
                 buf[0] = 1;//鉴权成功
                 bridge_send(bridge, ops_packet_auth, 0, 0, buf, 1);
                 //记录客户端
-                bridge->id = auth->id;
+                bridge->id = key->id;
                 RB_INSERT(_ops_bridge_tree, &bridge->global->bridge, bridge);
                 bridge_auth_ok(bridge);
             }
@@ -958,27 +1215,27 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
 }
 //----------------------------------------------------------------------------------------------------------------------data
 //用户发生改变
-static void data_key_add(ops_global* global, uint16_t id, const char* key) {
-    ops_auth* auth = malloc(sizeof(*auth));
-    if (auth == NULL)
+static void data_key_add(ops_global* global, uint16_t id, const char* k) {
+    ops_key* key = malloc(sizeof(*key));
+    if (key == NULL)
         return;
-    memset(auth, 0, sizeof(*auth));
-    auth->id = id;
-    auth->key = strdup(key);
-    RB_INSERT(_ops_auth_tree, &global->auth, auth);
+    memset(key, 0, sizeof(*key));
+    key->id = id;
+    key->key = strdup(k);
+    RB_INSERT(_ops_key_tree, &global->key, key);
 }
-static void data_key_del(ops_global* global, const char* key) {
-    ops_auth _auth = {
-           .key = key
+static void data_key_del(ops_global* global, const char* k) {
+    ops_key _key = {
+           .key = k
     };
-    ops_auth* auth = RB_FIND(_ops_auth_tree, &global->auth, &_auth);
-    if (auth == NULL) {
+    ops_key* key = RB_FIND(_ops_key_tree, &global->key, &_key);
+    if (key == NULL) {
         return;
     }
-    free(auth->key);
+    free(key->key);
     //踢出相关客户端
 
-    RB_REMOVE(_ops_auth_tree, &global->auth, auth);
+    RB_REMOVE(_ops_key_tree, &global->key, key);
 }
 //通道发生改变
 static void data_forward_add(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* dst, uint16_t dst_port) {
@@ -1044,11 +1301,11 @@ static int init_global(ops_global* global) {
     //初始化数据
     data_init(global->config.db_file, global, &data_settings);
     //web管理
-    global->listen.web.data = global;
-    uv_tcp_init(loop, &global->listen.web);
+    global->listen.web.tcp.data = global;
+    uv_tcp_init(loop, &global->listen.web.tcp);
     uv_ip4_addr("0.0.0.0", global->config.web_port, &_addr);
-    uv_tcp_bind(&global->listen.web, &_addr, 0);
-    uv_listen((uv_stream_t*)&global->listen.web, DEFAULT_BACKLOG, web_connection_cb);
+    uv_tcp_bind(&global->listen.web.tcp, &_addr, 0);
+    uv_listen((uv_stream_t*)&global->listen.web.tcp, DEFAULT_BACKLOG, web_connection_cb);
 
     //客户端桥接
     global->listen.bridge.data = global;
@@ -1079,6 +1336,8 @@ static load_config(ops_global* global, int argc, char* argv[]) {
     global->config.web_port = 8088;
     global->config.https_proxy_port = 443;
     global->config.http_proxy_port = 80;
+    global->config.admin_user = "admin";
+    global->config.admin_pass = "1234";
 
     //从命令行加载参数
     for (size_t i = 1; i < argc; i++) {

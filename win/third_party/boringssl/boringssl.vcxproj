@@ -383,6 +383,7 @@
     <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_x509.c" />
     <ClCompile Include="..\..\..\third_party\boringssl\crypto\x509\x_x509a.c" />
     <ClCompile Include="..\..\..\third_party\boringssl\decrepit\bio\base64_bio.c" />
+    <ClCompile Include="..\..\..\third_party\boringssl\gen\crypto\err_data.c" />
     <ClCompile Include="..\..\..\third_party\boringssl\ssl\bio_ssl.cc" />
     <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_both.cc" />
     <ClCompile Include="..\..\..\third_party\boringssl\ssl\d1_lib.cc" />
@@ -524,7 +525,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;NOMINMAX;OPENSSL_NO_ASM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>../../../third_party/boringssl/include;../../../ztask/;../../../third_party/zlib</AdditionalIncludeDirectories>

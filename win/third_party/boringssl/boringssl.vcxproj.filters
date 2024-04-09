@@ -178,6 +178,12 @@
     <Filter Include="boringssl\crypto\siphash">
       <UniqueIdentifier>{de315acb-669c-4c43-91a7-874a4241f19d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="boringssl\gen">
+      <UniqueIdentifier>{d6ce8edc-871c-4b5e-88dd-b6cfb6573342}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="boringssl\gen\crypto">
+      <UniqueIdentifier>{5427ba8a-d5e8-4a9a-af02-8561ea53822e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\third_party\boringssl\ssl\internal.h">
@@ -1366,6 +1372,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\third_party\boringssl\crypto\siphash\siphash.c">
       <Filter>boringssl\crypto\siphash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\third_party\boringssl\gen\crypto\err_data.c">
+      <Filter>boringssl\gen\crypto</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
