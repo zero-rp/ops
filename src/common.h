@@ -15,9 +15,10 @@ enum ops_packet_type
     ops_packet_forward_ctl,                 //转发隧道控制包
     ops_packet_forward_data_remote,         //隧道数据
     ops_packet_forward_data_local,
-    ops_packet_host,
+    ops_packet_host,                        //域名转发
     ops_packet_host_ctl,                    //域名转发控制包
     ops_packet_host_data,
+    ops_packet_lan,                         //局域网服务
 };
 //包定义
 typedef struct _ops_packet {
