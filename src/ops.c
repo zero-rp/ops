@@ -141,7 +141,7 @@ RB_HEAD(_ops_auth_tree, _ops_auth);
 typedef struct _ops_global {
     struct {
         struct {
-            uv_tcp_t tcp;                       
+            uv_tcp_t tcp;
             struct _ops_auth_tree auth;
         } web;//web界面
         uv_tcp_t bridge;                    //客户端
@@ -163,7 +163,7 @@ typedef struct _ops_global {
         uint32_t bridge_count;              //客户端数量
         uint32_t bridge_online;             //在线客户端数量
 
-    } count;
+    } stat;
 }ops_global;
 //web管理连接,只使用http1
 typedef struct _ops_web {
@@ -369,16 +369,16 @@ static void web_on_request(ops_web* web, cJSON* body) {
         auth->time = time(NULL);
         RB_INSERT(_ops_auth_tree, &web->global->listen.web.auth, auth);
         cJSON_AddStringToObject(data, "token", auth->token);
-        return web_respose_json(web, 0, "ok", data);
+        goto ok;
     }
     //鉴权
-    cJSON*token = cJSON_GetObjectItem(body, "token");
+    cJSON* token = cJSON_GetObjectItem(body, "token");
     if (!token || !token->valuestring) {
         return web_respose_json(web, 403, "NO AUTH", data);
     }
     ops_auth _auth = { 0 };
     strncpy(_auth.token, token->valuestring, 32);
-    ops_auth *auth = RB_FIND(_ops_auth_tree, &web->global->listen.web.auth, &_auth);
+    ops_auth* auth = RB_FIND(_ops_auth_tree, &web->global->listen.web.auth, &_auth);
     if (!auth || (time(NULL) - auth->time) > 60 * 30) {
         return web_respose_json(web, 403, "NO AUTH", data);
     }
@@ -389,15 +389,17 @@ static void web_on_request(ops_web* web, cJSON* body) {
         cJSON_AddNumberToObject(config, "web_port", web->global->config.web_port);
         cJSON_AddNumberToObject(config, "http_port", web->global->config.http_proxy_port);
         cJSON_AddNumberToObject(config, "https_port", web->global->config.https_proxy_port);
-
-        return web_respose_json(web, 0, "ok", data);
+        cJSON* stat = cJSON_AddObjectToObject(data, "stat");
+        cJSON_AddNumberToObject(stat, "bridge_count", web->global->stat.bridge_count);
+        cJSON_AddNumberToObject(stat, "bridge_online", web->global->stat.bridge_online);
+        goto ok;
     }
     //客户列表
     else if (strcmp(url, "bridge") == 0) {
         cJSON* list = data_bridge_get();
         cJSON_AddItemToObject(data, "list", list);
 
-        return web_respose_json(web, 0, "ok", data);
+        goto ok;
     }
     //添加客户端
     else if (strcmp(url, "bridge_add") == 0) {
@@ -406,9 +408,10 @@ static void web_on_request(ops_web* web, cJSON* body) {
         char key[33];
         RAND_bytes(buf, 16);
         hex2str(buf, 16, key);
+        cJSON* _info = cJSON_GetObjectItem(body, "info");
         //记录数据
-        if (data_bridge_add(key) == 0) {
-            return web_respose_json(web, 0, "ok", data);
+        if (data_bridge_add(key, _info ? _info->valuestring : NULL) == 0) {
+            goto ok;
         }
         else {
             return web_respose_json(web, -1, "add error", data);
@@ -418,35 +421,129 @@ static void web_on_request(ops_web* web, cJSON* body) {
     else if (strcmp(url, "bridge_del") == 0) {
         cJSON* id = cJSON_GetObjectItem(body, "id");
         if (!id) {
-            return web_respose_json(web, -1, "no id", data);
+            goto err_data;
         }
         if (id->valueint == 0) {
-            return web_respose_json(web, -1, "no id", data);
+            goto err_data;
         }
         if (data_bridge_del(id->valueint) == 0) {
-            return web_respose_json(web, 0, "ok", data);
+            goto ok;
+        }
+        else {
+            return web_respose_json(web, -1, "del error", data);
+        }
+    }
+    //转发列表
+    else if (strcmp(url, "forward") == 0) {
+        cJSON* list = data_forward_get();
+        cJSON_AddItemToObject(data, "list", list);
+
+        goto ok;
+    }
+    //添加转发
+    else if (strcmp(url, "forward_add") == 0) {
+        cJSON* src_id = cJSON_GetObjectItem(body, "src_id");
+        if (!src_id || src_id->valueint < 1)
+            goto err_data;
+        cJSON* dst_id = cJSON_GetObjectItem(body, "dst_id");
+        if (!dst_id || dst_id->valueint < 1)
+            goto err_data;
+        cJSON* type = cJSON_GetObjectItem(body, "type");
+        if (!type || type->valueint < 1)
+            goto err_data;
+        cJSON* src_port = cJSON_GetObjectItem(body, "src_port");
+        if (!src_port || src_port->valueint < 1)
+            goto err_data;
+        cJSON* dst = cJSON_GetObjectItem(body, "dst");
+        if (!dst || !dst->valuestring)
+            goto err_data;
+        cJSON* dst_port = cJSON_GetObjectItem(body, "dst_port");
+        if (!dst_port || dst_port->valueint < 1)
+            goto err_data;
+
+        cJSON* info = cJSON_GetObjectItem(body, "info");
+
+        if (data_forward_add(src_id->valueint, dst_id->valueint, type->valueint, src_port->valueint, dst->valuestring, dst_port->valueint, info ? info->valuestring : "") == 0) {
+            goto ok;
         }
         else {
             return web_respose_json(web, -1, "add error", data);
         }
     }
-    //转发列表
-    else if (strcmp(url, "forward") == 0) {
-        cJSON* list = data_get_forward();
-        cJSON_AddItemToObject(data, "list", list);
-
-        return web_respose_json(web, 0, "ok", data);
+    //删除转发
+    else if (strcmp(url, "forward_del") == 0) {
+        cJSON* id = cJSON_GetObjectItem(body, "id");
+        if (!id) {
+            goto err_data;
+        }
+        if (id->valueint == 0) {
+            goto err_data;
+        }
+        if (data_forward_del(id->valueint) == 0) {
+            goto ok;
+        }
+        else {
+            return web_respose_json(web, -1, "del error", data);
+        }
     }
     //主机列表
     else if (strcmp(url, "host") == 0) {
-        cJSON* list = data_get_host();
+        cJSON* list = data_host_get();
         cJSON_AddItemToObject(data, "list", list);
 
-        return web_respose_json(web, 0, "ok", data);
+        goto ok;
     }
-    //未识别的地址
-err:
-    web_respose_json(web, 404, "NO URL", data);
+    //添加主机
+    else if (strcmp(url, "host_add") == 0) {
+        cJSON* host = cJSON_GetObjectItem(body, "host");
+        if (!host || !host->valuestring)
+            goto err_data;
+        cJSON* dst_id = cJSON_GetObjectItem(body, "dst_id");
+        if (!dst_id || dst_id->valueint < 1)
+            goto err_data;
+        cJSON* type = cJSON_GetObjectItem(body, "type");
+        if (!type || type->valueint < 1)
+            goto err_data;
+        cJSON* dst = cJSON_GetObjectItem(body, "dst");
+        if (!dst || !dst->valuestring)
+            goto err_data;
+        cJSON* dst_port = cJSON_GetObjectItem(body, "dst_port");
+        if (!dst_port || dst_port->valueint < 1)
+            goto err_data;
+        cJSON* host_rewrite = cJSON_GetObjectItem(body, "host_rewrite");
+        if (!host_rewrite || !host_rewrite->valuestring)
+            goto err_data;
+        cJSON* info = cJSON_GetObjectItem(body, "info");
+
+        if (data_host_add(host->valuestring, dst_id->valueint, type->valueint, dst->valuestring, dst_port->valueint, host_rewrite ? host_rewrite->valuestring : "", info ? info->valuestring : "") == 0) {
+            goto ok;
+        }
+        else {
+            return web_respose_json(web, -1, "add error", data);
+        }
+    }
+    //删除主机
+    else if (strcmp(url, "host_del") == 0) {
+        cJSON* id = cJSON_GetObjectItem(body, "id");
+        if (!id) {
+            goto err_data;
+        }
+        if (id->valueint == 0) {
+            goto err_data;
+        }
+        if (data_host_del(id->valueint) == 0) {
+            goto ok;
+        }
+        else {
+            return web_respose_json(web, -1, "del error", data);
+        }
+    }
+ok:
+    return web_respose_json(web, 0, "ok", data);
+err_data:
+    return web_respose_json(web, -1, "data error", data);
+err://未识别的地址
+    return web_respose_json(web, 404, "NO URL", data);
 }
 //HTTP应答解析回调
 //消息完毕
@@ -987,7 +1084,8 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     bridge_send(bridge, ops_packet_host, 0, 0, pack, sdslen(pack));
     sdsfree(pack);
 
-
+    //更新统计
+    bridge->global->stat.bridge_online++;
 }
 //收到客户端数据
 static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
@@ -1179,6 +1277,8 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
         //从句柄树中移除
         if (bridge->id) {
             RB_REMOVE(_ops_bridge_tree, &bridge->global->bridge, bridge);
+            bridge->id = 0;
+            bridge->global->stat.bridge_online--;
         }
         return;
     }
@@ -1215,7 +1315,7 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
 }
 //----------------------------------------------------------------------------------------------------------------------data
 //用户发生改变
-static void data_key_add(ops_global* global, uint16_t id, const char* k) {
+static void on_data_key_add(ops_global* global, uint16_t id, const char* k) {
     ops_key* key = malloc(sizeof(*key));
     if (key == NULL)
         return;
@@ -1223,8 +1323,9 @@ static void data_key_add(ops_global* global, uint16_t id, const char* k) {
     key->id = id;
     key->key = strdup(k);
     RB_INSERT(_ops_key_tree, &global->key, key);
+    global->stat.bridge_count++;
 }
-static void data_key_del(ops_global* global, const char* k) {
+static void on_data_key_del(ops_global* global, const char* k) {
     ops_key _key = {
            .key = k
     };
@@ -1236,9 +1337,11 @@ static void data_key_del(ops_global* global, const char* k) {
     //踢出相关客户端
 
     RB_REMOVE(_ops_key_tree, &global->key, key);
+    free(key);
+    global->stat.bridge_count--;
 }
 //通道发生改变
-static void data_forward_add(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* dst, uint16_t dst_port) {
+static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* dst, uint16_t dst_port) {
     ops_forward* forward = malloc(sizeof(*forward));
     if (forward == NULL)
         return;
@@ -1258,7 +1361,7 @@ static void data_forward_add(ops_global* global, uint32_t id, uint16_t src_id, u
     //下发到相关通道
 
 }
-static void data_forward_del(ops_global* global, uint32_t id) {
+static void on_data_forward_del(ops_global* global, uint32_t id) {
     ops_forward ths = {
     .id = id
     };
@@ -1271,9 +1374,10 @@ static void data_forward_del(ops_global* global, uint32_t id) {
 
 
     RB_REMOVE(_ops_forward_tree, &global->forward, forward);
+    free(forward);
 }
 //
-static void data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* dst, uint16_t dst_port, const char* host_rewrite) {
+static void on_data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* dst, uint16_t dst_port, const char* host_rewrite) {
     ops_host* host = malloc(sizeof(*host));
     if (host == NULL)
         return;
@@ -1293,7 +1397,26 @@ static void data_host_add(ops_global* global, uint32_t id, const char* src_host,
 
     //下发
 }
-struct data_settings data_settings = { data_key_add, data_key_del, data_forward_add, data_forward_del, data_host_add };
+static void on_data_host_del(ops_global* global, const char* h) {
+    ops_host _host = {
+           .host = h
+    };
+    ops_host* host = RB_FIND(_ops_host_tree, &global->host, &_host);
+    if (host == NULL) {
+        return;
+    }
+    free(host->host);
+    if (host->host_rewrite) {
+        free(host->host_rewrite);
+    }
+    //通知相关客户端当前服务已移除
+
+
+
+    RB_REMOVE(_ops_host_tree, &global->host, host);
+    free(host);
+}
+struct data_settings data_settings = { on_data_key_add, on_data_key_del, on_data_forward_add, on_data_forward_del, on_data_host_add ,on_data_host_del };
 //----------------------------------------------------------------------------------------------------------------------
 //全局初始化
 static int init_global(ops_global* global) {
