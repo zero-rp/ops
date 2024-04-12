@@ -137,20 +137,39 @@ static void write_cb(uv_write_t* req, int status) {
 
 static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //--------------------------------------------------------------------------------------------------------forward
+//连接关闭
+static void forward_close_cb(uv_handle_t* handle) {
+    opc_forward_tunnel_src* tunnel = (opc_forward_tunnel_src*)handle->data;
+
+
+    free(tunnel);
+}
+static void forward_shutdown_cb(uv_shutdown_t* req, int status) {
+    opc_forward_tunnel_src* conn = (opc_forward_tunnel_src*)req->data;
+    uv_close(&conn->tcp, forward_close_cb);
+    free(req);
+}
 //转发隧道来源数据到达
 static void forward_tunnel_src_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     opc_forward_tunnel_src* tunnel = (opc_forward_tunnel_src*)tcp->data;
     if (nread <= 0) {
         if (UV_EOF != nread) {
             //连接异常断开
-
+            uv_close(tcp, forward_close_cb);
         }
         else {
             //shutdown
-
+            uv_shutdown_t* req = (uv_shutdown_t*)malloc(sizeof(*req));
+            if (req != NULL) {
+                memset(req, 0, sizeof(*req));
+                req->data = tunnel;
+                uv_shutdown(req, tcp, forward_shutdown_cb);
+            }
+            else {
+                //分配内存失败,直接强制关闭
+                uv_close(tcp, forward_close_cb);
+            }
         }
-        //回收资源
-
         return;
     }
     //转发
@@ -230,7 +249,7 @@ static void forward_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct add
     uv_tcp_init(loop, &tunnel->tcp);
     uv_tcp_connect(&tunnel->req, &tunnel->tcp, res->ai_addr, forward_connect_cb);
 }
-
+//服务器控制回调
 static void forward(opc_bridge* bridge, ops_packet* packet) {
     //读取数量
     int count = ntohl(*(uint32_t*)&packet->data[0]);
@@ -247,11 +266,14 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
             src.port = ntohs(src.port);
 
             opc_forward_src* s = (opc_forward_src*)malloc(sizeof(*s));
+            if (!s) {
+                continue;
+            }
             memset(s, 0, sizeof(*s));
             s->id = src.sid;
             s->bridge = bridge;
 
-
+            //监听端口
             struct sockaddr_in _addr;
             uv_tcp_init(loop, &s->tcp);
             s->tcp.data = s;
@@ -267,6 +289,9 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
             dst.port = ntohs(dst.port);
 
             opc_forward_dst* d = (opc_forward_dst*)malloc(sizeof(*d));
+            if (!d) {
+                continue;
+            }
             memset(d, 0, sizeof(*d));
             d->id = dst.sid;
             d->bridge = bridge;
@@ -292,6 +317,7 @@ static void forward_ctl(opc_bridge* bridge, ops_packet* packet) {
         };
         opc_forward_dst* dst = RB_FIND(_opc_forward_dst_tree_s, &bridge->forward_dst, &ths);
         if (dst == NULL) {
+
             bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
             break;
         }
@@ -311,7 +337,7 @@ static void forward_ctl(opc_bridge* bridge, ops_packet* packet) {
         uv_getaddrinfo(loop, &tunnel->req_info, forward_getaddrinfo_cb, dst->dst, buf, NULL);
         break;
     }
-    case 0x02: {//连接成功
+    case 0x02: {//连接请求响应
         opc_forward_tunnel_src the = {
             .stream_id = packet->stream_id
         };
@@ -568,8 +594,6 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
         break;
     }
 }
-
-
 
 //向服务器发送数据
 static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
