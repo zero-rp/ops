@@ -39,6 +39,26 @@ typedef struct _ops_forward {
     ops_forward_src src;                //来源信息
 }ops_forward;
 RB_HEAD(_ops_forward_tree, _ops_forward);
+//VPC网络
+typedef struct _ops_vpc {
+    RB_ENTRY(_ops_vpc) entry;            //
+    uint16_t id;                             //网络编号
+    uint8_t ipv4[4];                         //ipv4网段
+    uint8_t ipv6[16];                        //ipv6网段
+}ops_vpc;
+RB_HEAD(_ops_vpc_tree, _ops_vpc);
+//VPC成员
+typedef struct _ops_members {
+    RB_ENTRY(_ops_members) entry;                //
+    uint16_t bid;                               //客户ID
+    ops_vpc* vpc;                               //关联的VPC
+    uint32_t id;                                //成员编号
+    uint8_t ipv4[4];                            //ipv4地址
+    uint8_t ipv6[16];                           //ipv6地址
+}ops_members;
+RB_HEAD(_ops_members_tree, _ops_members);
+//VPC路由
+
 //客户端
 typedef struct _ops_bridge {
     RB_ENTRY(_ops_bridge) entry;        //
@@ -118,7 +138,6 @@ typedef struct _ops_http_conn {
         uint8_t ssl : 1;                //TLS协议
     } b;
 }ops_http_conn;
-
 //配置
 typedef struct _ops_config {
     uint16_t web_port;          //web管理端口
@@ -159,6 +178,8 @@ typedef struct _ops_global {
     struct _ops_key_tree key;           //授权数据
     struct _ops_forward_tree forward;     //转发器
     struct _ops_host_tree host;           //域名
+    struct _ops_vpc_tree vpc;         //成员
+    struct _ops_members_tree members;         //成员
     struct _ops_bridge_tree bridge;       //客户端
     struct _ops_http_request_tree request;     //
     uint32_t request_id;                    //
@@ -176,9 +197,6 @@ typedef struct _ops_web {
     sds url;                                    //请求地址
     sds body;                                   //请求数据
 }ops_web;
-
-
-
 
 static uv_loop_t* loop = NULL;
 
@@ -200,6 +218,18 @@ static int _ops_forward_compare(ops_forward* w1, ops_forward* w2) {
     return 0;
 }
 RB_GENERATE_STATIC(_ops_forward_tree, _ops_forward, entry, _ops_forward_compare)
+static int _ops_vpc_compare(ops_vpc* w1, ops_vpc* w2) {
+    if (w1->id < w2->id) return -1;
+    if (w1->id > w2->id) return 1;
+    return 0;
+}
+RB_GENERATE_STATIC(_ops_vpc_tree, _ops_vpc, entry, _ops_vpc_compare)
+static int _ops_members_compare(ops_members* w1, ops_members* w2) {
+    if (w1->id < w2->id) return -1;
+    if (w1->id > w2->id) return 1;
+    return 0;
+}
+RB_GENERATE_STATIC(_ops_members_tree, _ops_members, entry, _ops_members_compare)
 static int _ops_bridge_compare(ops_bridge* w1, ops_bridge* w2) {
     if (w1->id < w2->id) return -1;
     if (w1->id > w2->id) return 1;
@@ -453,7 +483,7 @@ static void web_on_request(ops_web* web, cJSON* body) {
     }
     case 'l': {
         url++;
-        if (strcmp(url, "layui/css/layui.css") == 0 || strcmp(url, "layui/layui.js") == 0 || strcmp(url, "layui/font/iconfont.woff2")==0) {
+        if (strcmp(url, "layui/css/layui.css") == 0 || strcmp(url, "layui/layui.js") == 0 || strcmp(url, "layui/font/iconfont.woff2") == 0) {
             return web_respose_file(web, url);
         }
         else {
@@ -584,10 +614,10 @@ static void web_on_request(ops_web* web, cJSON* body) {
         cJSON* dst_port = cJSON_GetObjectItem(body, "dst_port");
         if (!dst_port || dst_port->valueint < 1)
             goto err_data;
-
+        cJSON* bind = cJSON_GetObjectItem(body, "bind");
         cJSON* info = cJSON_GetObjectItem(body, "info");
 
-        if (data_forward_add(src_id->valueint, dst_id->valueint, type->valueint, src_port->valueint, dst->valuestring, dst_port->valueint, info ? info->valuestring : "") == 0) {
+        if (data_forward_add(src_id->valueint, dst_id->valueint, type->valueint, src_port->valueint, bind ? bind->valuestring : "", dst->valuestring, dst_port->valueint, info ? info->valuestring : "") == 0) {
             goto ok;
         }
         else {
@@ -637,9 +667,10 @@ static void web_on_request(ops_web* web, cJSON* body) {
         cJSON* host_rewrite = cJSON_GetObjectItem(body, "host_rewrite");
         if (!host_rewrite || !host_rewrite->valuestring)
             goto err_data;
+        cJSON* bind = cJSON_GetObjectItem(body, "bind");
         cJSON* info = cJSON_GetObjectItem(body, "info");
 
-        if (data_host_add(host->valuestring, dst_id->valueint, type->valueint, dst->valuestring, dst_port->valueint, host_rewrite ? host_rewrite->valuestring : "", info ? info->valuestring : "") == 0) {
+        if (data_host_add(host->valuestring, dst_id->valueint, type->valueint, bind ? bind->valuestring : "", dst->valuestring, dst_port->valueint, host_rewrite ? host_rewrite->valuestring : "", info ? info->valuestring : "") == 0) {
             goto ok;
         }
         else {
@@ -662,7 +693,28 @@ static void web_on_request(ops_web* web, cJSON* body) {
             return web_respose_json(web, -1, "del error", data);
         }
     }
+    //虚拟网络列表
+    else if (strcmp(url, "vpc") == 0) {
+        cJSON* list = data_vpc_get();
+        cJSON_AddItemToObject(data, "list", list);
 
+        goto ok;
+    }
+    //添加主机
+    else if (strcmp(url, "vpc_add") == 0) {
+        cJSON* ipv4 = cJSON_GetObjectItem(body, "ipv4");
+        if (!ipv4 || !ipv4->valuestring)
+            goto err_data;
+        cJSON* ipv6 = cJSON_GetObjectItem(body, "ipv6");
+        cJSON* info = cJSON_GetObjectItem(body, "info");
+
+        if (data_vpc_add(ipv4->valuestring, ipv6 ? ipv6->valuestring : "", info ? info->valuestring : "") == 0) {
+            goto ok;
+        }
+        else {
+            return web_respose_json(web, -1, "add error", data);
+        }
+        }
 ok:
     return web_respose_json(web, 0, "ok", data);
 err_data:
@@ -1210,7 +1262,10 @@ static void forward_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
         };
         ops_bridge* b = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths_b);
         if (b == NULL) {
-            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
+            uint8_t buf[2];
+            buf[0] = 0x02;//来自目标的命令
+            buf[1] = 0x01;//错误
+            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, buf, sizeof(buf));
             break;
         }
         //发送
@@ -1224,7 +1279,11 @@ static void forward_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
         };
         ops_bridge* b = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths_b);
         if (b == NULL) {
-            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
+            //来源已经不存在
+            uint8_t buf[2];
+            buf[0] = 0x03;//来自来源的命令
+            buf[1] = 0x01;//错误
+            bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, buf, sizeof(buf));
             break;
         }
         //发送
@@ -1278,6 +1337,8 @@ static void forward_data_local(ops_bridge* bridge, ops_packet* packet, int size)
     bridge_send(b, ops_packet_forward_data_local, packet->service_id, packet->stream_id, packet->data, size);
 }
 #endif
+//----------------------------------------------------------------------------------------------------------------------vpc
+
 //----------------------------------------------------------------------------------------------------------------------bridge
 //向客户发送数据
 static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
@@ -1355,6 +1416,26 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     //下发主机服务
     bridge_send(bridge, ops_packet_host, 0, 0, pack, sdslen(pack));
     sdsfree(pack);
+    //查询相关的vpc节点
+    pack = sdsnewlen(NULL, 4);//预留数量
+    count = 0;
+    ops_members* mc = NULL;
+    RB_FOREACH(mc, _ops_members_tree, &bridge->global->members) {
+        if (mc->bid == bridge->id) {
+            ops_member mem;
+            mem.id = htonl(mc->id);
+            mem.vid = htons(mc->vpc->id);
+            memcpy(mem.ipv4, mc->ipv4, sizeof(mem.ipv4));
+            memcpy(mem.ipv6, mc->ipv6, sizeof(mem.ipv6));
+            memcpy(&buf, &mem, sizeof(mem));
+            pack = sdscatlen(pack, buf, sizeof(mem));
+            count++;
+        }
+    }
+    *(uint32_t*)pack = htonl(count);
+    //下发主机服务
+    bridge_send(bridge, ops_packet_vpc, 0, 0, pack, sdslen(pack));
+    sdsfree(pack);
 
     //更新统计
     bridge->global->stat.bridge_online++;
@@ -1427,6 +1508,10 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         host_data(bridge, packet, size);
         break;
     }
+    case ops_packet_vpc_data: {
+
+        break;
+    }
     default:
         break;
     }
@@ -1436,8 +1521,22 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
 //关闭
 static void bridge_close_cb(uv_handle_t* handle) {
     ops_bridge* bridge = (ops_bridge*)handle->data;
+    //通知对端服务
+    ops_forward* fc = NULL;
+    RB_FOREACH(fc, _ops_forward_tree, &bridge->global->forward) {
+        //来源
+        if (fc->src_id == bridge->id) {
 
+        }
+        //出口
+        if (fc->dst_id == bridge->id) {
 
+        }
+    }
+    //从句柄树中移除
+    RB_REMOVE(_ops_bridge_tree, &bridge->global->bridge, bridge);
+    bridge->global->stat.bridge_online--;
+    //回收资源
     databuffer_clear(&bridge->m_buffer, &bridge->global->m_mp);
     free(bridge);
 }
@@ -1467,12 +1566,6 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
                 //分配内存失败,直接强制关闭
                 uv_close(tcp, bridge_close_cb);
             }
-        }
-        //从句柄树中移除
-        if (bridge->id) {
-            RB_REMOVE(_ops_bridge_tree, &bridge->global->bridge, bridge);
-            bridge->id = 0;
-            bridge->global->stat.bridge_online--;
         }
         return;
     }
@@ -1535,7 +1628,7 @@ static void on_data_key_del(ops_global* global, const char* k) {
     global->stat.bridge_count--;
 }
 //通道发生改变
-static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* dst, uint16_t dst_port) {
+static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* bind, const char* dst, uint16_t dst_port) {
     ops_forward* forward = malloc(sizeof(*forward));
     if (forward == NULL)
         return;
@@ -1571,7 +1664,7 @@ static void on_data_forward_del(ops_global* global, uint32_t id) {
     free(forward);
 }
 //
-static void on_data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* dst, uint16_t dst_port, const char* host_rewrite) {
+static void on_data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite) {
     ops_host* host = malloc(sizeof(*host));
     if (host == NULL)
         return;
@@ -1610,7 +1703,17 @@ static void on_data_host_del(ops_global* global, const char* h) {
     RB_REMOVE(_ops_host_tree, &global->host, host);
     free(host);
 }
-struct data_settings data_settings = { on_data_key_add, on_data_key_del, on_data_forward_add, on_data_forward_del, on_data_host_add ,on_data_host_del };
+//
+static void on_data_vpc_add(ops_global* global, uint16_t id, const char* ipv4, const char* ipv6) {
+    ops_vpc* vpc = malloc(sizeof(*vpc));
+    if (vpc == NULL)
+        return;
+    memset(vpc, 0, sizeof(*vpc));
+    vpc->id = id;
+    
+    RB_INSERT(_ops_vpc_tree, &global->vpc, vpc);
+}
+struct data_settings data_settings = { on_data_key_add, on_data_key_del, on_data_forward_add, on_data_forward_del, on_data_host_add ,on_data_host_del, on_data_vpc_add };
 //----------------------------------------------------------------------------------------------------------------------
 //全局初始化
 static int init_global(ops_global* global) {

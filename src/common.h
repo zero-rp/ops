@@ -20,9 +20,9 @@ enum ops_packet_type
     ops_packet_host,                        //域名转发
     ops_packet_host_ctl,                    //域名转发控制包
     ops_packet_host_data,
-    ops_packet_lan,                         //局域网服务
-    ops_packet_lan_ctl,
-    ops_packet_lan_data,
+    ops_packet_vpc,                         //局域网服务
+    ops_packet_vpc_ctl,
+    ops_packet_vpc_data,
 };
 //包定义
 typedef struct _ops_packet {
@@ -42,6 +42,7 @@ typedef struct _ops_forward_src {
 typedef struct _ops_forward_dst {
     uint32_t sid;                            //服务编号
     uint8_t type;                            //服务类型,1 TCP, 2 UDP
+    char bind[256];                          //绑定的本地地址
     uint16_t port;                           //转发的目标端口
     char dst[256];                           //转发的目标地址
 }ops_forward_dst;
@@ -49,10 +50,18 @@ typedef struct _ops_forward_dst {
 typedef struct _ops_host_dst {
     uint32_t sid;                            //服务编号
     uint8_t type;                            //服务类型,1 HTTP, 2 HTTPS
+    char bind[256];                          //绑定的本地地址
     uint16_t port;                           //转发的目标端口
     char dst[256];                           //转发的目标地址
 }ops_host_dst;
-//LAN服务
+//网络成员
+typedef struct _ops_member {
+    uint16_t vid;                           //VPC编号
+    uint32_t id;                            //成员编号
+    uint8_t ipv4[4];                        //ipv4地址
+    uint8_t ipv6[16];                       //ipv6地址
+}ops_member;
+
 
 
 #endif
