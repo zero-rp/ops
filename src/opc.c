@@ -624,8 +624,8 @@ static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size);
 //ip数据过滤
 
 #ifdef _WIN32
-#include <wintun.h>
 #include <iphlpapi.h>
+#include "wintun.h"
 
 static WINTUN_CREATE_ADAPTER_FUNC* WintunCreateAdapter;
 static WINTUN_CLOSE_ADAPTER_FUNC* WintunCloseAdapter;

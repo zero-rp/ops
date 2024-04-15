@@ -13,7 +13,9 @@ find_package(Threads)
 
 #添加代码目录
 ADD_SUBDIRECTORY(third_party)
-
+if(CMAKE_SYSTEM_NAME MATCHES "Windows")
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+endif()
 #生成
 add_executable(ops
     src/ops.c
