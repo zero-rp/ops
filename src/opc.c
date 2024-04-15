@@ -674,9 +674,11 @@ typedef struct _win_tun {
     HANDLE QuitEvent;               //退出事件
     int HaveQuit;
     uv_async_t async;               //同步对象
-    QUEUE wq;                    //队列
-    int write;
+    QUEUE wq;                       //队列
+    int write;                      //锁
     int read;
+    uint8_t ipv4[4];                        //ipv4地址
+    uint8_t ipv6[16];                       //ipv6地址
     opc_vpc* vpc;
 }win_tun;
 
@@ -748,10 +750,23 @@ static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
         if (Packet) {
             //过滤
             uint8_t ip_version = Packet[0] >> 4;
-            if (PacketSize < 20 || (ip_version == 6 && PacketSize < 40) || (ip_version != 4 && ip_version != 6)) {
-                WintunReleaseReceivePacket(tun->Session, Packet);
-                continue;
+            if (PacketSize < 20){
+                goto end;
             }
+            if (ip_version == 4) {
+                //目标为非自身网段和自身IP和广播IP不转发
+                if ((Packet[16] != tun->ipv4[0] || Packet[17] != tun->ipv4[1]) || (*(uint32_t*)(&tun->ipv4) == *(uint32_t*)(&Packet[16])) || Packet[19] == 0xff) {
+                    goto end;
+                }
+            }
+            else if (ip_version == 6 && PacketSize >= 40) {
+            
+            }
+            else {
+                goto end;
+            }
+            //发给自己的
+            
             //写入
             win_tun_packet* packet = malloc(sizeof(win_tun_packet) + PacketSize);
             if (packet) {
@@ -763,6 +778,7 @@ static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
                 rwlock_wunlock(tun);
                 uv_async_send(&tun->async);
             }
+            end:
             WintunReleaseReceivePacket(tun->Session, Packet);
         }
         else {
@@ -836,6 +852,7 @@ static win_tun* new_tun(opc_vpc* vpc) {
         free(tun);
         return NULL;
     }
+    memcpy(tun->ipv4, vpc->ipv4, sizeof(tun->ipv4));
     //设置IPv6
     memset(&AddressRow, 0, sizeof(AddressRow));
     InitializeUnicastIpAddressEntry(&AddressRow);
@@ -850,6 +867,7 @@ static win_tun* new_tun(opc_vpc* vpc) {
         free(tun);
         return NULL;
     }
+    memcpy(tun->ipv6, vpc->ipv6, sizeof(tun->ipv6));
     //创建同步对象
     tun->async.data = tun;
     uv_async_init(loop, &tun->async, win_tun_async_cb);
@@ -876,8 +894,6 @@ static void send_tun(opc_vpc* vpc, const char* data, int size) {
 
 //收到接口数据包
 static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size) {
-    //过滤
-
     //发送数据
     bridge_send(vpc->bridge, ops_packet_vpc_data, vpc->vid, vpc->id, packet, size);
 }
@@ -914,7 +930,7 @@ static void vpc_data(opc_bridge* bridge, ops_packet* packet, int size) {
     opc_vpc the = {
         .id = packet->stream_id
     };
-    opc_vpc* vpc = RB_FIND(_opc_vpc, &bridge->vpc, &the);
+    opc_vpc* vpc = RB_FIND(_opc_vpc_tree, &bridge->vpc, &the);
     if (!vpc) {
         return;
     }
