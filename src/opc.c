@@ -68,9 +68,12 @@ RB_HEAD(_opc_host_tree, _opc_host);
 //VPC
 typedef struct _opc_vpc {
     RB_ENTRY(_opc_vpc) entry;    //
-    uint32_t id;
-    uint16_t vid;
-    void* data; //协议数据
+    uint32_t id;                            //成员id
+    uint16_t vid;                           //
+    uint8_t ipv4[4];                        //ipv4地址
+    uint8_t ipv6[16];                       //ipv6地址
+    void* data;                 //接口数据
+    struct _opc_bridge* bridge;
 }opc_vpc;
 RB_HEAD(_opc_vpc_tree, _opc_vpc);
 //
@@ -614,6 +617,9 @@ static void host_data(opc_bridge* bridge, ops_packet* packet, int size) {
     uv_write(req, &tunnel->tcp, &buf, 1, write_cb);
 }
 //--------------------------------------------------------------------------------------------------------vpc
+static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size);
+//ip数据过滤
+
 #ifdef _WIN32
 #include <wintun.h>
 #include <iphlpapi.h>
@@ -653,53 +659,86 @@ static HMODULE InitializeWintun(void) {
     return Wintun;
 }
 
+typedef void* QUEUE[2];
+
+typedef struct _win_tun_packet {
+    QUEUE wq;                    //队列
+    int size;
+    uint8_t data[0];
+}win_tun_packet;
+
 typedef struct _win_tun {
-    HMODULE mod;
+    HMODULE mod;                    //动态库
     WINTUN_ADAPTER_HANDLE Adapter;  //网卡
     WINTUN_SESSION_HANDLE Session;  //会话
-    HANDLE QuitEvent;
+    HANDLE QuitEvent;               //退出事件
     int HaveQuit;
+    uv_async_t async;               //同步对象
+    QUEUE wq;                    //队列
+    int write;
+    int read;
+    opc_vpc* vpc;
 }win_tun;
-static void
-PrintPacket(_In_ const BYTE* Packet, _In_ DWORD PacketSize)
-{
-    if (PacketSize < 20) {
-        return;
+
+static inline void rwlock_rlock(win_tun* lock) {
+    for (;;) {
+        while (lock->write) {
+            _mm_mfence();
+        }
+        InterlockedExchangeAdd(&lock->read, 1);
+        if (lock->write) {
+            InterlockedExchangeAdd(&lock->read, -1);
+        }
+        else {
+            break;
+        }
     }
-    BYTE IpVersion = Packet[0] >> 4, Proto;
-    CHAR Src[46], Dst[46];
-    if (IpVersion == 4) {
-        struct sockaddr src = { 0 };
-        src.sa_family = AF_INET;
-        memcpy(&(((struct sockaddr_in *)(&src))->sin_addr), &Packet[12], sizeof(struct in_addr*));
-        uv_ip_name(&src, Src, 46);
-        memcpy(&(((struct sockaddr_in*)(&src))->sin_addr), &Packet[16], sizeof(struct in_addr*));
-        uv_ip_name(&src, Dst, 46);
-        Proto = Packet[9];
-        Packet += 20, PacketSize -= 20;
-    }
-    else if (IpVersion == 6 && PacketSize < 40) {
-        return;
-    }
-    else if (IpVersion == 6) {
-        struct sockaddr src = { 0 };
-        src.sa_family = AF_INET6;
-        memcpy(&(((struct sockaddr_in6*)(&src))->sin6_addr), &Packet[8], sizeof(struct in6_addr*));
-        uv_ip_name(&src, Src, 46);
-        memcpy(&(((struct sockaddr_in6*)(&src))->sin6_addr), &Packet[24], sizeof(struct in6_addr*));
-        uv_ip_name(&src, Dst, 46);
-        Proto = Packet[6];
-        Packet += 40, PacketSize -= 40;
-    }
-    else
-    {
-        return;
-    }
-    if (Proto == 1 && PacketSize >= 8 && Packet[0] == 0)
-        printf("Received IPv%d ICMP echo reply from %s to %s\r\n", IpVersion, Src, Dst);
-    else
-        printf("Received IPv%d proto 0x%x packet from %s to %s\r\n", IpVersion, Proto, Src, Dst);
 }
+static inline void rwlock_wlock(win_tun* lock) {
+    while (InterlockedExchange(&lock->write, 1)) {}
+    while (lock->read) {
+        _mm_mfence();
+    }
+}
+static inline void rwlock_wunlock(win_tun* lock) {
+    InterlockedExchange(&lock->write, 0);
+}
+static inline void rwlock_runlock(win_tun* lock) {
+    InterlockedExchangeAdd(&lock->read, -1);
+}
+
+#define QUEUE_NEXT(q)       (*(QUEUE **) &((*(q))[0]))
+#define QUEUE_PREV(q)       (*(QUEUE **) &((*(q))[1]))
+#define QUEUE_PREV_NEXT(q)  (QUEUE_NEXT(QUEUE_PREV(q)))
+#define QUEUE_NEXT_PREV(q)  (QUEUE_PREV(QUEUE_NEXT(q)))
+
+#define QUEUE_INSERT_TAIL(h, q)                                               \
+  do {                                                                        \
+    QUEUE_NEXT(q) = (h);                                                      \
+    QUEUE_PREV(q) = QUEUE_PREV(h);                                            \
+    QUEUE_PREV_NEXT(q) = (q);                                                 \
+    QUEUE_PREV(h) = (q);                                                      \
+  }                                                                           \
+  while (0)
+#define QUEUE_EMPTY(q)                                                        \
+  ((const QUEUE *) (q) == (const QUEUE *) QUEUE_NEXT(q))
+#define QUEUE_HEAD(q)                                                         \
+  (QUEUE_NEXT(q))
+#define QUEUE_REMOVE(q)                                                       \
+  do {                                                                        \
+    QUEUE_PREV_NEXT(q) = QUEUE_NEXT(q);                                       \
+    QUEUE_NEXT_PREV(q) = QUEUE_PREV(q);                                       \
+  }                                                                           \
+  while (0)
+#define QUEUE_DATA(ptr, type, field)                                          \
+  ((type *) ((char *) (ptr) - offsetof(type, field)))
+#define QUEUE_INIT(q)                                                         \
+  do {                                                                        \
+    QUEUE_NEXT(q) = (q);                                                      \
+    QUEUE_PREV(q) = (q);                                                      \
+  }                                                                           \
+  while (0)
+//接口数据
 static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
     win_tun* tun = (win_tun*)Ptr;
     HANDLE WaitHandles[] = { WintunGetReadWaitEvent(tun->Session), tun->QuitEvent };
@@ -707,7 +746,23 @@ static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
         DWORD PacketSize;
         BYTE* Packet = WintunReceivePacket(tun->Session, &PacketSize);
         if (Packet) {
-            PrintPacket(Packet, PacketSize);
+            //过滤
+            uint8_t ip_version = Packet[0] >> 4;
+            if (PacketSize < 20 || (ip_version == 6 && PacketSize < 40) || (ip_version != 4 && ip_version != 6)) {
+                WintunReleaseReceivePacket(tun->Session, Packet);
+                continue;
+            }
+            //写入
+            win_tun_packet* packet = malloc(sizeof(win_tun_packet) + PacketSize);
+            if (packet) {
+                memset(packet, 0, sizeof(*packet));
+                packet->size = PacketSize;
+                memcpy(&packet->data, Packet, PacketSize);
+                rwlock_wlock(tun);
+                QUEUE_INSERT_TAIL(&tun->wq, &packet->wq);
+                rwlock_wunlock(tun);
+                uv_async_send(&tun->async);
+            }
             WintunReleaseReceivePacket(tun->Session, Packet);
         }
         else {
@@ -726,13 +781,30 @@ static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
     return ERROR_SUCCESS;
 }
 
+static void win_tun_async_cb(uv_async_t* handle) {
+    win_tun* tun = (win_tun*)handle->data;
+    while (1) {
+        rwlock_rlock(tun);
+        if (QUEUE_EMPTY(&tun->wq)) {
+            rwlock_runlock(tun);
+            break;
+        }
+        QUEUE* wq = QUEUE_HEAD(&tun->wq);
+        QUEUE_REMOVE(wq);
+        rwlock_runlock(tun);
+        win_tun_packet* packet = QUEUE_DATA(wq, win_tun_packet, wq);
+        vpc_on_packet(tun->vpc, packet->data, packet->size);
+        free(packet);
+    }
+}
 //创建
-static win_tun*  new_win_tun() {
+static win_tun* new_tun(opc_vpc* vpc) {
     win_tun* tun = malloc(sizeof(*tun));
     if (!tun) {
         return NULL;
     }
     memset(tun, 0, sizeof(*tun));
+    tun->vpc = vpc;
     //加载模块
     tun->mod = InitializeWintun();
     if (!tun->mod) {
@@ -740,19 +812,21 @@ static win_tun*  new_win_tun() {
         return NULL;
     }
     //创建网卡
-    GUID ExampleGuid = { 0xdeadbabe, 0xcafe, 0xbeef, { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef } };
-    tun->Adapter = WintunCreateAdapter(L"opc", L"opc", &ExampleGuid);
+    GUID Guid = { vpc->id, 0xcafe, 0xbeef, { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef } };
+    wchar_t name[256] = { 0 };
+    _snwprintf(name, sizeof(name), L"opc %d", vpc->id);
+    tun->Adapter = WintunCreateAdapter(name, L"opc", &Guid);
     if (!tun->Adapter) {
         FreeLibrary(tun->mod);
         free(tun);
         return NULL;
     }
-    //设置IP
+    //设置IPv4
     MIB_UNICASTIPADDRESS_ROW AddressRow;
     InitializeUnicastIpAddressEntry(&AddressRow);
     WintunGetAdapterLUID(tun->Adapter, &AddressRow.InterfaceLuid);
     AddressRow.Address.Ipv4.sin_family = AF_INET;
-    AddressRow.Address.Ipv4.sin_addr.S_un.S_addr = htonl((10 << 24) | (6 << 16) | (7 << 8) | (7 << 0)); /* 10.6.7.7 */
+    memcpy(&AddressRow.Address.Ipv4.sin_addr.S_un.S_addr, &vpc->ipv4, sizeof(AddressRow.Address.Ipv4.sin_addr.S_un.S_addr));
     AddressRow.OnLinkPrefixLength = 24; /* This is a /24 network */
     AddressRow.DadState = IpDadStatePreferred;
     int LastError = CreateUnicastIpAddressEntry(&AddressRow);
@@ -762,6 +836,24 @@ static win_tun*  new_win_tun() {
         free(tun);
         return NULL;
     }
+    //设置IPv6
+    memset(&AddressRow, 0, sizeof(AddressRow));
+    InitializeUnicastIpAddressEntry(&AddressRow);
+    WintunGetAdapterLUID(tun->Adapter, &AddressRow.InterfaceLuid);
+    AddressRow.Address.Ipv6.sin6_family = AF_INET6;
+    memcpy(&AddressRow.Address.Ipv6.sin6_addr.u.Byte, &vpc->ipv6, sizeof(AddressRow.Address.Ipv6.sin6_addr.u.Byte));
+    AddressRow.DadState = IpDadStatePreferred;
+    LastError = CreateUnicastIpAddressEntry(&AddressRow);
+    if (LastError != ERROR_SUCCESS && LastError != ERROR_OBJECT_ALREADY_EXISTS) {
+        WintunCloseAdapter(tun->Adapter);
+        FreeLibrary(tun->mod);
+        free(tun);
+        return NULL;
+    }
+    //创建同步对象
+    tun->async.data = tun;
+    uv_async_init(loop, &tun->async, win_tun_async_cb);
+    QUEUE_INIT(&tun->wq);
     //启动会话
     tun->Session = WintunStartSession(tun->Adapter, 0x400000);
     tun->QuitEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
@@ -769,21 +861,27 @@ static win_tun*  new_win_tun() {
     CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceivePackets, (LPVOID)tun, 0, NULL);
     return tun;
 }
-
+//往接口发送数据
+static void send_tun(opc_vpc* vpc, const char* data, int size) {
+    win_tun* tun = vpc->data;
+    BYTE* Packet = WintunAllocateSendPacket(tun->Session, size);
+    if (Packet) {
+        memcpy(Packet, data, size);
+        WintunSendPacket(tun->Session, Packet);
+    }
+}
 #else
 
 #endif
 
 //收到接口数据包
-static lan_on_packet(uint8_t *packet, int size) {
+static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size) {
+    //过滤
 
+    //发送数据
+    bridge_send(vpc->bridge, ops_packet_vpc_data, vpc->vid, vpc->id, packet, size);
 }
-//创建一个lan接口
-static lan_new() {
-    
-    new_win_tun();
 
-}
 
 static void vpc(opc_bridge* bridge, ops_packet* packet) {
     int count = ntohl(*(uint32_t*)&packet->data[0]);
@@ -795,15 +893,32 @@ static void vpc(opc_bridge* bridge, ops_packet* packet) {
         mem.id = ntohl(mem.id);
         mem.vid = ntohs(mem.vid);
 
-        opc_vpc* d = (opc_vpc*)malloc(sizeof(*d));
-        memset(d, 0, sizeof(*d));
-        d->id = mem.id;
-        d->vid = mem.vid;
-        
-
-        RB_INSERT(_opc_vpc_tree, &bridge->vpc, d);
+        opc_vpc* vpc = (opc_vpc*)malloc(sizeof(*vpc));
+        if (!vpc) {
+            continue;
+        }
+        memset(vpc, 0, sizeof(*vpc));
+        vpc->bridge = bridge;
+        vpc->id = mem.id;
+        vpc->vid = mem.vid;
+        memcpy(&vpc->ipv4, &mem.ipv4, sizeof(vpc->ipv4));
+        memcpy(&vpc->ipv6, &mem.ipv6, sizeof(vpc->ipv6));
+        //创建接口
+        vpc->data = new_tun(vpc);
+        //记录
+        RB_INSERT(_opc_vpc_tree, &bridge->vpc, vpc);
     }
 
+}
+static void vpc_data(opc_bridge* bridge, ops_packet* packet, int size) {
+    opc_vpc the = {
+        .id = packet->stream_id
+    };
+    opc_vpc* vpc = RB_FIND(_opc_vpc, &bridge->vpc, &the);
+    if (!vpc) {
+        return;
+    }
+    send_tun(vpc, packet->data, size);
 }
 //--------------------------------------------------------------------------------------------------------bridge
 //成功连接上服务器
@@ -870,6 +985,10 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     }
     case ops_packet_vpc: {
         vpc(bridge, packet);
+        break;
+    }
+    case ops_packet_vpc_data: {
+        vpc_data(bridge, packet, size);
         break;
     }
     default:
@@ -1058,7 +1177,6 @@ int main(int argc, char* argv[]) {
     if (global == NULL)
         return 0;
     memset(global, 0, sizeof(*global));
-    vpc(NULL, NULL);
     //加载参数
     load_config(global, argc, argv);
     //初始化

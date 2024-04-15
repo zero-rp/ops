@@ -58,7 +58,20 @@ typedef struct _ops_members {
 }ops_members;
 RB_HEAD(_ops_members_tree, _ops_members);
 //VPC路由
-
+typedef struct _ops_route_v4 {
+    RB_ENTRY(_ops_route_v4) entry;              //
+    uint16_t id;                                //客户ID
+    uint32_t mid;                               //成员ID
+    uint8_t ip[4];                              //地址
+}ops_route_v4;
+RB_HEAD(_ops_route_v4_tree, _ops_route_v4);
+typedef struct _ops_route_v6 {
+    RB_ENTRY(_ops_route_v6) entry;              //
+    uint16_t id;                                //客户ID
+    uint32_t mid;                               //成员ID
+    uint8_t ip[16];                             //地址
+}ops_route_v6;
+RB_HEAD(_ops_route_v6_tree, _ops_route_v6);
 //客户端
 typedef struct _ops_bridge {
     RB_ENTRY(_ops_bridge) entry;        //
@@ -175,13 +188,15 @@ typedef struct _ops_global {
     }listen;
     struct messagepool m_mp;                //接收缓冲
     ops_config config;
-    struct _ops_key_tree key;           //授权数据
-    struct _ops_forward_tree forward;     //转发器
-    struct _ops_host_tree host;           //域名
-    struct _ops_vpc_tree vpc;         //成员
-    struct _ops_members_tree members;         //成员
-    struct _ops_bridge_tree bridge;       //客户端
-    struct _ops_http_request_tree request;     //
+    struct _ops_key_tree key;               //授权数据
+    struct _ops_forward_tree forward;       //转发器
+    struct _ops_host_tree host;             //域名
+    struct _ops_vpc_tree vpc;               //虚拟网络
+    struct _ops_members_tree members;       //虚拟网络成员
+    struct _ops_route_v4_tree route_v4;     //IPv4路由表
+    struct _ops_route_v6_tree route_v6;     //IPv6路由表
+    struct _ops_bridge_tree bridge;         //客户端
+    struct _ops_http_request_tree request;  //
     uint32_t request_id;                    //
     struct {
         uint32_t bridge_count;              //客户端数量
@@ -230,6 +245,24 @@ static int _ops_members_compare(ops_members* w1, ops_members* w2) {
     return 0;
 }
 RB_GENERATE_STATIC(_ops_members_tree, _ops_members, entry, _ops_members_compare)
+static int _ops_route_v4_compare(ops_route_v4* w1, ops_route_v4* w2) {
+    if (*(uint32_t*)(&w1->ip) < *(uint32_t*)(&w2->ip)) return -1;
+    if (*(uint32_t*)(&w1->ip) > *(uint32_t*)(&w2->ip)) return 1;
+    return 0;
+}
+RB_GENERATE_STATIC(_ops_route_v4_tree, _ops_route_v4, entry, _ops_route_v4_compare)
+static int _ops_route_v6_compare(ops_route_v6* w1, ops_route_v6* w2) {
+    if (*(uint32_t*)(&w1->ip[0]) < *(uint32_t*)(&w2->ip[0])) return -1;
+    if (*(uint32_t*)(&w1->ip[0]) > *(uint32_t*)(&w2->ip[0])) return 1;
+    if (*(uint32_t*)(&w1->ip[4]) < *(uint32_t*)(&w2->ip[4])) return -1;
+    if (*(uint32_t*)(&w1->ip[4]) > *(uint32_t*)(&w2->ip[4])) return 1;
+    if (*(uint32_t*)(&w1->ip[8]) < *(uint32_t*)(&w2->ip[8])) return -1;
+    if (*(uint32_t*)(&w1->ip[8]) > *(uint32_t*)(&w2->ip[8])) return 1;
+    if (*(uint32_t*)(&w1->ip[12]) < *(uint32_t*)(&w2->ip[12])) return -1;
+    if (*(uint32_t*)(&w1->ip[12]) > *(uint32_t*)(&w2->ip[12])) return 1;
+    return 0;
+}
+RB_GENERATE_STATIC(_ops_route_v6_tree, _ops_route_v6, entry, _ops_route_v6_compare)
 static int _ops_bridge_compare(ops_bridge* w1, ops_bridge* w2) {
     if (w1->id < w2->id) return -1;
     if (w1->id > w2->id) return 1;
@@ -700,7 +733,7 @@ static void web_on_request(ops_web* web, cJSON* body) {
 
         goto ok;
     }
-    //添加主机
+    //添加虚拟网络
     else if (strcmp(url, "vpc_add") == 0) {
         cJSON* ipv4 = cJSON_GetObjectItem(body, "ipv4");
         if (!ipv4 || !ipv4->valuestring)
@@ -714,7 +747,36 @@ static void web_on_request(ops_web* web, cJSON* body) {
         else {
             return web_respose_json(web, -1, "add error", data);
         }
+    }
+    //成员列表
+    else if (strcmp(url, "member") == 0) {
+        cJSON* list = data_member_get();
+        cJSON_AddItemToObject(data, "list", list);
+
+        goto ok;
+    }
+    //添加成员
+    else if (strcmp(url, "member_add") == 0) {
+        cJSON* bid = cJSON_GetObjectItem(body, "bid");
+        if (!bid || bid->valueint < 1)
+            goto err_data;
+        cJSON* vid = cJSON_GetObjectItem(body, "vid");
+        if (!vid || vid->valueint < 1)
+            goto err_data;
+        cJSON* ipv4 = cJSON_GetObjectItem(body, "ipv4");
+        if (!ipv4 || !ipv4->valuestring)
+            goto err_data;
+        cJSON* ipv6 = cJSON_GetObjectItem(body, "ipv6");
+        cJSON* info = cJSON_GetObjectItem(body, "info");
+
+        if (data_member_add(bid->valueint, vid->valueint, ipv4->valuestring, ipv6 ? ipv6->valuestring : "", info ? info->valuestring : "") == 0) {
+            goto ok;
         }
+        else {
+            return web_respose_json(web, -1, "add error", data);
+        }
+    }
+
 ok:
     return web_respose_json(web, 0, "ok", data);
 err_data:
@@ -1338,7 +1400,46 @@ static void forward_data_local(ops_bridge* bridge, ops_packet* packet, int size)
 }
 #endif
 //----------------------------------------------------------------------------------------------------------------------vpc
-
+static void vpc_data(ops_bridge* bridge, ops_packet* packet, int size) {
+    uint8_t* data = packet->data;
+    uint8_t ip_version = packet->data[0] >> 4;
+    ops_bridge the = { 0 };
+    uint32_t mid = 0;
+    switch (ip_version)
+    {
+    case 4: {
+        ops_route_v4 v4 = { 0 };
+        memcpy(&v4.ip, &data[16], sizeof(v4.ip));
+        ops_route_v4* r = RB_FIND(_ops_route_v4_tree, &bridge->global->route_v4, &v4);
+        if (!r) {
+            return;
+        }
+        the.id = r->id;
+        mid = r->mid;
+        break;
+    }
+    case 6: {
+        ops_route_v6 v6 = { 0 };
+        memcpy(&v6.ip, &data[24], sizeof(v6.ip));
+        ops_route_v6* r = RB_FIND(_ops_route_v6_tree, &bridge->global->route_v6, &v6);
+        if (!r) {
+            return;
+        }
+        the.id = r->id;
+        mid = r->mid;
+        break;
+    }
+    default:
+        return;
+    }
+    //查找客户端
+    ops_bridge* b = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &the);
+    if (!b) {
+        return;
+    }
+    //转发
+    bridge_send(b, ops_packet_vpc_data, packet->service_id, mid, packet->data, size);
+}
 //----------------------------------------------------------------------------------------------------------------------bridge
 //向客户发送数据
 static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
@@ -1394,7 +1495,9 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     }
     *(uint32_t*)pack = htonl(count);
     //下发转发服务
-    bridge_send(bridge, ops_packet_forward, 0, 0, pack, sdslen(pack));
+    if (count > 0) {
+        bridge_send(bridge, ops_packet_forward, 0, 0, pack, sdslen(pack));
+    }
     sdsfree(pack);
     //查询主机服务
     pack = sdsnewlen(NULL, 4);//预留数量
@@ -1414,7 +1517,9 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     }
     *(uint32_t*)pack = htonl(count);
     //下发主机服务
-    bridge_send(bridge, ops_packet_host, 0, 0, pack, sdslen(pack));
+    if (count > 0) {
+        bridge_send(bridge, ops_packet_host, 0, 0, pack, sdslen(pack));
+    }
     sdsfree(pack);
     //查询相关的vpc节点
     pack = sdsnewlen(NULL, 4);//预留数量
@@ -1434,7 +1539,9 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     }
     *(uint32_t*)pack = htonl(count);
     //下发主机服务
-    bridge_send(bridge, ops_packet_vpc, 0, 0, pack, sdslen(pack));
+    if (count > 0) {
+        bridge_send(bridge, ops_packet_vpc, 0, 0, pack, sdslen(pack));
+    }
     sdsfree(pack);
 
     //更新统计
@@ -1509,14 +1616,12 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         break;
     }
     case ops_packet_vpc_data: {
-
+        vpc_data(bridge, packet, size);
         break;
     }
     default:
         break;
     }
-
-
 }
 //关闭
 static void bridge_close_cb(uv_handle_t* handle) {
@@ -1710,10 +1815,61 @@ static void on_data_vpc_add(ops_global* global, uint16_t id, const char* ipv4, c
         return;
     memset(vpc, 0, sizeof(*vpc));
     vpc->id = id;
-    
+    struct sockaddr_in addr;
+    uv_ip4_addr(ipv4, 0, &addr);
+    memcpy(&vpc->ipv4, &addr.sin_addr, sizeof(vpc->ipv4));
+    struct sockaddr_in6 addr6;
+    uv_ip6_addr(ipv6, 0, &addr6);
+    memcpy(&vpc->ipv6, &addr6.sin6_addr, sizeof(vpc->ipv6));
     RB_INSERT(_ops_vpc_tree, &global->vpc, vpc);
 }
-struct data_settings data_settings = { on_data_key_add, on_data_key_del, on_data_forward_add, on_data_forward_del, on_data_host_add ,on_data_host_del, on_data_vpc_add };
+//
+static void on_data_member_add(ops_global* global, uint32_t id, uint16_t bid, uint16_t vid, const char* ipv4, const char* ipv6) {
+    //查找vpc
+    ops_vpc the = {
+        .id = vid
+    };
+    ops_vpc* v = RB_FIND(_ops_vpc_tree, &global->vpc, &the);
+    if (!v) {
+        //没有对应的vpc
+        return;
+    }
+    //
+    ops_members* mem = malloc(sizeof(*mem));
+    if (mem == NULL)
+        return;
+    memset(mem, 0, sizeof(*mem));
+    mem->id = id;
+    mem->bid = bid;
+    mem->vpc = v;
+    struct sockaddr_in addr;
+    uv_ip4_addr(ipv4, 0, &addr);
+    memcpy(&mem->ipv4, &addr.sin_addr, sizeof(mem->ipv4));
+    struct sockaddr_in6 addr6;
+    uv_ip6_addr(ipv6, 0, &addr6);
+    memcpy(&mem->ipv6, &addr6.sin6_addr, sizeof(mem->ipv6));
+    RB_INSERT(_ops_members_tree, &global->members, mem);
+    //生成路由
+    ops_route_v4* v4 = (ops_route_v4*)malloc(sizeof(*v4));
+    if (!v4) {
+        return;
+    }
+    memset(v4, 0, sizeof(*v4));
+    v4->id = bid;
+    v4->mid = id;
+    memcpy(&v4->ip, &addr.sin_addr, sizeof(v4->ip));
+    RB_INSERT(_ops_route_v4_tree, &global->route_v4, v4);
+    ops_route_v4* v6 = (ops_route_v6*)malloc(sizeof(*v6));
+    if (!v6) {
+        return;
+    }
+    memset(v6, 0, sizeof(*v6));
+    v6->id = bid;
+    v6->mid = id;
+    memcpy(&v6->ip, &addr6.sin6_addr, sizeof(v6->ip));
+    RB_INSERT(_ops_route_v6_tree, &global->route_v6, v6);
+}
+struct data_settings data_settings = { on_data_key_add, on_data_key_del, on_data_forward_add, on_data_forward_del, on_data_host_add ,on_data_host_del, on_data_vpc_add, on_data_member_add };
 //----------------------------------------------------------------------------------------------------------------------
 //全局初始化
 static int init_global(ops_global* global) {

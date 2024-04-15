@@ -45,7 +45,7 @@ int data_init(const char* file, void* ud, struct data_settings* set) {
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS vpc (id INTEGER PRIMARY KEY AUTOINCREMENT, ipv4 TEXT, ipv6 TEXT, info TEXT); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX vipv4 ON vpc (ipv4);", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX vipv6 ON vpc (ipv6);", NULL, 0, &zErrMsg);
-    sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS member (id INTEGER PRIMARY KEY AUTOINCREMENT, bid INTEGER NOT NULL, ipv4 TEXT, ipv6 TEXT, info TEXT); ", NULL, 0, &zErrMsg);
+    sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS member (id INTEGER PRIMARY KEY AUTOINCREMENT, bid INTEGER NOT NULL, vid INTEGER NOT NULL, ipv4 TEXT, ipv6 TEXT, info TEXT); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX mipv4 ON member (ipv4);", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX mipv6 ON member (ipv6);", NULL, 0, &zErrMsg);
 
@@ -244,6 +244,7 @@ cJSON* data_vpc_get() {
     sqlite3_exec(db, "SELECT * FROM vpc;", _get_json_callback, list, &zErrMsg);
     return list;
 }
+
 int data_vpc_add(const char* ipv4, const char* ipv6, const char* info) {
     char sql[1024] = { 0 };
     snprintf(sql, sizeof(sql), "INSERT INTO vpc (`ipv4`, `ipv6`, `info`)VALUES(\"%s\",\"%s\", \"%s\");",
@@ -255,6 +256,32 @@ int data_vpc_add(const char* ipv4, const char* ipv6, const char* info) {
         if (id > 0) {
             //触发回调
             settings->on_vpc_add(userdata, id, ipv4, ipv6);
+            return 0;
+        }
+    }
+    else {
+        return -1;
+    }
+}
+
+cJSON* data_member_get() {
+    char* zErrMsg = 0;
+    cJSON* list = cJSON_CreateArray();
+    sqlite3_exec(db, "SELECT * FROM member;", _get_json_callback, list, &zErrMsg);
+    return list;
+}
+
+int data_member_add(uint16_t bid, uint16_t vid, const char* ipv4, const char* ipv6, const char* info) {
+    char sql[1024] = { 0 };
+    snprintf(sql, sizeof(sql), "INSERT INTO member (`bid`,`vid`,`ipv4`, `ipv6`, `info`)VALUES(%d, %d, \"%s\",\"%s\", \"%s\");",
+        bid, vid, ipv4, ipv6, info ? info : "");
+    char* zErrMsg = 0;
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        //查询
+        uint32_t id = sqlite3_last_insert_rowid(db);
+        if (id > 0) {
+            //触发回调
+            settings->on_member_add(userdata, id, bid, vid, ipv4, ipv6);
             return 0;
         }
     }

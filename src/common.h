@@ -21,7 +21,6 @@ enum ops_packet_type
     ops_packet_host_ctl,                    //域名转发控制包
     ops_packet_host_data,
     ops_packet_vpc,                         //局域网服务
-    ops_packet_vpc_ctl,
     ops_packet_vpc_data,
 };
 //包定义

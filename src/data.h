@@ -46,4 +46,7 @@ int data_host_del(uint32_t id);
 cJSON* data_vpc_get();
 int data_vpc_add(const char* ipv4, const char* ipv6, const char* info);
 
+cJSON* data_member_get();
+int data_member_add(uint16_t bid, uint16_t vid, const char* ipv4, const char* ipv6, const char* info);
+
 #endif
