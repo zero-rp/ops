@@ -890,6 +890,57 @@ static void send_tun(opc_vpc* vpc, const char* data, int size) {
 }
 #else
 
+#include <linux/if_tun.h>
+#include <net/if.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+
+
+typedef struct _linux_tun {
+    int fd;
+    uint8_t ipv4[4];                        //ipv4地址
+    uint8_t ipv6[16];                       //ipv6地址
+    opc_vpc* vpc;
+}linux_tun;
+
+//创建
+static linux_tun* new_tun(opc_vpc* vpc) {
+    linux_tun* tun = malloc(sizeof(*tun));
+    if (!tun) {
+        return NULL;
+    }
+    memset(tun, 0, sizeof(*tun));
+    tun->vpc = vpc;
+
+    if ((tun->fd = open("/dev/net/tun", O_RDWR)) < 0)
+    {
+        return  NULL;
+    }
+
+
+    char dev[256]={0};
+    snprintf(dev, sizeof(dev), "opc%d", tun->vpc->id);
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strcpy(ifr.ifr_name, dev);
+   
+    // 获得网络接口的flag
+    ifr.ifr_flags |= IFF_TUN | IFF_NO_PI;
+ 
+    // 设置网络结构的参数
+    //  此时还没有设置IP地址
+    ioctl(tun->fd, TUNSETIFF, (void *)&ifr);
+
+    
+
+}
+
+//往接口发送数据
+static void send_tun(opc_vpc* vpc, const char* data, int size) {
+
+}
+
 #endif
 
 static uint16_t ip_checksum(uint8_t* buf, int len) {
@@ -1199,7 +1250,7 @@ static load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.server_ip = "127.0.0.1";
     global->config.server_port = 1664;
-
+global->config.auth_key ="fcb0bb072a6b3aaa5c295ea1e4b01807";
     //从命令行加载参数
     for (size_t i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {
