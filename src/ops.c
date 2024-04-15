@@ -495,7 +495,7 @@ void web_respose_file(ops_web* web, const char* file) {
     }
     req->data = web;
     char path[512] = { 0 };
-    snprintf(path, sizeof(path), "%s/%s", "D:/ops/web", file);
+    snprintf(path, sizeof(path), "%s/%s", "./web", file);
     if (uv_fs_open(loop, req, path, 0, 0, web_fs_cb) != 0) {
         web_respose_html(web, "404", 3);
     }

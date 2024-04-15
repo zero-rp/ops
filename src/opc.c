@@ -750,7 +750,7 @@ static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
         if (Packet) {
             //过滤
             uint8_t ip_version = Packet[0] >> 4;
-            if (PacketSize < 20){
+            if (PacketSize < 20) {
                 goto end;
             }
             if (ip_version == 4) {
@@ -760,13 +760,13 @@ static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
                 }
             }
             else if (ip_version == 6 && PacketSize >= 40) {
-            
+
             }
             else {
                 goto end;
             }
             //发给自己的
-            
+
             //写入
             win_tun_packet* packet = malloc(sizeof(win_tun_packet) + PacketSize);
             if (packet) {
@@ -778,7 +778,7 @@ static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
                 rwlock_wunlock(tun);
                 uv_async_send(&tun->async);
             }
-            end:
+        end:
             WintunReleaseReceivePacket(tun->Session, Packet);
         }
         else {
@@ -892,13 +892,22 @@ static void send_tun(opc_vpc* vpc, const char* data, int size) {
 
 #endif
 
+static uint16_t ip_checksum(uint8_t* buf, int len) {
+    uint32_t sum = 0;
+    for (; len > 1; len -= 2, buf += 2)
+        sum += *(uint16_t*)buf;
+    if (len)
+        sum += *buf;
+    sum = (sum >> 16) + (sum & 0xffff);
+    sum += (sum >> 16);
+    return (uint16_t)(~sum);
+}
+
 //收到接口数据包
 static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size) {
     //发送数据
     bridge_send(vpc->bridge, ops_packet_vpc_data, vpc->vid, vpc->id, packet, size);
 }
-
-
 static void vpc(opc_bridge* bridge, ops_packet* packet) {
     int count = ntohl(*(uint32_t*)&packet->data[0]);
     char* pos = &packet->data[4];
@@ -932,6 +941,35 @@ static void vpc_data(opc_bridge* bridge, ops_packet* packet, int size) {
     };
     opc_vpc* vpc = RB_FIND(_opc_vpc_tree, &bridge->vpc, &the);
     if (!vpc) {
+        return;
+    }
+    //处理icmp,ping命令
+    uint8_t* data = packet->data;
+    uint8_t ip_version = data[0] >> 4, proto;
+    if (ip_version == 4 && data[9] == 1 && data[20] == 8) {
+        //修改目标地址
+        uint8_t tmp[4];
+        memcpy(tmp, &data[12], 4);
+        memcpy(&data[12], &data[16], 4);
+        memcpy(&data[16], tmp, 4);
+        *(uint16_t*)&data[10] = 0;//清零
+        *(uint16_t*)&data[10] = ip_checksum(data, 20);
+        data[20] = 0;//ping 应答
+        *(uint16_t*)&data[22] = 0;//清零
+        *(uint16_t*)&data[22] = ip_checksum(&data[20], size - 20);
+        bridge_send(vpc->bridge, ops_packet_vpc_data, vpc->vid, vpc->id, data, size);
+        return;
+    }
+    else if (ip_version == 6 && data[6] == 1 && data[40] == 8) {
+        //修改目标地址
+        uint8_t tmp[16];
+        memcpy(tmp, &data[8], 16);
+        memcpy(&data[8], &data[24], 16);
+        memcpy(&data[24], tmp, 16);
+        data[40] = 0;//ping 应答
+        *(uint16_t*)&data[42] = 0;//清零
+        *(uint16_t*)&data[42] = ip_checksum(&data[40], size - 40);
+        bridge_send(vpc->bridge, ops_packet_vpc_data, vpc->vid, vpc->id, data, size);
         return;
     }
     send_tun(vpc, packet->data, size);
