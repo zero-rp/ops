@@ -81,12 +81,15 @@ typedef struct _opc_bridge {
     uv_tcp_t tcp;                                       //服务器通讯句柄
     struct _opc_global* global;
     struct databuffer m_buffer;                         //接收缓冲
+    uv_timer_t keep_timer;                              //心跳定时器
+    uint64_t keep_last;                                 //上次心跳
+    uint32_t keep_ping;                                 //延迟
     uint32_t forward_tunnel_id;                         //转发流ID分配
-    struct _opc_forward_tunnel_src_tree tunnel_src;
-    struct _opc_forward_tunnel_dst_tree tunnel_dst;   //
+    struct _opc_forward_tunnel_src_tree tunnel_src;     //
+    struct _opc_forward_tunnel_dst_tree tunnel_dst;     //
     struct _opc_forward_dst_tree forward_dst;
-    uint32_t host_tunnel_id;                         //转发流ID分配
-    struct _opc_host_tunnel_tree host_tunnel;
+    uint32_t host_tunnel_id;                            //主机流ID分配
+    struct _opc_host_tunnel_tree host_tunnel;           //主机隧道
     struct _opc_host_tree host;
     struct _opc_vpc_tree vpc;
 }opc_bridge;
@@ -1038,6 +1041,16 @@ static void bridge_connect_end(opc_bridge* bridge) {
     bridge_send(bridge, ops_packet_auth, 0, 0, buf, size);
     free(buf);
 }
+static void bridge_keep_timer_cb(uv_timer_t* handle) {
+    opc_bridge* bridge = (opc_bridge*)handle->data;
+    //检查是否超时
+
+
+    uint8_t buf[12];
+    *(uint64_t *)&buf[0] = uv_hrtime();
+    *(uint32_t*)&buf[8] = htonl(bridge->keep_ttl);
+    bridge_send(bridge, ops_packet_ping, 0, 0, buf, sizeof(buf));
+}
 //收到服务端来的数据
 static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     if (size < sizeof(ops_packet))
@@ -1051,6 +1064,8 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     case ops_packet_auth: {//鉴权数据
         if (size == 1 && packet->data[0] == 0x01) {
             printf("Auth Ok!\r\n");
+            //启动定时器
+            uv_timer_start(&bridge->keep_timer, bridge_keep_timer_cb, 1000 * 10, 1000 * 10);
         }
         else {
             printf("Auth Err!\r\n");
@@ -1058,6 +1073,9 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
         break;
     }
     case ops_packet_ping: {
+        uint64_t t = *(uint64_t*)&packet->data[0];
+        bridge->keep_last = uv_hrtime();
+        bridge->keep_ping = bridge->keep_last - t;
         break;
     }
     case ops_packet_forward: {//下发转发服务
@@ -1229,7 +1247,8 @@ static int start_connect(opc_global* global) {
         return 0;
     }
     memset(req, 0, sizeof(uv_connect_t));
-
+    uv_timer_init(loop, &bridge->keep_timer);
+    bridge->keep_timer.data = bridge;
     uv_tcp_init(loop, &bridge->tcp);
     bridge->tcp.data = bridge;
     req->data = bridge;
@@ -1250,7 +1269,7 @@ static load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.server_ip = "127.0.0.1";
     global->config.server_port = 1664;
-global->config.auth_key ="fcb0bb072a6b3aaa5c295ea1e4b01807";
+
     //从命令行加载参数
     for (size_t i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {

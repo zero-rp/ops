@@ -79,6 +79,7 @@ typedef struct _ops_bridge {
     struct _ops_global* global;
     uv_tcp_t tcp;                       //连接
     struct databuffer m_buffer;         //接收缓冲
+    uint32_t ping;                      //延迟
 }ops_bridge;
 RB_HEAD(_ops_bridge_tree, _ops_bridge);
 //授权信息
@@ -1590,7 +1591,9 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         break;
     }
     case ops_packet_ping: {
-
+        uint64_t t = *(uint64_t*)&packet->data[0];
+        bridge->ping = ntohl(*(uint32_t*)&packet->data[8]);
+        bridge_send(bridge, ops_packet_ping, 0, 0, packet->data, 8);
         break;
     }
     case ops_packet_forward_ctl: {//转发控制指令
