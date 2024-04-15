@@ -901,12 +901,48 @@ static void send_tun(opc_vpc* vpc, const char* data, int size) {
 
 
 typedef struct _linux_tun {
+    uv_tcp_t tcp;
     int fd;
     uint8_t ipv4[4];                        //ipv4地址
     uint8_t ipv6[16];                       //ipv6地址
     opc_vpc* vpc;
 }linux_tun;
+static void tun_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+    linux_tun* tun = (opc_bridge*)tcp->data;
+    if (nread <= 0) {
+        if (UV_EOF != nread) {
+            //连接异常断开
 
+        }
+        else {
+            //shutdown
+
+        }
+        return;
+    }
+    uint8_t* packet = buf->base;
+
+    //过滤
+    uint8_t ip_version = packet[0] >> 4;
+    if (nread < 20) {
+        goto end;
+    }
+    if (ip_version == 4) {
+        //目标为非自身网段和自身IP和广播IP不转发
+        if ((packet[16] != tun->ipv4[0] || packet[17] != tun->ipv4[1]) || (*(uint32_t*)(&tun->ipv4) == *(uint32_t*)(&packet[16])) || packet[19] == 0xff) {
+            goto end;
+        }
+    }
+    else if (ip_version == 6 && nread >= 40) {
+
+    }
+    else {
+        goto end;
+    }
+    vpc_on_packet(tun->vpc, packet, nread);
+end:
+    free(buf->base);
+}
 //创建
 static linux_tun* new_tun(opc_vpc* vpc) {
     linux_tun* tun = malloc(sizeof(*tun));
@@ -916,34 +952,99 @@ static linux_tun* new_tun(opc_vpc* vpc) {
     memset(tun, 0, sizeof(*tun));
     tun->vpc = vpc;
 
-    if ((tun->fd = open("/dev/net/tun", O_RDWR)) < 0)
-    {
+    if ((tun->fd = open("/dev/net/tun", O_RDWR)) < 0) {
+        free(tun);
         return  NULL;
     }
 
+    int flags = fcntl(tun->fd, F_GETFL);
+    fcntl(tun->fd, F_SETFL, flags | O_NONBLOCK);
 
-    char dev[256]={0};
+    char dev[256] = { 0 };
     snprintf(dev, sizeof(dev), "opc%d", tun->vpc->id);
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
     strcpy(ifr.ifr_name, dev);
-   
+
     // 获得网络接口的flag
     ifr.ifr_flags |= IFF_TUN | IFF_NO_PI;
- 
+
     // 设置网络结构的参数
-    //  此时还没有设置IP地址
-    ioctl(tun->fd, TUNSETIFF, (void *)&ifr);
+    ioctl(tun->fd, TUNSETIFF, (void*)&ifr);
 
-    
+    struct sockaddr_in addr;
+    int sockfd, err = -1;
 
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("socket");
+        return -1;
+    }
+
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    memcpy(&addr.sin_addr, vpc->ipv4, sizeof(addr.sin_addr));
+
+    bzero(&ifr, sizeof(ifr));
+    strcpy(ifr.ifr_name, dev);
+    bcopy(&addr, &ifr.ifr_addr, sizeof(addr));
+
+    // ifconfig tap0 10.0.1.5 #设定ip地址
+    if ((err = ioctl(sockfd, SIOCSIFADDR, (void*)&ifr)) < 0) {
+        perror("ioctl SIOSIFADDR");
+        goto done;
+    }
+
+    memcpy(tun->ipv4, vpc->ipv4, sizeof(tun->ipv4));
+    memcpy(tun->ipv6, vpc->ipv6, sizeof(tun->ipv6));
+
+    /* 获得接口的标志 */
+    if ((err = ioctl(sockfd, SIOCGIFFLAGS, (void*)&ifr)) < 0) {
+        perror("ioctl SIOCGIFADDR");
+        goto done;
+    }
+    /* 设置接口的标志 */
+    ifr.ifr_flags |= IFF_UP;
+    // ifup tap0 #启动设备
+    if ((err = ioctl(sockfd, SIOCSIFFLAGS, (void*)&ifr)) < 0) {
+        perror("ioctl SIOCSIFFLAGS");
+        goto done;
+    }
+    //设定子网掩码
+    inet_pton(AF_INET, "255.255.255.0", &addr.sin_addr);
+    bcopy(&addr, &ifr.ifr_netmask, sizeof(addr));
+    if ((err = ioctl(sockfd, SIOCSIFNETMASK, (void*)&ifr)) < 0) {
+        perror("ioctl SIOCSIFNETMASK");
+        goto done;
+    }
+done:
+    close(sockfd);
+
+    uv_tcp_init(loop, &tun->tcp);
+    tun->tcp.data = tun;
+    uv_tcp_open(&tun->tcp, tun->fd);
+    uv_read_start((uv_stream_t*)&tun->tcp, alloc_buffer, tun_read_cb);
+    return tun;
 }
 
 //往接口发送数据
 static void send_tun(opc_vpc* vpc, const char* data, int size) {
-
+    linux_tun* tun = (linux_tun*)(vpc->data);
+    uv_buf_t buf[] = { 0 };
+    buf->len = size;
+    buf->base = malloc(buf->len);
+    if (buf->base == NULL) {
+        return;
+    }
+    memcpy(buf->base, data, size);
+    uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+    if (req == NULL) {
+        free(buf->base);
+        return;
+    }
+    req->data = buf->base;
+    uv_write(req, &tun->tcp, &buf, 1, write_cb);
 }
-
 #endif
 
 static uint16_t ip_checksum(uint8_t* buf, int len) {
@@ -1047,8 +1148,8 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
 
 
     uint8_t buf[12];
-    *(uint64_t *)&buf[0] = uv_hrtime();
-    *(uint32_t*)&buf[8] = htonl(bridge->keep_ttl);
+    *(uint64_t*)&buf[0] = uv_hrtime();
+    *(uint32_t*)&buf[8] = htonl(bridge->keep_ping);
     bridge_send(bridge, ops_packet_ping, 0, 0, buf, sizeof(buf));
 }
 //收到服务端来的数据
