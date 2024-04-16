@@ -1,4 +1,9 @@
-﻿#include <uv.h>
+﻿#if defined(_WIN32) || defined(_WIN64)
+#include <sys/timeb.h>
+#else
+#include <time.h>
+#endif
+#include <uv.h>
 #include <cJSON.h>
 #include <uv/tree.h>
 #include "databuffer.h"
@@ -168,7 +173,35 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
+//获取毫秒时间
+static uint64_t gettime() {
+    uint64_t t;
+#if defined(_WIN32) || defined(_WIN64)
+    struct _timeb timebuffer;
+    _ftime_s(&timebuffer);
+    t = timebuffer.time * 1000;
+    t += timebuffer.millitm;
+#elif !defined(__APPLE__)
 
+#ifdef CLOCK_MONOTONIC_RAW
+#define CLOCK_TIMER CLOCK_MONOTONIC_RAW
+#else
+#define CLOCK_TIMER CLOCK_MONOTONIC
+#endif
+
+    struct timespec ti;
+    clock_gettime(CLOCK_REALTIME, &ti);
+    t = (uint64_t)ti.tv_sec * 1000;
+    t += (ti.tv_nsec / 1000000);
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    t = (uint64_t)tv.tv_sec * 1000;
+    t += (tv.tv_usec / 1000);
+#endif
+    return t;
+}
+//
 static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //--------------------------------------------------------------------------------------------------------forward
 //-----------------------------------------------------来源
@@ -668,7 +701,7 @@ static void host_free(opc_bridge* bridge) {
 static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size);
 //ip数据过滤
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_WIN64)
 #include <iphlpapi.h>
 #include "wintun.h"
 
@@ -1254,7 +1287,7 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
 
 
     uint8_t buf[12];
-    *(uint64_t*)&buf[0] = uv_hrtime() / 1000;
+    *(uint64_t*)&buf[0] = gettime();
     *(uint32_t*)&buf[8] = htonl(bridge->keep_ping);
     bridge_send(bridge, ops_packet_ping, 0, 0, buf, sizeof(buf));
 }
@@ -1272,7 +1305,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
         if (size == 1 && packet->data[0] == 0x01) {
             printf("Auth Ok!\r\n");
             //启动定时器
-            uv_timer_start(&bridge->keep_timer, bridge_keep_timer_cb, 1000 * 10, 1000 * 10);
+            uv_timer_start(&bridge->keep_timer, bridge_keep_timer_cb, 0, 1000 * 10);
             bridge_auth_ok(bridge);
         }
         else {
@@ -1282,7 +1315,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     }
     case ops_packet_ping: {
         uint64_t t = *(uint64_t*)&packet->data[0];
-        bridge->keep_last = uv_hrtime() / 1000;
+        bridge->keep_last = gettime();
         bridge->keep_ping = bridge->keep_last - t;
         break;
     }
