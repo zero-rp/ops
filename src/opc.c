@@ -84,13 +84,20 @@ typedef struct _opc_bridge {
     uv_timer_t keep_timer;                              //心跳定时器
     uint64_t keep_last;                                 //上次心跳
     uint32_t keep_ping;                                 //延迟
+    struct {
+        uint8_t quit : 1;                               //当前连接已退出
+    } b;
+    //----------------------------
     uint32_t forward_tunnel_id;                         //转发流ID分配
     struct _opc_forward_tunnel_src_tree tunnel_src;     //
     struct _opc_forward_tunnel_dst_tree tunnel_dst;     //
     struct _opc_forward_dst_tree forward_dst;
+    struct _opc_forward_src_tree forward_src;
+    //----------------------------
     uint32_t host_tunnel_id;                            //主机流ID分配
     struct _opc_host_tunnel_tree host_tunnel;           //主机隧道
     struct _opc_host_tree host;
+    //----------------------------
     struct _opc_vpc_tree vpc;
 }opc_bridge;
 //配置
@@ -165,29 +172,35 @@ static void write_cb(uv_write_t* req, int status) {
 static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //--------------------------------------------------------------------------------------------------------forward
 //-----------------------------------------------------来源
+//失败关闭对端隧道
+static void forward_tunnel_src_err(opc_bridge* bridge, uint32_t service_id, uint32_t stream_id) {
+    uint8_t buf[2];
+    buf[0] = 0x03;//来自目标的应答
+    buf[1] = 0x01;//连接失败
+    bridge_send(bridge, ops_packet_forward_ctl, service_id, stream_id, buf, sizeof(buf));
+}
 //来源连接关闭
-static void forward_src_close_cb(uv_handle_t* handle) {
+static void forward_tunnel_src_close_cb(uv_handle_t* handle) {
     opc_forward_tunnel_src* tunnel = (opc_forward_tunnel_src*)handle->data;
-
-
+    forward_tunnel_src_err(tunnel->src->bridge, tunnel->src->id, tunnel->pree_id);
     RB_REMOVE(_opc_forward_tunnel_src_tree, &tunnel->src->bridge->tunnel_src, tunnel);
     free(tunnel);
 }
-static void forward_src_shutdown_cb(uv_shutdown_t* req, int status) {
+static void forward_tunnel_src_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_forward_tunnel_src* conn = (opc_forward_tunnel_src*)req->data;
-    uv_close(&conn->tcp, forward_src_close_cb);
+    uv_close(&conn->tcp, forward_tunnel_src_close_cb);
     free(req);
 }
-static void forward_src_shutdown(opc_forward_tunnel_src* tunnel) {
+static void forward_tunnel_src_shutdown(opc_forward_tunnel_src* tunnel) {
     uv_shutdown_t* req = (uv_shutdown_t*)malloc(sizeof(*req));
     if (req != NULL) {
         memset(req, 0, sizeof(*req));
         req->data = tunnel;
-        uv_shutdown(req, &tunnel->tcp, forward_src_shutdown_cb);
+        uv_shutdown(req, &tunnel->tcp, forward_tunnel_src_shutdown_cb);
     }
     else {
         //分配内存失败,直接强制关闭
-        uv_close(&tunnel->tcp, forward_src_close_cb);
+        uv_close(&tunnel->tcp, forward_tunnel_src_close_cb);
     }
 }
 //转发隧道来源数据到达
@@ -196,11 +209,11 @@ static void forward_tunnel_src_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
     if (nread <= 0) {
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, forward_src_close_cb);
+            uv_close(tcp, forward_tunnel_src_close_cb);
         }
         else {
             //shutdown
-            forward_src_shutdown(tunnel);
+            forward_tunnel_src_shutdown(tunnel);
         }
         return;
     }
@@ -208,6 +221,7 @@ static void forward_tunnel_src_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
     bridge_send(tunnel->src->bridge, ops_packet_forward_data_local, tunnel->src->id, tunnel->pree_id, buf->base, nread);
     free(buf->base);
 }
+
 //转发连接进入
 static void forward_src_connection_cb(uv_stream_t* tcp, int status) {
     opc_forward_src* src = (opc_forward_src*)tcp->data;
@@ -235,34 +249,34 @@ static void forward_src_connection_cb(uv_stream_t* tcp, int status) {
 }
 //-----------------------------------------------------目标
 //失败关闭对端隧道
-static void forward_dst_err(opc_bridge* bridge, uint32_t service_id, uint32_t stream_id) {
+static void forward_tunnel_dst_err(opc_bridge* bridge, uint32_t service_id, uint32_t stream_id) {
     uint8_t buf[2];
     buf[0] = 0x02;//来自目标的应答
     buf[1] = 0x01;//连接失败
     bridge_send(bridge, ops_packet_forward_ctl, service_id, stream_id, buf, sizeof(buf));
 }
-//来源连接关闭
-static void forward_dst_close_cb(uv_handle_t* handle) {
-    opc_forward_tunnel_src* tunnel = (opc_forward_tunnel_src*)handle->data;
-
-
+//目标连接关闭
+static void forward_tunnel_dst_close_cb(uv_handle_t* handle) {
+    opc_forward_tunnel_dst* tunnel = (opc_forward_tunnel_dst*)handle->data;
+    forward_tunnel_dst_err(tunnel->dst->bridge, tunnel->dst->id, tunnel->pree_id);
+    RB_REMOVE(_opc_forward_tunnel_dst_tree, &tunnel->dst->bridge->tunnel_dst, tunnel);
     free(tunnel);
 }
-static void forward_dst_shutdown_cb(uv_shutdown_t* req, int status) {
+static void forward_tunnel_dst_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_forward_tunnel_src* conn = (opc_forward_tunnel_src*)req->data;
-    uv_close(&conn->tcp, forward_dst_close_cb);
+    uv_close(&conn->tcp, forward_tunnel_dst_close_cb);
     free(req);
 }
-static void forward_dst_shutdown(opc_forward_tunnel_dst* tunnel) {
+static void forward_tunnel_dst_shutdown(opc_forward_tunnel_dst* tunnel) {
     uv_shutdown_t* req = (uv_shutdown_t*)malloc(sizeof(*req));
     if (req != NULL) {
         memset(req, 0, sizeof(*req));
         req->data = tunnel;
-        uv_shutdown(req, &tunnel->tcp, forward_dst_shutdown_cb);
+        uv_shutdown(req, &tunnel->tcp, forward_tunnel_dst_shutdown_cb);
     }
     else {
         //分配内存失败,直接强制关闭
-        uv_close(&tunnel->tcp, forward_dst_close_cb);
+        uv_close(&tunnel->tcp, forward_tunnel_dst_close_cb);
     }
 }
 //转发隧道目标数据到达
@@ -271,11 +285,11 @@ static void forward_tunnel_dst_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
     if (nread <= 0) {
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, forward_dst_close_cb);
+            uv_close(tcp, forward_tunnel_dst_close_cb);
         }
         else {
             //shutdown
-            forward_dst_shutdown(tunnel);
+            forward_tunnel_dst_shutdown(tunnel);
         }
         return;
     }
@@ -284,11 +298,11 @@ static void forward_tunnel_dst_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
     free(buf->base);
 }
 //连接返回
-static void forward_dst_connect_cb(uv_connect_t* req, int status) {
+static void forward_tunnel_dst_connect_cb(uv_connect_t* req, int status) {
     opc_forward_tunnel_dst* tunnel = req->data;
     if (status < 0) {
         //连接失败
-        forward_dst_err(tunnel->dst->bridge, tunnel->dst->id, tunnel->pree_id);
+        forward_tunnel_dst_err(tunnel->dst->bridge, tunnel->dst->id, tunnel->pree_id);
         return;
     }
     //通知成功
@@ -301,11 +315,11 @@ static void forward_dst_connect_cb(uv_connect_t* req, int status) {
     uv_read_start((uv_stream_t*)&tunnel->tcp, alloc_buffer, forward_tunnel_dst_read_cb);
 }
 //转发隧道解析目标主机
-static void forward_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
+static void forward_tunnel_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
     opc_forward_tunnel_dst* tunnel = req->data;
     if (status != 0) {
         //通知失败
-        forward_dst_err(tunnel->dst->bridge, tunnel->dst->id, tunnel->pree_id);
+        forward_tunnel_dst_err(tunnel->dst->bridge, tunnel->dst->id, tunnel->pree_id);
         return;
     }
     tunnel->tcp.data = tunnel;
@@ -315,7 +329,7 @@ static void forward_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct add
     if (strlen(tunnel->dst->bind) > 0) {
         //uv_tcp_bind(&tunnel->req, , 0);
     }
-    uv_tcp_connect(&tunnel->req, &tunnel->tcp, res->ai_addr, forward_dst_connect_cb);
+    uv_tcp_connect(&tunnel->req, &tunnel->tcp, res->ai_addr, forward_tunnel_dst_connect_cb);
     //释放结果
     uv_freeaddrinfo(res);
 }
@@ -350,6 +364,8 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
             uv_ip4_addr("0.0.0.0", src.port, &_addr);
             uv_tcp_bind(&s->tcp, &_addr, 0);
             uv_listen((uv_stream_t*)&s->tcp, DEFAULT_BACKLOG, forward_src_connection_cb);
+
+            RB_INSERT(_opc_forward_src_tree, &bridge->forward_src, s);
         }
         else if (type == 2) {//转发目标
             ops_forward_dst dst;
@@ -387,13 +403,13 @@ static void forward_ctl(opc_bridge* bridge, ops_packet* packet) {
         };
         opc_forward_dst* dst = RB_FIND(_opc_forward_dst_tree, &bridge->forward_dst, &ths);
         if (dst == NULL) {
-            forward_dst_err(bridge, packet->service_id, packet->stream_id);
+            forward_tunnel_dst_err(bridge, packet->service_id, packet->stream_id);
             break;
         }
         //请求连接远端
         opc_forward_tunnel_dst* tunnel = (opc_forward_tunnel_dst*)malloc(sizeof(*tunnel));//为tcp tunnel申请资源
         if (!tunnel) {
-            forward_dst_err(bridge, packet->service_id, packet->stream_id);
+            forward_tunnel_dst_err(bridge, packet->service_id, packet->stream_id);
             break;
         }
         memset(tunnel, 0, sizeof(*tunnel));
@@ -405,7 +421,7 @@ static void forward_ctl(opc_bridge* bridge, ops_packet* packet) {
         tunnel->req_info.data = tunnel;
         char buf[10] = { 0 };
         snprintf(buf, sizeof(buf), "%d", dst->port);
-        uv_getaddrinfo(loop, &tunnel->req_info, forward_getaddrinfo_cb, dst->dst, buf, NULL);
+        uv_getaddrinfo(loop, &tunnel->req_info, forward_tunnel_getaddrinfo_cb, dst->dst, buf, NULL);
         break;
     }
     case 0x02: {//来自目标的应答
@@ -419,7 +435,7 @@ static void forward_ctl(opc_bridge* bridge, ops_packet* packet) {
         }
         if (packet->data[1] == 0x01) {
             //失败或异常,将本地连接关闭
-            forward_src_shutdown(tunnel);
+            forward_tunnel_src_shutdown(tunnel);
         }
         else if (packet->data[1] == 0x02) {
             //成功
@@ -441,7 +457,7 @@ static void forward_ctl(opc_bridge* bridge, ops_packet* packet) {
         }
         if (packet->data[1] == 0x01) {
             //来源异常
-            forward_dst_shutdown(tunnel);
+            forward_tunnel_dst_shutdown(tunnel);
         }
         break;
     }
@@ -495,7 +511,32 @@ static void forward_data_remote(opc_bridge* bridge, ops_packet* packet, int size
     req->data = buf->base;
     uv_write(req, &tunnel->tcp, &buf, 1, write_cb);
 }
+//回收资源
+static void forward_free(opc_bridge* bridge) {
+    opc_forward_tunnel_src* sc = NULL;
+    RB_FOREACH(sc, _opc_forward_tunnel_src_tree, &bridge->tunnel_src) {
+        forward_tunnel_src_shutdown(sc);
+    }
+    opc_forward_tunnel_dst* dc = NULL;
+    opc_forward_tunnel_dst* dcc = NULL;
+    RB_FOREACH_SAFE(dc, _opc_forward_tunnel_dst_tree, &bridge->tunnel_dst, dcc) {
+        forward_tunnel_dst_shutdown(dc);
+    }
 
+    opc_forward_src* fsc = NULL;
+    RB_FOREACH(fsc, _opc_forward_src_tree, &bridge->forward_src, fscc) {
+
+
+    }
+
+    opc_forward_dst* fdc = NULL;
+    opc_forward_dst* fdcc = NULL;
+    RB_FOREACH_SAFE(fdc, _opc_forward_dst_tree, &bridge->forward_dst, fdcc) {
+        RB_REMOVE(_opc_forward_dst_tree, &bridge->forward_dst, fdcc);
+        free(fdc);
+        fdc = NULL;
+    }
+}
 //--------------------------------------------------------------------------------------------------------host
 //转发隧道目标数据到达
 static void host_tunnel_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
@@ -619,6 +660,10 @@ static void host_data(opc_bridge* bridge, ops_packet* packet, int size) {
     req->data = buf->base;
     uv_write(req, &tunnel->tcp, &buf, 1, write_cb);
 }
+//回收资源
+static void host_free(opc_bridge* bridge) {
+
+}
 //--------------------------------------------------------------------------------------------------------vpc
 static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size);
 //ip数据过滤
@@ -674,6 +719,7 @@ typedef struct _win_tun {
     HMODULE mod;                    //动态库
     WINTUN_ADAPTER_HANDLE Adapter;  //网卡
     WINTUN_SESSION_HANDLE Session;  //会话
+    HANDLE Thread;                  //线程
     HANDLE QuitEvent;               //退出事件
     int HaveQuit;
     uv_async_t async;               //同步对象
@@ -879,8 +925,41 @@ static win_tun* new_tun(opc_vpc* vpc) {
     tun->Session = WintunStartSession(tun->Adapter, 0x400000);
     tun->QuitEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     //创建接收线程
-    CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceivePackets, (LPVOID)tun, 0, NULL);
+    tun->Thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceivePackets, (LPVOID)tun, 0, NULL);
     return tun;
+}
+//关闭
+static void delete_tun(static win_tun*tun) {
+    //通知线程退出
+    tun->HaveQuit = TRUE;
+    SetEvent(tun->QuitEvent);
+    //等待线程退出
+    if (tun->Thread) {
+        WaitForSingleObject(tun->Thread, INFINITE);
+    }
+    //回收队列
+    while (1) {
+        if (QUEUE_EMPTY(&tun->wq)) {
+            break;
+        }
+        QUEUE* wq = QUEUE_HEAD(&tun->wq);
+        QUEUE_REMOVE(wq);
+        win_tun_packet* packet = QUEUE_DATA(wq, win_tun_packet, wq);
+        free(packet);
+    }
+    if (tun->Session) {
+        WintunEndSession(tun->Session);
+    }
+    if (tun->Adapter) {
+        WintunCloseAdapter(tun->Adapter);
+    }
+    if (tun->QuitEvent) {
+        CloseHandle(tun->QuitEvent);
+    }
+    if (tun->mod) {
+        FreeLibrary(tun->mod);
+    }
+    free(tun);
 }
 //往接口发送数据
 static void send_tun(opc_vpc* vpc, const char* data, int size) {
@@ -1026,7 +1105,15 @@ done:
     uv_read_start((uv_stream_t*)&tun->tcp, alloc_buffer, tun_read_cb);
     return tun;
 }
-
+static void tun_close_cb(uv_handle_t* handle) {
+    static linux_tun* tun = (static linux_tun *)handle->data;
+    
+    free(tun);
+}
+//关闭
+static void delete_tun(static linux_tun* tun) {
+    uv_close(&tun->tcp, tun_close_cb);
+}
 //往接口发送数据
 static void send_tun(opc_vpc* vpc, const char* data, int size) {
     linux_tun* tun = (linux_tun*)(vpc->data);
@@ -1128,6 +1215,17 @@ static void vpc_data(opc_bridge* bridge, ops_packet* packet, int size) {
         return;
     }
     send_tun(vpc, packet->data, size);
+}
+//回收资源
+static void vpc_free(opc_bridge* bridge) {
+    opc_vpc* c = NULL;
+    opc_vpc* cc = NULL;
+    RB_FOREACH_SAFE(c, _opc_vpc_tree, &bridge->vpc, cc) {
+        delete_tun(c->data);
+        RB_REMOVE(_opc_vpc_tree, &bridge->vpc, c);
+        free(c);
+        cc = NULL;
+    }
 }
 //--------------------------------------------------------------------------------------------------------bridge
 //成功连接上服务器
@@ -1250,27 +1348,17 @@ void bridge_re_timer_cb(uv_timer_t* handle) {
 static void bridge_close_cb(uv_handle_t* handle) {
     opc_bridge* bridge = (opc_bridge*)handle->data;
     bridge->global->bridge = NULL;
-    //定时重连
-    uv_timer_start(&bridge->global->re_timer, bridge_re_timer_cb, 1000 * 5, 0);
+    bridge->b.quit = 1;
     //回收资源
     databuffer_clear(&bridge->m_buffer, &bridge->global->m_mp);
+    //回收转发器
+    forward_free(bridge);
+    //回收主机
+    host_free(bridge);
     //
-    opc_forward_tunnel_src* sc = NULL;
-    opc_forward_tunnel_src* scc = NULL;
-    RB_FOREACH_SAFE(sc, _opc_forward_tunnel_src_tree, &bridge->tunnel_src, scc) {
-        RB_REMOVE(_opc_forward_tunnel_src_tree, &bridge->tunnel_src, sc);
-        free(sc);
-        sc = NULL;
-    }
-    opc_forward_tunnel_dst* dc = NULL;
-    opc_forward_tunnel_dst* dcc = NULL;
-    RB_FOREACH_SAFE(dc, _opc_forward_tunnel_dst_tree, &bridge->tunnel_dst, dcc) {
-        RB_REMOVE(_opc_forward_tunnel_dst_tree, &bridge->tunnel_dst, dc);
-        free(dc);
-        dc = NULL;
-    }
-
-    free(bridge);
+    vpc_free(bridge);
+    //定时重连
+    uv_timer_start(&bridge->global->re_timer, bridge_re_timer_cb, 1000 * 5, 0);
 }
 static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_bridge* bridge = (opc_bridge*)req->data;
