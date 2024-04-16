@@ -1228,6 +1228,14 @@ static void vpc_free(opc_bridge* bridge) {
     }
 }
 //--------------------------------------------------------------------------------------------------------bridge
+//鉴权成功
+static void bridge_auth_ok(opc_bridge* bridge) {
+    //提交设备信息
+
+
+
+
+}
 //成功连接上服务器
 static void bridge_connect_end(opc_bridge* bridge) {
     //发送鉴权数据
@@ -1246,7 +1254,7 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
 
 
     uint8_t buf[12];
-    *(uint64_t*)&buf[0] = uv_hrtime();
+    *(uint64_t*)&buf[0] = uv_hrtime() / 1000;
     *(uint32_t*)&buf[8] = htonl(bridge->keep_ping);
     bridge_send(bridge, ops_packet_ping, 0, 0, buf, sizeof(buf));
 }
@@ -1265,6 +1273,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
             printf("Auth Ok!\r\n");
             //启动定时器
             uv_timer_start(&bridge->keep_timer, bridge_keep_timer_cb, 1000 * 10, 1000 * 10);
+            bridge_auth_ok(bridge);
         }
         else {
             printf("Auth Err!\r\n");
@@ -1273,7 +1282,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     }
     case ops_packet_ping: {
         uint64_t t = *(uint64_t*)&packet->data[0];
-        bridge->keep_last = uv_hrtime();
+        bridge->keep_last = uv_hrtime() / 1000;
         bridge->keep_ping = bridge->keep_last - t;
         break;
     }

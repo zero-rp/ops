@@ -586,6 +586,23 @@ static void web_on_request(ops_web* web, cJSON* body) {
     //客户列表
     else if (strcmp(url, "bridge") == 0) {
         cJSON* list = data_bridge_get();
+        int num = cJSON_GetArraySize(list);
+        //获取在线设备
+        for (size_t i = 0; i < num; i++){
+            cJSON* item = cJSON_GetArrayItem(list, i);
+            cJSON* id = cJSON_GetObjectItem(item, "id");
+            if (!id || !id->valuestring) {
+                continue;
+            }
+            ops_bridge ths = {
+                .id = atoi(id->valuestring)
+            };
+            ops_bridge* b = RB_FIND(_ops_bridge_tree, &web->global->bridge, &ths);
+            if (b) {
+                cJSON_AddBoolToObject(item, "online", TRUE);
+                cJSON_AddNumberToObject(item, "ping", b->ping);
+            }
+        }
         cJSON_AddItemToObject(data, "list", list);
         goto ok;
     }
