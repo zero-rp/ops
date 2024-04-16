@@ -599,7 +599,7 @@ static void web_on_request(ops_web* web, cJSON* body) {
             };
             ops_bridge* b = RB_FIND(_ops_bridge_tree, &web->global->bridge, &ths);
             if (b) {
-                cJSON_AddBoolToObject(item, "online", TRUE);
+                cJSON_AddBoolToObject(item, "online", 1);
                 cJSON_AddNumberToObject(item, "ping", b->ping);
             }
         }

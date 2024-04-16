@@ -524,7 +524,7 @@ static void forward_free(opc_bridge* bridge) {
     }
 
     opc_forward_src* fsc = NULL;
-    RB_FOREACH(fsc, _opc_forward_src_tree, &bridge->forward_src, fscc) {
+    RB_FOREACH(fsc, _opc_forward_src_tree, &bridge->forward_src) {
 
 
     }
@@ -1106,12 +1106,12 @@ done:
     return tun;
 }
 static void tun_close_cb(uv_handle_t* handle) {
-    static linux_tun* tun = (static linux_tun *)handle->data;
+    linux_tun* tun = (linux_tun *)handle->data;
     
     free(tun);
 }
 //关闭
-static void delete_tun(static linux_tun* tun) {
+static void delete_tun(linux_tun* tun) {
     uv_close(&tun->tcp, tun_close_cb);
 }
 //往接口发送数据
