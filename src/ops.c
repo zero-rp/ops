@@ -588,7 +588,7 @@ static void web_on_request(ops_web* web, cJSON* body) {
         cJSON* list = data_bridge_get();
         int num = cJSON_GetArraySize(list);
         //获取在线设备
-        for (size_t i = 0; i < num; i++){
+        for (size_t i = 0; i < num; i++) {
             cJSON* item = cJSON_GetArrayItem(list, i);
             cJSON* id = cJSON_GetObjectItem(item, "id");
             if (!id || !id->valuestring) {
@@ -1771,11 +1771,39 @@ static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id
     forward->dst.dst[sizeof(forward->dst.dst) - 1] = 0;
     RB_INSERT(_ops_forward_tree, &global->forward, forward);
     //下发到相关通道
-
+    ops_bridge the = {
+        .id = src_id
+    };
+    ops_bridge* b = RB_FIND(_ops_bridge_tree, &global->bridge, &the);
+    if (b) {
+        char buf[4 + 1 + sizeof(ops_forward_src)];
+        *(uint32_t*)buf = htonl(1);
+        buf[4] = 1;//类型,转发源
+        ops_forward_src _src;
+        _src.port = htons(src_port);
+        _src.sid = htonl(id);
+        _src.type = type;
+        memcpy(&buf[5], &_src, sizeof(_src));
+        bridge_send(b, ops_packet_forward, 0, 0, buf, sizeof(buf));
+    }
+    the.id = dst_id;
+    b = RB_FIND(_ops_bridge_tree, &global->bridge, &the);
+    if (b) {
+        char buf[4 + 1 + sizeof(ops_forward_dst)];
+        *(uint32_t*)buf = htonl(1);
+        buf[4] = 2;//类型,转发目标
+        ops_forward_dst _dst;
+        _dst.port = htons(dst_port);
+        _dst.sid = htonl(id);
+        _dst.type = type;
+        memcpy(_dst.dst, dst, sizeof(_dst.dst));
+        memcpy(&buf[5], &_dst, sizeof(_dst));
+        bridge_send(b, ops_packet_forward, 0, 0, buf, sizeof(buf));
+    }
 }
 static void on_data_forward_del(ops_global* global, uint32_t id) {
     ops_forward ths = {
-    .id = id
+        .id = id
     };
     //查找ID是否存在
     ops_forward* forward = RB_FIND(_ops_forward_tree, &global->forward, &ths);
@@ -1806,8 +1834,23 @@ static void on_data_host_add(ops_global* global, uint32_t id, const char* src_ho
     strncpy(host->dst.dst, dst, sizeof(host->dst.dst) - 1);
     host->dst.dst[sizeof(host->dst.dst) - 1] = 0;
     RB_INSERT(_ops_host_tree, &global->host, host);
-
     //下发
+    ops_bridge the = {
+        .id = dst_id
+    };
+    ops_bridge* bridge = RB_FIND(_ops_bridge_tree, &global->bridge, &the);
+    if (!bridge) {
+        return;
+    }
+    char buf[4 + sizeof(ops_host_dst)];
+    *(uint32_t*)buf = htonl(1);
+    ops_host_dst _dst;
+    _dst.port = htons(dst_port);
+    _dst.sid = htonl(id);
+    _dst.type = type;
+    memcpy(_dst.dst, dst, sizeof(_dst.dst));
+    memcpy(&buf[4], &_dst, sizeof(_dst));
+    bridge_send(bridge, ops_packet_host, 0, 0, buf, sizeof(buf));
 }
 static void on_data_host_del(ops_global* global, const char* h) {
     ops_host _host = {
@@ -1888,6 +1931,22 @@ static void on_data_member_add(ops_global* global, uint32_t id, uint16_t bid, ui
     v6->mid = id;
     memcpy(&v6->ip, &addr6.sin6_addr, sizeof(v6->ip));
     RB_INSERT(_ops_route_v6_tree, &global->route_v6, v6);
+    //下发成员
+    ops_bridge bthe = {
+        .id = bid
+    };
+    ops_bridge* bridge = RB_FIND(_ops_bridge_tree, &global->bridge, &bthe);
+    if (!bridge)
+        return;
+    char buf[4 + sizeof(ops_member)];
+    *(uint32_t*)buf = htonl(1);
+    ops_member _mem;
+    _mem.id = htonl(id);
+    _mem.vid = htons(vid);
+    memcpy(_mem.ipv4, v4->ip, sizeof(_mem.ipv4));
+    memcpy(_mem.ipv6, v6->ip, sizeof(_mem.ipv6));
+    memcpy(&buf[4], &_mem, sizeof(_mem));
+    bridge_send(bridge, ops_packet_vpc, 0, 0, buf, sizeof(buf));
 }
 struct data_settings data_settings = { on_data_key_add, on_data_key_del, on_data_forward_add, on_data_forward_del, on_data_host_add ,on_data_host_del, on_data_vpc_add, on_data_member_add };
 //----------------------------------------------------------------------------------------------------------------------
