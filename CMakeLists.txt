@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.4.1)
 
 project(ops)
 
+set(CMAKE_EXE_LINKER_FLAGS "-static")
+
 #添加包含目录
 include_directories(third_party/boringssl/include)
 include_directories(third_party/libuv/include)
@@ -25,11 +27,11 @@ add_executable(ops
     third_party/cJSON/cJSON.c
     third_party/cJSON/cJSON_Utils.c
 )
-target_link_libraries(ops uv http-parser sqlite crypto ${LIBS})
+target_link_libraries(ops uv_a http-parser sqlite crypto ${LIBS})
 add_executable(opc
     src/opc.c
     src/sds.c
     src/databuffer.c
 )
-target_link_libraries(opc uv ${LIBS})
+target_link_libraries(opc uv_a ${LIBS})
 
