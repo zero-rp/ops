@@ -1604,7 +1604,7 @@ static int init_global(opc_global* global) {
 static load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.server_ip = "127.0.0.1";
-    global->config.server_port = 1664;
+    global->config.server_port = 8025;
 
     //从命令行加载参数
     for (size_t i = 1; i < argc; i++) {

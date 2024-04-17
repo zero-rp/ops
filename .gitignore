@@ -3,3 +3,4 @@ win/.vs/*
 build/
 bin/
 win/ops/data.db
+release/

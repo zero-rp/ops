@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>后台管理</title>
+  <link rel="stylesheet" href="layui/css/layui.css">
+
+  <style>
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    #noAuth {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      margin: -80px 0 0 -125px;
+    }
+
+    .layui-layout-left {
+      width: 100%;
+      /* background-color: #f2f2f2; */
+      height: 20px;
+      padding: 15px 0 10px 30px;
+      border-bottom: solid 1px #f2f2f2;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 登录 -->
+  <form id="noAuth" class="layui-form layui-hide">
+    <div class="demo-login-container">
+      <div class="layui-form-item">
+        <div class="layui-input-wrap">
+          <div class="layui-input-prefix">
+            <i class="layui-icon layui-icon-username"></i>
+          </div>
+          <input type="text" name="username" value="" lay-verify="required" placeholder="用户名" lay-reqtext="请填写用户名"
+            autocomplete="off" class="layui-input" lay-affix="clear">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="layui-input-wrap">
+          <div class="layui-input-prefix">
+            <i class="layui-icon layui-icon-password"></i>
+          </div>
+          <input type="password" name="password" value="" lay-verify="required" placeholder="密   码" lay-reqtext="请填写密码"
+            autocomplete="off" class="layui-input" lay-affix="eye">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <button class="layui-btn layui-btn-fluid" lay-submit lay-filter="demo-login">登录</button>
+      </div>
+    </div>
+  </form>
+
+  <div id="business" class="layui-hide">
+    <ul class="layui-nav layui-nav-tree layui-nav-side" lay-filter="filter-nav">
+      <li class="layui-nav-item layui-this"><a lay-id="0" href="javascript:;">仪表盘</a></li>
+      <li class="layui-nav-item"><a lay-id="1" href="javascript:;">客户端</a></li>
+      <li class="layui-nav-item"><a lay-id="2" href="javascript:;">主机</a></li>
+      <li class="layui-nav-item"><a lay-id="3" href="javascript:;">转发</a></li>
+      <li class="layui-nav-item">
+        <a href="javascript:;">虚拟网络</a>
+        <dl class="layui-nav-child">
+          <dd><a lay-id="4" href="javascript:;">VPC</a></dd>
+          <dd><a lay-id="5" href="javascript:;">VPC成员</a></dd>
+        </dl>
+      </li>
+    </ul>
+    <!-- Tab -->
+    <div style="margin: 60px 0 0 200px;padding: 0 24px;">
+      <!-- 头部区域 -->
+      <ul class="layui-layout-left" >
+        <li class="layui-nav-item" lay-unselect>
+          <a href="javascript:;" layadmin-event="refresh" title="刷新">
+            <i class="layui-icon layui-icon-refresh-3"></i>
+          </a>
+        </li>
+      </ul>
+
+
+      <!--仪表盘-->
+      <div class="layui-tab-item layui-show">仪表盘</div>
+      <!--客户端-->
+      <div class="layui-tab-item">
+        <table class="layui-hide" id="table-bridge"></table>
+        <script type="text/html" id="toolbar-bridge">
+          <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm" lay-event="add">新增</button>
+          </div>
+       </script>
+      </div>
+      <!-- 主机 -->
+      <div class="layui-tab-item">
+        <table class="layui-hide" id="table-host"></table>
+        <script type="text/html" id="toolbar-host">
+          <div class="layui-btn-container">
+            <button class="layui-btn layui-btn-sm" lay-event="add">新增</button>
+          </div>
+        </script>
+        <!--监控状态-->
+        <script type="text/html" id="tpl-host-online">
+          {{# if(d.online){ }}
+          <button class="layui-btn layui-btn-xs layui-btn-normal">在线</button>
+          {{# } else { }}
+          <button class="layui-btn layui-btn-xs layui-btn-primary">离线</button>
+          {{# } }}
+      </script>
+      </div>
+      <!--转发-->
+      <div class="layui-tab-item">
+        <table class="layui-hide" id="table-forward"></table>
+        <script type="text/html" id="toolbar-forward">
+          <div class="layui-btn-container">
+           <button class="layui-btn layui-btn-sm" lay-event="add">新增</button>
+          </div>
+        </script>
+      </div>
+      <!-- 虚拟网络VPC -->
+      <div class="layui-tab-item">
+        <table class="layui-hide" id="table-vpc"></table>
+        <script type="text/html" id="toolbar-vpc">
+           <div class="layui-btn-container">
+               <button class="layui-btn layui-btn-sm" lay-event="add">新增</button>
+           </div>
+       </script>
+      </div>
+      <!-- 虚拟网络VPC成员 -->
+      <div class="layui-tab-item">
+        <table class="layui-hide" id="table-member"></table>
+        <script type="text/html" id="toolbar-member">
+             <div class="layui-btn-container">
+                 <button class="layui-btn layui-btn-sm" lay-event="add">新增</button>
+             </div>
+         </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- 客户端 -->
+  <script type="text/html" id="tool-bridge">
+    <div class="layui-clear-space">
+      <button type="button" class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">删除</button>
+    </div>
+  </script>
+
+  <!-- 主机 -->
+  <script type="text/html" id="tool-host">
+    <div class="layui-clear-space">
+      <button type="button" class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">删除</button>
+    </div>
+  </script>
+
+  <!-- vpc -->
+  <script type="text/html" id="tool-vpc">
+    <div class="layui-clear-space">
+      <button type="button" class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">删除</button>
+    </div>
+  </script>
+
+  <!-- vpc成员 -->
+  <script type="text/html" id="tool-member">
+    <div class="layui-clear-space">
+      <button type="button" class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">删除</button>
+    </div>
+  </script>
+
+
+  <script type="text/html" id="form-bridge">
+    <form class="layui-form" action="" style="padding: 10px 16px" lay-filter="form-bridge-view">
+      <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">备注</label>
+        <div class="layui-input-block">
+          <textarea name="info" placeholder="请输入内容" class="layui-textarea"></textarea>
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <div class="layui-input-block">
+          <button type="submit" class="layui-btn" lay-submit lay-filter="submit-bridge">立即提交</button>
+          <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+      </div>
+    </form>
+  </script>
+
+  <script type="text/html" id="form-host">
+    <form class="layui-form" action="" style="padding: 10px 16px" lay-filter="form-host-view">
+      <div class="layui-form-item">
+        <label class="layui-form-label">客户端ID</label>
+        <div class="layui-input-block">
+          <select name="dst_id">
+            {{#  if(d.list.length === 0){ }}
+              <option value="">请先添加客户端信息</option>
+              {{#  } }}
+            {{#  layui.each(d.list, function(index, item){ }}
+            <option value={{item.id}}>{{item.id}}-{{item.info}}</option>
+            {{#  }); }}
+          </select>
+                  
+        </div>
+      </div>
+
+      <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">备注</label>
+        <div class="layui-input-block">
+          <textarea name="info" placeholder="请输入内容" class="layui-textarea" lay-verify="required"></textarea>
+        </div>
+      </div>
+
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">host</label>
+        <div class="layui-input-block">
+          <input type="text" name="host" lay-verify="required|host" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">type</label>
+        <div class="layui-input-block" lay-filter="aihao">
+          <select name="type">
+            <option value="" selected>所有</option>
+            <option value="0">HTTP</option>
+            <option value="1">HTTPS</option>
+          </select>
+        </div>
+      </div> 
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">host_rewrite</label>
+        <div class="layui-input-block">
+          <input type="text" name="host_rewrite" lay-verify="required|host" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">dst</label>
+        <div class="layui-input-block">
+          <input type="text" name="dst" lay-verify="required|host" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">dst_port</label>
+        <div class="layui-input-block">
+          <input type="number" name="dst_port" lay-verify="required|number" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <div class="layui-input-block">
+          <button type="submit" class="layui-btn" lay-submit lay-filter="submit-host">立即提交</button>
+          <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+      </div>
+    </form>
+
+  </script>
+
+  <!-- 转发 -->
+  <script type="text/html" id="tool-forward">
+    <div class="layui-clear-space">
+      <button type="button" class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">删除</button>
+    </div>
+  </script>
+
+  <script type="text/html" id="form-forward">
+    <form class="layui-form" action="" style="padding: 10px 16px" lay-filter="form-forward-view">
+      <div class="layui-form-item">
+        <label class="layui-form-label">源客户端ID</label>
+        <div class="layui-input-block">
+          <select name="src_id">
+            {{#  if(d.list.length === 0){ }}
+              <option value="">请先添加客户端信息</option>
+              {{#  } }}
+            {{#  layui.each(d.list, function(index, item){ }}
+            <option value={{item.id}}>{{item.id}}-{{item.info}}</option>
+            {{#  }); }}
+          </select>
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">目标客户端ID</label>
+        <div class="layui-input-block">
+          <select name="dst_id">
+            {{#  if(d.list.length === 0){ }}
+              <option value="">请先添加客户端信息</option>
+              {{#  } }}
+            {{#  layui.each(d.list, function(index, item){ }}
+            <option value={{item.id}}>{{item.id}}-{{item.info}}</option>
+            {{#  }); }}
+          </select>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">type</label>
+        <div class="layui-input-block" lay-filter="aihao">
+          <select name="type">
+            <option value="0" selected>所有</option>
+            <option value="1">TCP</option>
+            <option value="2">UDP</option>
+          </select>
+        </div>
+      </div> 
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">源监听端口</label>
+        <div class="layui-input-block">
+          <input type="text" name="src_port" lay-verify="required|number" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">目标主机</label>
+        <div class="layui-input-block">
+          <input type="text" name="dst" lay-verify="required|host" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">目标端口</label>
+        <div class="layui-input-block">
+          <input type="number" name="dst_port" lay-verify="required|number" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">备注</label>
+        <div class="layui-input-block">
+          <textarea name="info" placeholder="请输入内容" class="layui-textarea"></textarea>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="layui-input-block">
+          <button type="submit" class="layui-btn" lay-submit lay-filter="submit-forward">立即提交</button>
+          <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+      </div>
+    </form>
+  </script>
+
+  <!-- vpc -->
+  <script type="text/html" id="form-vpc">
+    <form class="layui-form" action="" style="padding: 10px 16px"  lay-filter="form-vpc-view">
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">ipv4</label>
+        <div class="layui-input-block">
+          <input type="text" name="ipv4" lay-verify="required|ipv4CIDR" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">ipv6</label>
+        <div class="layui-input-block">
+          <input type="text" name="ipv6" lay-verify="required|ipv6CIDR" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+
+      <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">备注</label>
+        <div class="layui-input-block">
+          <textarea name="info" placeholder="请输入内容" class="layui-textarea"></textarea>
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <div class="layui-input-block">
+          <button type="submit" class="layui-btn" lay-submit lay-filter="submit-vpc">立即提交</button>
+          <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+      </div>
+    </form>
+  </script>
+
+  <!-- vpc成员 -->
+  <script type="text/html" id="form-member">
+    <form class="layui-form" action="" style="padding: 10px 16px"  lay-filter="form-member-view">
+      <div class="layui-form-item">
+        <label class="layui-form-label">bid</label>
+        <div class="layui-input-block">
+          <select name="bid">
+            {{#  if(d.bridge.length === 0){ }}
+              <option value="">请先添加客户端信息</option>
+              {{#  } }}
+            {{#  layui.each(d.bridge, function(index, item){ }}
+            <option value={{item.id}}>{{item.id}} {{item.online ? '/ 状态：在线' : ''}} / 备注：{{item.info}}</option>
+            {{#  }); }}
+          </select>
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">vid</label>
+        <div class="layui-input-block">
+          <select name="vid">
+            {{#  if(d.vpc.length === 0){ }}
+              <option value="">请先添加客户端信息</option>
+              {{#  } }}
+            {{#  layui.each(d.vpc, function(index, item){ }}
+            <option value={{JSON.stringify(item)}} value={{item.id}}>{{item.id}} / ipv4：{{item.ipv4}} / ipv6：{{item.ipv6}} / 备注：{{item.info}}</option>
+            {{#  }); }}
+          </select>
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">ipv4</label>
+        <div class="layui-input-block">
+          <input type="text" name="ipv4" lay-verify="required|ipv4" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">ipv6</label>
+        <div class="layui-input-block">
+          <input type="text" name="ipv6" lay-verify="required|ipv6" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+
+      <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">备注</label>
+        <div class="layui-input-block">
+          <textarea name="info" placeholder="请输入内容" class="layui-textarea"></textarea>
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <div class="layui-input-block">
+          <button type="submit" class="layui-btn" lay-submit lay-filter="submit-member">立即提交</button>
+          <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+      </div>
+    </form>
+  </script>
+
+  <!-- body 末尾处引入 layui -->
+  <script src="layui/layui.js"></script>
+
+</body>
+<script type="">
+  layui.use(['table', 'dropdown', 'form', 'element', 'laytpl'], function () {
+    var table = layui.table, form = layui.form, $ = layui.$, element = layui.element, layer = layui.layer, laytpl = layui.laytpl;
+    var selfIndex = 0
+    var TOKEN = sessionStorage.getItem('TOKEN') || ""
+    if (sessionStorage.getItem('TOKEN')) {
+      //TOKEN = sessionStorage.getItem('TOKEN')
+      request({
+        url: '/api/info'
+      })
+    }
+
+
+
+    form.verify({
+      ipv4: function (value) {
+        var v4reg = /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$/
+        if (!v4reg.test(value)) {
+          return 'ipv4不合法';
+        }
+      },
+      ipv4CIDR: function (value) {
+        var v4reg = /^(?:(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2]\d|3[0-2])$/
+        if (!v4reg.test(value)) {
+          return 'ipv4不合法';
+        }
+      },
+      ipv6: function (value) {
+        var v6reg = /^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$/gm;
+        if (!v6reg.test(value)) {
+          return 'ipv6不合法';
+        }
+      },
+      ipv6CIDR: function (value) {
+        var v6reg = /^((\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})):)))(%.+)?\s*)(\/(([1-9])|([1-9][0-9])|(1[0-1][0-9]|12[0-8]))){0,1})*$/
+        if (!v6reg.test(value)) {
+          return 'ipv6不合法';
+        }
+      },
+      host: function (value) {
+        var pattern = /^(?:[\w-]+\.)+[\w-]+$/
+        if (!pattern.test(value)) {
+          return 'host不合法';
+        }
+      }
+    })
+
+    //发起请求
+    function request(option) {
+      $.ajax({
+        url: option.url,
+        type: 'POST',
+        contentType: 'application/json',
+        dataType: "json",
+        data: JSON.stringify(Object.assign(option.data ? option.data : {}, {
+          token: TOKEN
+        })),
+        success: function (res) {
+          if (res.code == 0) {
+            return option.done ? option.done(res.data) : undefined;
+          } else if (res.code == 403) {
+            TOKEN = "";
+            logout()
+          }
+        }
+      });
+    }
+    //登录成功
+    function on_login() {
+      table.set({
+        where: { token: TOKEN },
+        method: "POST",
+        contentType: 'application/json',
+        parseData: function (res) {
+          return { code: res.code, msg: res.msg, count: (res.data.list || []).length, data: res.data.list };
+        }
+      });
+    }
+    //测试
+    on_login();
+
+    function ShowConsole() {
+
+    }
+
+    function ShowBridge() {
+      table.render({
+        elem: '#table-bridge',
+        toolbar: '#toolbar-bridge',
+        url: '/api/bridge',
+        cols: [[ //标题栏
+          { field: 'id', title: 'id', sort: true },
+          { field: 'online', width: 300, title: '在线', templet: '#tpl-host-online' },
+          { field: 'ping', width: 300, title: '延迟' },
+          { field: 'key', width: 300, title: 'key' },
+          { field: 'info', title: '备注' },
+          { field: '', title: '操作', toolbar: '#tool-bridge' },
+        ]]
+      });
+      // bridge-工具栏事
+      table.on('toolbar(table-bridge)', function (obj) {
+        switch (obj.event) {
+          case 'add':
+            let view = laytpl($("#form-bridge").html());
+            layer.open({
+              type: 1,//弹出框类型
+              area: ['720px', '480px'], // 宽高
+              title: false, // 不显示标题栏
+              closeBtn: 0,
+              shadeClose: true, // 点击遮罩关闭层v版本
+              content: view.render(),
+              success: function (layero, index, that) {
+                //渲染表单
+                form.render(null, 'form-bridge-view');
+                // bridge-提交事件
+                form.on('submit(submit-bridge)', function (data) {
+                  request({
+                    url: '/api/bridge_add',
+                    data: data.field,
+                    done: function (res) {
+                      layer.close(index);
+                      table.reload('table-bridge');
+                    }
+                  });
+                  return false; // 阻止默认 form 跳转
+                });
+              }
+            });
+            break;
+          default:
+            break;
+        }
+      });
+
+      //bridge-单行的点击
+      table.on('tool(table-bridge)', function (params) {
+        if (params.event == 'delete') {
+          request({
+            url: '/api/bridge_del',
+            data: { id: Number(params.data.id) },
+            done: function (res) {
+              layer.close(layer.index);
+              table.reload('table-bridge');
+
+            }
+          });
+        }
+      });
+    }
+
+    function ShowHost() {
+      table.render({
+        elem: '#table-host',
+        toolbar: '#toolbar-host',
+        url: '/api/host',
+        cols: [[ //标题栏
+          { field: 'id', title: 'id', sort: true },
+          { field: 'host', width: 200, title: 'host' },
+          { field: 'dst_id', title: 'dst_id' },
+          { field: 'type', title: 'type' },
+          { field: 'dst', title: 'dst' },
+          { field: 'dst_port', title: 'dst_port' },
+          { field: 'host_rewrite', title: 'host_rewrite' },
+          { field: 'info', title: 'info' },
+          { field: '', title: '操作', toolbar: '#tool-host' },
+        ]]
+      });
+      // 工具栏事件
+      table.on('toolbar(table-host)', function (obj) {
+        switch (obj.event) {
+          case 'add': {
+            request({
+              url: '/api/bridge',
+              done: function (res) {
+                let view = laytpl($("#form-host").html())
+                layer.open({
+                  type: 1,//弹出框类型
+                  area: ['720px', '760px'], // 宽高
+                  title: false, // 不显示标题栏
+                  closeBtn: 0,
+                  shadeClose: true, // 点击遮罩关闭层v版本
+                  content: view.render(res),
+                  success: function (layero, index, that) {
+                    //渲染表单
+                    form.render(null, 'form-host-view');
+                    // 提交事件
+                    form.on('submit(submit-host)', function (data) {
+                      data.field.type = Number(data.field.type);
+                      data.field.dst_id = Number(data.field.dst_id);
+                      data.field.dst_port = Number(data.field.dst_port);
+                      request({
+                        url: '/api/host_add',
+                        data: data.field,
+                        done: function (res) {
+                          layer.close(index);
+                          table.reload('table-host');
+                        }
+                      });
+                      return false; // 阻止默认 form 跳转
+                    });
+                  }
+                });
+
+              }
+            });
+            break;
+          }
+          default:
+            break;
+        }
+      });
+
+      //单行的点击
+      table.on('tool(table-host)', function (params) {
+        if (params.event == 'delete') {
+          request({
+            url: '/api/host_del',
+            data: { id: Number(params.data.id) },
+            done: function (res) {
+              layer.close(layer.index);
+              table.reload('table-host');
+            }
+          });
+        }
+      })
+    }
+
+    function ShowForward() {
+      table.render({
+        elem: '#table-forward',
+        toolbar: '#toolbar-forward',
+        url: '/api/forward',
+        cols: [[ //标题栏
+          { field: 'id', title: 'id', sort: true },
+          { field: 'src_id', width: 200, title: 'src_id' },
+          { field: 'dst_id', title: 'dst_id' },
+          { field: 'type', title: 'type' },
+          { field: 'src_port', title: 'dst' },
+          { field: 'dst', title: 'dst' },
+          { field: 'dst_port', title: 'dst_port' },
+          { field: 'info', title: 'info' },
+          { field: '', title: '操作', toolbar: '#tool-forward' },
+        ]]
+      });
+      //forward-工具栏事件
+      table.on('toolbar(table-forward)', function (obj) {
+        switch (obj.event) {
+          case 'add':
+            let view = laytpl($("#form-forward").html());
+            request({
+              url: '/api/bridge',
+              done: function (res) {
+                layer.open({
+                  type: 1,//弹出框类型
+                  area: ['720px', '760px'], // 宽高
+                  title: false, // 不显示标题栏
+                  closeBtn: 0,
+                  shadeClose: true, // 点击遮罩关闭层v版本
+                  content: view.render(res),
+                  success: function (layero, index, that) {
+                    //渲染表单
+                    form.render(null, 'form-forward-view');
+                    // forward-提交事件
+                    form.on('submit(submit-forward)', function (data) {
+                      var field = data.field;
+                      field.src_id = Number(field.src_id);
+                      field.dst_id = Number(field.dst_id);
+                      field.type = Number(field.type);
+                      field.src_port = Number(field.src_port);
+                      field.dst_port = Number(field.dst_port);
+                      request({
+                        url: '/api/forward_add',
+                        data: data.field,
+                        done: function (res) {
+                          layer.close(index);
+                          table.reload('table-forward');
+                        }
+                      });
+                      return false; // 阻止默认 form 跳转
+                    });
+                  }
+                });
+              }
+            });
+            break;
+          default:
+            break;
+        }
+      });
+
+      //forward-单行的点击
+      table.on('tool(table-forward)', function (params) {
+        if (params.event == 'delete') {
+          request({
+            url: '/api/forward_del',
+            data: { id: Number(params.data.id) },
+            done: function (res) {
+              layer.close(layer.index);
+              table.reload('table-forward');
+            }
+          });
+        }
+      });
+    }
+
+    function ShowVPC() {
+      table.render({
+        elem: '#table-vpc',
+        toolbar: '#toolbar-vpc',
+        url: '/api/vpc',
+        cols: [[ //标题栏
+          { field: 'id', title: 'id', sort: true },
+          { field: 'ipv4', width: 200, title: 'ipv4' },
+          { field: 'ipv6', title: 'ipv6' },
+          { field: 'info', title: 'info' },
+          { field: '', title: '操作', toolbar: '#tool-vpc' },
+        ]]
+      });
+      // 工具栏事件
+      table.on('toolbar(table-vpc)', function (obj) {
+        switch (obj.event) {
+          case 'add':
+            let view = laytpl($("#form-vpc").html())
+            layer.open({
+              type: 1,//弹出框类型
+              area: ['720px', '760px'], // 宽高
+              title: false, // 不显示标题栏
+              closeBtn: 0,
+              shadeClose: true, // 点击遮罩关闭层v版本
+              content: view.render(),
+              success: function (layero, index, that) {
+                //渲染表单
+                form.render(null, 'form-vpc-view');
+                // 提交事件
+                form.on('submit(submit-vpc)', function (data) {
+                  request({
+                    url: '/api/vpc_add',
+                    data: data.field,
+                    done: function (res) {
+                      layer.close(index);
+                      table.reload('table-vpc');
+                    }
+                  });
+                  return false; // 阻止默认 form 跳转
+                });
+              }
+            });
+            break;
+          default:
+            break;
+        }
+      });
+
+      table.on('tool(table-vpc)', function (params) {
+        if (params.event == 'delete') {
+          request({
+            url: '/api/vpc_del',
+            data: { id: Number(params.data.id) },
+            done: function (res) {
+              layer.close(layer.index);
+              table.reload('table-vpc');
+            }
+          });
+        }
+      })
+    }
+
+    function ShowMember() {
+      table.render({
+        elem: '#table-member',
+        toolbar: '#toolbar-member',
+        url: '/api/member',
+        cols: [[ //标题栏
+          { field: 'id', title: 'id', sort: true },
+          { field: 'bid', width: 200, title: 'bid' },
+          { field: 'vid', width: 200, title: 'vid' },
+          { field: 'ipv4', width: 200, title: 'ipv4' },
+          { field: 'ipv6', title: 'ipv6' },
+          { field: 'info', title: 'info' },
+          { field: '', title: '操作', toolbar: '#tool-member' },
+        ]]
+      });
+      // 工具栏事件
+      table.on('toolbar(table-member)', function (obj) {
+        switch (obj.event) {
+          case 'add':
+            request({
+              url: '/api/bridge',
+              done: function (bridge) {
+                request({
+                  url: '/api/vpc',
+                  done: function (vpc) {
+                    let view = laytpl($("#form-member").html());
+                    layer.open({
+                      type: 1,//弹出框类型
+                      area: ['720px', '760px'], // 宽高
+                      title: false, // 不显示标题栏
+                      closeBtn: 0,
+                      shadeClose: true, // 点击遮罩关闭层v版本
+                      content: view.render({ bridge: bridge.list, vpc: vpc.list }),
+                      success: function (layero, index, that) {
+                        //渲染表单
+                        form.render(null, 'form-member-view');
+                        // 提交事件
+                        form.on('submit(submit-member)', function (data) {
+                          console.log(data, `ddddd`)
+                          let val = null
+                          if (typeof data.field.vid == "string") {
+                            val = JSON.parse(data.field.vid)
+                          }
+
+                          let req = {
+                            ...data.field,
+                            bid: Number(data.field.bid),
+                            vid: Number(val.id)
+                          }
+
+                          console.log(req)
+                          console.log(isIPInCIDR("192.168.1.1", "192.168.1.0/24")); // 输出：true
+                          console.log(isIPInCIDR("2001:db8::", "2001:db8::/32")); // 输出：true
+                          if (ipInCidr(val.ipv4, data.field.ipv4) && ipInCidr(val.ipv6, data.field.ipv6)) {
+                            request({
+                              url: '/api/member_add',
+                              data: req,
+                              done: function (res) {
+                                layer.close(index);
+                                table.reload('table-member');
+                              }
+                            });
+                          }
+                          //data.field.bid = Number(data.field.bid);
+                          //data.field.vid = Number(data.field.vid);
+                          
+                          return false; // 阻止默认 form 跳转
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            });
+            break;
+          default:
+            break;
+        }
+      });
+
+      table.on('tool(table-member)', function (params) {
+        if (params.event == 'delete') {
+          request({
+            url: '/api/member_del',
+            data: { id: Number(params.data.id) },
+            done: function (res) {
+              layer.close(layer.index);
+              table.reload('table-member');
+            }
+          });
+        }
+      })
+    }
+
+    var tab_func = [ShowConsole, ShowBridge, ShowHost, ShowForward, ShowVPC, ShowMember];
+    // 导航点击事件
+    element.on('nav(filter-nav)', function (elem) {
+      var current = Number($(this).attr('lay-id'));
+      selfIndex = current
+      $('.layui-tab-item').each(function (index, item) {
+        if (index == current) {
+          $(item).addClass('layui-show')
+        } else {
+          $(item).removeClass('layui-show')
+        }
+      });
+      if (tab_func[current])
+        tab_func[current].call();
+    });
+
+    element.render('nav');
+
+    function login() {
+      form.on('submit(demo-login)', function (data) {
+        const field = data.field; // 获取表单字段值
+        $.ajax({
+          type: 'post',
+          url: '/api/auth',
+          contentType: 'application/json',
+          dataType: "json",
+          data: JSON.stringify({
+            "user": field.username,
+            "pass": field.password
+          }),
+          success: function (res) {
+            if (res.code == 0) {
+              on_login(res.data.token);
+              sessionStorage.setItem('TOKEN', res.data.token)
+              window.location.reload()
+            } else if (res.code == 403) {
+              sessionStorage.clear()
+            } else {
+              layer.alert('密码错误', {
+                title: 'error'
+              });
+            }
+          },
+          error: function (XMLHttpRequest, textStatus, errorThrown) {
+            // console.log(textStatus, errorThrown)
+          }
+        })
+        return false; // 阻止默认 form 跳转
+      });
+
+    }
+
+    login()
+
+    function logout() {
+      $('#noAuth').removeClass('layui-hide')
+      $('#business').addClass('layui-hide')
+      sessionStorage.clear()
+    }
+
+    //function transformMiddleware(res, callback) {
+    function authenticateHandler(res, callback) {
+      if (res.code == 0) {
+        callback && callback()
+      } else if (res.code == 403) {
+        logout()
+      }
+    }
+
+    $(window).load(function () {
+      if (!sessionStorage.getItem('TOKEN')) {
+        $('#noAuth').removeClass('layui-hide')
+        $('#business').addClass('layui-hide')
+      } else {
+        $('#noAuth').addClass('layui-hide')
+        $('#business').removeClass('layui-hide')
+        element.render('nav');
+      }
+    })
+
+    $('[layadmin-event=refresh]').on('click', function () {
+      if (tab_func[selfIndex]) {
+        tab_func[selfIndex].call();
+      }
+    });
+  });
+
+  function ipInCidr(ip, cidr) {
+    const [range, bits] = cidr.split('/');
+    const ipBinary = ipToBinary(ip);
+    const rangeBinary = ipToBinary(range);
+
+    const subnetBinary = rangeBinary.substr(0, bits);
+
+    return ipBinary.startsWith(subnetBinary);
+}
+
+function ipToBinary(ip) {
+    if (ip.includes(':')) { // IPv6
+        return ip.split(':').map(part => parseInt(part, 16).toString(2).padStart(16, '0')).join('');
+    } else { // IPv4
+        return ip.split('.').map(part => parseInt(part, 10).toString(2).padStart(8, '0')).join('');
+    }
+}
+</script>
+
+</html>

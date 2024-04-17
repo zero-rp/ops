@@ -2145,7 +2145,7 @@ static int init_global(ops_global* global) {
 static load_config(ops_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.db_file = "data.db";
-    global->config.bridge_port = 1664;
+    global->config.bridge_port = 8025;
     global->config.web_port = 8088;
     global->config.https_proxy_port = 443;
     global->config.http_proxy_port = 80;
