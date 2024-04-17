@@ -773,7 +773,7 @@ static WINTUN_SEND_PACKET_FUNC* WintunSendPacket;
 
 static HMODULE InitializeWintun(void) {
     HMODULE Wintun =
-        LoadLibrary(L"wintun.dll");
+        LoadLibraryA("wintun.dll");
     if (!Wintun)
         return NULL;
 #define X(Name) ((*(FARPROC *)&Name = GetProcAddress(Wintun, #Name)) == NULL)
@@ -1285,7 +1285,7 @@ static void vpc(opc_bridge* bridge, ops_packet* packet) {
             vpc->bridge = bridge;
             vpc->id = mem.id;
             vpc->vid = mem.vid;
-            
+
             memcpy(&vpc->ipv4, &mem.ipv4, sizeof(vpc->ipv4));
             vpc->prefix_v4 = mem.prefix_v4;
             cidr_to_netmask_v4(mem.prefix_v4, &vpc->ipv4_mask);
@@ -1600,8 +1600,159 @@ static int init_global(opc_global* global) {
     global->re_timer.data = global;
 
 }
+#if defined(_WIN32) || defined(_WIN64)
+static int run();
+int install_service = 0;
+int run_service = 0;
+char* szServiceName = NULL;
+SERVICE_STATUS status;
+SERVICE_STATUS_HANDLE hServiceStatus;
+
+void WINAPI ServiceStrl(DWORD dwOpcode) {
+    switch (dwOpcode)
+    {
+    case SERVICE_CONTROL_STOP:
+        status.dwCurrentState = SERVICE_STOP_PENDING;
+        SetServiceStatus(hServiceStatus, &status);
+        //结束服务
+        ExitProcess(0);
+        break;
+    case SERVICE_CONTROL_PAUSE:
+        break;
+    case SERVICE_CONTROL_CONTINUE:
+        break;
+    case SERVICE_CONTROL_INTERROGATE:
+        break;
+    case SERVICE_CONTROL_SHUTDOWN:
+        break;
+    default:
+        //LogEvent(_T("Bad service request"));
+        break;
+    }
+}
+void WINAPI ServiceMain() {
+    status.dwCurrentState = SERVICE_START_PENDING;
+    status.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+    //注册服务控制  
+    hServiceStatus = RegisterServiceCtrlHandler(szServiceName, ServiceStrl);
+    if (hServiceStatus == NULL) {
+        //LogEvent("Handler not installed");
+        return;
+    }
+    SetServiceStatus(hServiceStatus, &status);
+
+    status.dwWin32ExitCode = S_OK;
+    status.dwCheckPoint = 0;
+    status.dwWaitHint = 0;
+    status.dwCurrentState = SERVICE_RUNNING;
+    SetServiceStatus(hServiceStatus, &status);
+
+    run();
+
+    status.dwCurrentState = SERVICE_STOPPED;
+    SetServiceStatus(hServiceStatus, &status);
+    //LogEvent("Service stopped");
+}
+//判断服务是否安装
+BOOL IsInstalled() {
+    BOOL bResult = FALSE;
+
+    //打开服务控制管理器  
+    SC_HANDLE hSCM = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (hSCM != NULL) {
+        //打开服务  
+        SC_HANDLE hService = OpenService(hSCM, szServiceName, SERVICE_QUERY_CONFIG);
+        if (hService != NULL) {
+            bResult = TRUE;
+            CloseServiceHandle(hService);
+        }
+        CloseServiceHandle(hSCM);
+    }
+    return bResult;
+}
+BOOL Uninstall() {
+    if (!IsInstalled(szServiceName))
+        return TRUE;
+
+    SC_HANDLE hSCM = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+
+    if (hSCM == NULL) {
+        MessageBox(NULL, "Couldn't open service manager", szServiceName, MB_OK);
+        return FALSE;
+    }
+
+    SC_HANDLE hService = OpenService(hSCM, szServiceName, SERVICE_STOP | DELETE);
+
+    if (hService == NULL) {
+        CloseServiceHandle(hSCM);
+        MessageBox(NULL, "Couldn't open service", szServiceName, MB_OK);
+        return FALSE;
+    }
+    SERVICE_STATUS status;
+    ControlService(hService, SERVICE_CONTROL_STOP, &status);
+
+    //删除服务  
+    BOOL bDelete = DeleteService(hService);
+    CloseServiceHandle(hService);
+    CloseServiceHandle(hSCM);
+
+    if (bDelete)
+        return TRUE;
+    return FALSE;
+}
+BOOL Install(int argc, char* argv[]) {
+    if (IsInstalled(szServiceName)) {
+        return TRUE;
+    }
+    //打开服务控制管理器  
+    SC_HANDLE hSCM = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (hSCM == NULL) {
+        MessageBox(NULL, "Couldn't open service manager", szServiceName, MB_OK);
+        return FALSE;
+    }
+
+    // Get the executable file path  
+    TCHAR szFilePath[MAX_PATH];
+    GetModuleFileName(NULL, szFilePath, MAX_PATH);
+    TCHAR szCmd[512] = { 0 };
+    strcat(szCmd, szFilePath);
+    for (size_t i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-install") == 0) {
+            strcat(szCmd, " -service ");
+            i++;
+            strcat(szCmd, argv[i]);
+        }
+        else {
+            strcat(szCmd, " ");
+            strcat(szCmd, argv[i]);
+            i++;
+            strcat(szCmd, " ");
+            strcat(szCmd, argv[i]);
+        }
+    }
+
+    //创建服务  
+    SC_HANDLE hService = CreateService(
+        hSCM, szServiceName, szServiceName,
+        SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS,
+        SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
+        szCmd, NULL, NULL, "", NULL, NULL);
+
+    if (hService == NULL) {
+        CloseServiceHandle(hSCM);
+        MessageBox(NULL, "Couldn't create service", szServiceName, MB_OK);
+        return FALSE;
+    }
+
+    StartService(hService, 0, NULL);
+
+    CloseServiceHandle(hService);
+    CloseServiceHandle(hSCM);
+    return TRUE;
+}
+#endif
 //加载配置
-static load_config(opc_global* global, int argc, char* argv[]) {
+static int load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.server_ip = "127.0.0.1";
     global->config.server_port = 8025;
@@ -1628,22 +1779,75 @@ static load_config(opc_global* global, int argc, char* argv[]) {
             scanf("%s", buf);
             global->config.auth_key = buf;
         }
+#if defined(_WIN32) || defined(_WIN64)
+        else if (strcmp(argv[i], "-install") == 0) {
+            i++;
+            szServiceName = argv[i];
+            install_service = 1;
+        }
+        else if (strcmp(argv[i], "-uninstall") == 0) {
+            i++;
+            szServiceName = argv[i];
+            install_service = -1;
+        }
+        else if (strcmp(argv[i], "-service") == 0) {
+            i++;
+            szServiceName = argv[i];
+            run_service = 1;
+        }
+#endif
     }
+    return 0;
 }
+//主流程
+static opc_global* global = NULL;
+static int run() {
+    //初始化
+    init_global(global);
+    //开始连接
+    start_connect(global);
+    //启动循环
+    uv_run(loop, UV_RUN_DEFAULT);
+}
+
 
 int main(int argc, char* argv[]) {
     loop = uv_default_loop();
-    opc_global* global = (opc_global*)malloc(sizeof(opc_global));
+    global = (opc_global*)malloc(sizeof(opc_global));
     if (global == NULL)
         return 0;
     memset(global, 0, sizeof(*global));
     //加载参数
     load_config(global, argc, argv);
-    //初始化
-    init_global(global);
-    //开始连接
-    start_connect(global);
-
-    uv_run(loop, UV_RUN_DEFAULT);
+#if defined(_WIN32) || defined(_WIN64)
+    if (install_service == 1) {
+        Install(argc, argv);
+        return 0;
+    }
+    if (install_service == -1) {
+        Uninstall();
+        return 0;
+    }
+    if (run_service) {
+        //初始化
+        hServiceStatus = NULL;
+        status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+        status.dwCurrentState = SERVICE_STOPPED;
+        status.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+        status.dwWin32ExitCode = 0;
+        status.dwServiceSpecificExitCode = 0;
+        status.dwCheckPoint = 0;
+        status.dwWaitHint = 0;
+        SERVICE_TABLE_ENTRY st[] = {
+            { szServiceName, (LPSERVICE_MAIN_FUNCTION)ServiceMain },
+            { NULL, NULL }
+        };
+        if (!StartServiceCtrlDispatcher(st)) {
+            return 1;
+        }
+        return 0;
+    }
+#endif
+    run();
     return 0;
 }
