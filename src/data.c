@@ -88,9 +88,7 @@ int data_bridge_add(const char* key, const char* info) {
             return 0;
         }
     }
-    else {
-        return -1;
-    }
+    return -1;
 }
 int data_bridge_del(uint16_t id) {
     char* zErrMsg = 0;
@@ -125,9 +123,7 @@ int data_bridge_del(uint16_t id) {
             return 0;
         }
     }
-    else {
-        return -1;
-    }
+    return -1;
 }
 
 cJSON* data_forward_get() {
@@ -151,9 +147,7 @@ int data_forward_add(int src_id, int dst_id, int type, int src_port, const char*
             return 0;
         }
     }
-    else {
-        return -1;
-    }
+    return -1;
 }
 
 int data_forward_del(uint32_t id) {
@@ -168,9 +162,7 @@ int data_forward_del(uint32_t id) {
             return 0;
         }
     }
-    else {
-        return -1;
-    }
+    return -1;
 }
 
 
@@ -195,9 +187,7 @@ int data_host_add(const char* host, int dst_id, int type, const char* bind, cons
             return 0;
         }
     }
-    else {
-        return -1;
-    }
+    return -1;
 }
 
 int data_host_del(uint32_t id) {
@@ -233,9 +223,7 @@ int data_host_del(uint32_t id) {
             return 0;
         }
     }
-    else {
-        return -1;
-    }
+    return -1;
 }
 
 cJSON* data_vpc_get() {
@@ -259,9 +247,22 @@ int data_vpc_add(const char* ipv4, const char* ipv6, const char* info) {
             return 0;
         }
     }
-    else {
-        return -1;
+    return -1;
+}
+
+int data_vpc_del(uint16_t id) {
+    char* zErrMsg = 0;
+    char sql[256] = { 0 };
+    //删除
+    snprintf(sql, sizeof(sql), "DELETE FROM vpc WHERE id = %d;", id);
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        if (sqlite3_changes(db) == 1) {
+            //触发回调
+            settings->on_vpc_del(userdata, id);
+            return 0;
+        }
     }
+    return -1;
 }
 
 cJSON* data_member_get() {
@@ -285,7 +286,20 @@ int data_member_add(uint16_t bid, uint16_t vid, const char* ipv4, const char* ip
             return 0;
         }
     }
-    else {
-        return -1;
+    return -1;
+}
+
+int data_member_del(uint32_t id) {
+    char* zErrMsg = 0;
+    char sql[256] = { 0 };
+    //删除
+    snprintf(sql, sizeof(sql), "DELETE FROM member WHERE id = %d;", id);
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        if (sqlite3_changes(db) == 1) {
+            //触发回调
+            settings->on_member_del(userdata, id);
+            return 0;
+        }
     }
+    return -1;
 }

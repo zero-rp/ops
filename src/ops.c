@@ -43,18 +43,23 @@ RB_HEAD(_ops_forward_tree, _ops_forward);
 typedef struct _ops_vpc {
     RB_ENTRY(_ops_vpc) entry;            //
     uint16_t id;                             //网络编号
-    uint8_t ipv4[4];                         //ipv4网段
-    uint8_t ipv6[16];                        //ipv6网段
+    struct in_addr ipv4;                         //ipv4网段
+    uint8_t prefix_v4;                      //ipv4前缀
+    struct in_addr6 ipv6;                        //ipv6网段
+    uint8_t prefix_v6;                      //ipv6前缀
 }ops_vpc;
 RB_HEAD(_ops_vpc_tree, _ops_vpc);
 //VPC成员
 typedef struct _ops_members {
     RB_ENTRY(_ops_members) entry;                //
     uint16_t bid;                               //客户ID
+    uint16_t vid;                               //VPCID
     ops_vpc* vpc;                               //关联的VPC
     uint32_t id;                                //成员编号
-    uint8_t ipv4[4];                            //ipv4地址
-    uint8_t ipv6[16];                           //ipv6地址
+    struct in_addr ipv4;                        //ipv4地址
+    uint8_t prefix_v4;                      //ipv4前缀
+    struct in_addr6 ipv6;                       //ipv6地址
+    uint8_t prefix_v6;                      //ipv6前缀
 }ops_members;
 RB_HEAD(_ops_members_tree, _ops_members);
 //VPC路由
@@ -62,14 +67,14 @@ typedef struct _ops_route_v4 {
     RB_ENTRY(_ops_route_v4) entry;              //
     uint16_t id;                                //客户ID
     uint32_t mid;                               //成员ID
-    uint8_t ip[4];                              //地址
+    struct in_addr ip;                              //地址
 }ops_route_v4;
 RB_HEAD(_ops_route_v4_tree, _ops_route_v4);
 typedef struct _ops_route_v6 {
     RB_ENTRY(_ops_route_v6) entry;              //
     uint16_t id;                                //客户ID
     uint32_t mid;                               //成员ID
-    uint8_t ip[16];                             //地址
+    struct in_addr6 ip;                             //地址
 }ops_route_v6;
 RB_HEAD(_ops_route_v6_tree, _ops_route_v6);
 //客户端
@@ -253,14 +258,11 @@ static int _ops_route_v4_compare(ops_route_v4* w1, ops_route_v4* w2) {
 }
 RB_GENERATE_STATIC(_ops_route_v4_tree, _ops_route_v4, entry, _ops_route_v4_compare)
 static int _ops_route_v6_compare(ops_route_v6* w1, ops_route_v6* w2) {
-    if (*(uint32_t*)(&w1->ip[0]) < *(uint32_t*)(&w2->ip[0])) return -1;
-    if (*(uint32_t*)(&w1->ip[0]) > *(uint32_t*)(&w2->ip[0])) return 1;
-    if (*(uint32_t*)(&w1->ip[4]) < *(uint32_t*)(&w2->ip[4])) return -1;
-    if (*(uint32_t*)(&w1->ip[4]) > *(uint32_t*)(&w2->ip[4])) return 1;
-    if (*(uint32_t*)(&w1->ip[8]) < *(uint32_t*)(&w2->ip[8])) return -1;
-    if (*(uint32_t*)(&w1->ip[8]) > *(uint32_t*)(&w2->ip[8])) return 1;
-    if (*(uint32_t*)(&w1->ip[12]) < *(uint32_t*)(&w2->ip[12])) return -1;
-    if (*(uint32_t*)(&w1->ip[12]) > *(uint32_t*)(&w2->ip[12])) return 1;
+    for (int i = 0; i < 16; i++) {
+        if (w1->ip.s6_addr[i] != w2->ip.s6_addr[i]) {
+            return w1->ip.s6_addr[i] > w2->ip.s6_addr[i] ? 1 : -1;
+        }
+    }
     return 0;
 }
 RB_GENERATE_STATIC(_ops_route_v6_tree, _ops_route_v6, entry, _ops_route_v6_compare)
@@ -766,6 +768,22 @@ static void web_on_request(ops_web* web, cJSON* body) {
             return web_respose_json(web, -1, "add error", data);
         }
     }
+    //删除网络
+    else if (strcmp(url, "vpc_del") == 0) {
+        cJSON* id = cJSON_GetObjectItem(body, "id");
+        if (!id) {
+            goto err_data;
+        }
+        if (id->valueint == 0) {
+            goto err_data;
+        }
+        if (data_vpc_del(id->valueint) == 0) {
+            goto ok;
+        }
+        else {
+            return web_respose_json(web, -1, "del error", data);
+        }
+    }
     //成员列表
     else if (strcmp(url, "member") == 0) {
         cJSON* list = data_member_get();
@@ -794,7 +812,22 @@ static void web_on_request(ops_web* web, cJSON* body) {
             return web_respose_json(web, -1, "add error", data);
         }
     }
-
+    //删除成员
+    else if (strcmp(url, "member_del") == 0) {
+        cJSON* id = cJSON_GetObjectItem(body, "id");
+        if (!id) {
+            goto err_data;
+        }
+        if (id->valueint == 0) {
+            goto err_data;
+        }
+        if (data_member_del(id->valueint) == 0) {
+            goto ok;
+        }
+        else {
+            return web_respose_json(web, -1, "del error", data);
+        }
+    }
 ok:
     return web_respose_json(web, 0, "ok", data);
 err_data:
@@ -1418,6 +1451,35 @@ static void forward_data_local(ops_bridge* bridge, ops_packet* packet, int size)
 }
 #endif
 //----------------------------------------------------------------------------------------------------------------------vpc
+static void cidr_to_netmask_v4(int prefix, struct in_addr* netmask) {
+    netmask->s_addr = htonl(~((1 << (32 - prefix)) - 1));
+}
+static void cidr_to_netmask_v6(int prefix, struct in6_addr* netmask) {
+    for (int i = 0; i < 16; i++) {
+        if (prefix > 8) {
+            netmask->s6_addr[i] = 0xFF;
+            prefix -= 8;
+        }
+        else {
+            netmask->s6_addr[i] = (0xFF << (8 - prefix)) & 0xFF;
+            prefix = 0;
+        }
+    }
+}
+static void cidr_to_network_v4(const char* ip, int prefix, struct in_addr* network) {
+    struct in_addr netmask;
+    cidr_to_netmask_v4(prefix, &netmask);
+    network->s_addr = inet_addr(ip) & netmask.s_addr;
+}
+static void cidr_to_network_v6(const char* ip, int prefix, struct in6_addr* network) {
+    struct in6_addr netmask;
+    cidr_to_netmask_v6(prefix, &netmask);
+    inet_pton(AF_INET6, ip, network);
+    for (int i = 0; i < 16; i++) {
+        network->s6_addr[i] &= netmask.s6_addr[i];
+    }
+}
+
 static void vpc_data(ops_bridge* bridge, ops_packet* packet, int size) {
     uint8_t* data = packet->data;
     uint8_t ip_version = packet->data[0] >> 4;
@@ -1481,8 +1543,9 @@ static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, 
 }
 //客户端鉴权成功
 static void bridge_auth_ok(ops_bridge* bridge) {
-    sds pack = sdsnewlen(NULL, 4);//预留数量
     char buf[1 + sizeof(ops_forward_dst) + sizeof(ops_forward_src) + sizeof(ops_host_dst)];
+    sds pack = sdsnewlen(NULL, 5);//预留数量和指令
+    pack[0] = CTL_FORWARD_ADD;
     int count = 0;
     //查询客户端转发服务
     ops_forward* tc = NULL;
@@ -1518,7 +1581,8 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     }
     sdsfree(pack);
     //查询主机服务
-    pack = sdsnewlen(NULL, 4);//预留数量
+    pack = sdsnewlen(NULL, 5);//预留数量和指令
+    pack[0] = CTL_HOST_ADD;
     count = 0;
     ops_host* hc = NULL;
     RB_FOREACH(hc, _ops_host_tree, &bridge->global->host) {
@@ -1540,7 +1604,8 @@ static void bridge_auth_ok(ops_bridge* bridge) {
     }
     sdsfree(pack);
     //查询相关的vpc节点
-    pack = sdsnewlen(NULL, 4);//预留数量
+    pack = sdsnewlen(NULL, 5);//预留数量和指令
+    pack[0] = CTL_MEMBER_ADD;
     count = 0;
     ops_members* mc = NULL;
     RB_FOREACH(mc, _ops_members_tree, &bridge->global->members) {
@@ -1548,14 +1613,16 @@ static void bridge_auth_ok(ops_bridge* bridge) {
             ops_member mem;
             mem.id = htonl(mc->id);
             mem.vid = htons(mc->vpc->id);
-            memcpy(mem.ipv4, mc->ipv4, sizeof(mem.ipv4));
-            memcpy(mem.ipv6, mc->ipv6, sizeof(mem.ipv6));
+            memcpy(mem.ipv4, &mc->ipv4, sizeof(mem.ipv4));
+            mem.prefix_v4 = mc->prefix_v4;
+            memcpy(mem.ipv6, &mc->ipv6, sizeof(mem.ipv6));
+            mem.prefix_v6 = mc->prefix_v6;
             memcpy(&buf, &mem, sizeof(mem));
             pack = sdscatlen(pack, buf, sizeof(mem));
             count++;
         }
     }
-    *(uint32_t*)pack = htonl(count);
+    *(uint32_t*)(&pack[1]) = htonl(count);
     //下发主机服务
     if (count > 0) {
         bridge_send(bridge, ops_packet_vpc, 0, 0, pack, sdslen(pack));
@@ -1726,6 +1793,10 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
     }
 }
 //----------------------------------------------------------------------------------------------------------------------data
+static void on_data_host_del(ops_global* global, const char* h);
+static void on_data_forward_del(ops_global* global, uint32_t id);
+static void on_data_vpc_del(ops_global* global, uint16_t id);
+static void on_data_member_del(ops_global* global, uint32_t id);
 //用户发生改变
 static void on_data_key_add(ops_global* global, uint16_t id, const char* k) {
     ops_key* key = malloc(sizeof(*key));
@@ -1776,28 +1847,30 @@ static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id
     };
     ops_bridge* b = RB_FIND(_ops_bridge_tree, &global->bridge, &the);
     if (b) {
-        char buf[4 + 1 + sizeof(ops_forward_src)];
-        *(uint32_t*)buf = htonl(1);
-        buf[4] = 1;//类型,转发源
+        char buf[1 + 4 + 1 + sizeof(ops_forward_src)];
+        buf[0] = CTL_FORWARD_ADD;
+        *(uint32_t*)(&buf[1]) = htonl(1);
+        buf[5] = 1;//类型,转发源
         ops_forward_src _src;
         _src.port = htons(src_port);
         _src.sid = htonl(id);
         _src.type = type;
-        memcpy(&buf[5], &_src, sizeof(_src));
+        memcpy(&buf[6], &_src, sizeof(_src));
         bridge_send(b, ops_packet_forward, 0, 0, buf, sizeof(buf));
     }
     the.id = dst_id;
     b = RB_FIND(_ops_bridge_tree, &global->bridge, &the);
     if (b) {
-        char buf[4 + 1 + sizeof(ops_forward_dst)];
-        *(uint32_t*)buf = htonl(1);
-        buf[4] = 2;//类型,转发目标
+        char buf[1 + 4 + 1 + sizeof(ops_forward_dst)];
+        buf[0] = CTL_FORWARD_ADD;
+        *(uint32_t*)(&buf[0]) = htonl(1);
+        buf[5] = 2;//类型,转发目标
         ops_forward_dst _dst;
         _dst.port = htons(dst_port);
         _dst.sid = htonl(id);
         _dst.type = type;
         memcpy(_dst.dst, dst, sizeof(_dst.dst));
-        memcpy(&buf[5], &_dst, sizeof(_dst));
+        memcpy(&buf[6], &_dst, sizeof(_dst));
         bridge_send(b, ops_packet_forward, 0, 0, buf, sizeof(buf));
     }
 }
@@ -1812,11 +1885,10 @@ static void on_data_forward_del(ops_global* global, uint32_t id) {
     }
     //通知相关客户端当前服务已移除
 
-
     RB_REMOVE(_ops_forward_tree, &global->forward, forward);
     free(forward);
 }
-//
+//主机发生改变
 static void on_data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite) {
     ops_host* host = malloc(sizeof(*host));
     if (host == NULL)
@@ -1842,14 +1914,15 @@ static void on_data_host_add(ops_global* global, uint32_t id, const char* src_ho
     if (!bridge) {
         return;
     }
-    char buf[4 + sizeof(ops_host_dst)];
-    *(uint32_t*)buf = htonl(1);
+    char buf[1 + 4 + sizeof(ops_host_dst)];
+    buf[0] = CTL_HOST_ADD;
+    *(uint32_t*)(&buf[1]) = htonl(1);
     ops_host_dst _dst;
     _dst.port = htons(dst_port);
     _dst.sid = htonl(id);
     _dst.type = type;
     memcpy(_dst.dst, dst, sizeof(_dst.dst));
-    memcpy(&buf[4], &_dst, sizeof(_dst));
+    memcpy(&buf[5], &_dst, sizeof(_dst));
     bridge_send(bridge, ops_packet_host, 0, 0, buf, sizeof(buf));
 }
 static void on_data_host_del(ops_global* global, const char* h) {
@@ -1878,13 +1951,40 @@ static void on_data_vpc_add(ops_global* global, uint16_t id, const char* ipv4, c
         return;
     memset(vpc, 0, sizeof(*vpc));
     vpc->id = id;
-    struct sockaddr_in addr;
-    uv_ip4_addr(ipv4, 0, &addr);
-    memcpy(&vpc->ipv4, &addr.sin_addr, sizeof(vpc->ipv4));
-    struct sockaddr_in6 addr6;
-    uv_ip6_addr(ipv6, 0, &addr6);
-    memcpy(&vpc->ipv6, &addr6.sin6_addr, sizeof(vpc->ipv6));
+
+    int prefix;
+    char ip[INET6_ADDRSTRLEN];
+    // IPv4
+    if (sscanf_s(ipv4, "%15[^/]/%d", ip, INET6_ADDRSTRLEN, &prefix) == 2) {
+        vpc->prefix_v4 = prefix;                      //前缀
+        cidr_to_network_v4(ip, prefix, &vpc->ipv4);
+    }
+    // IPv6
+    if (sscanf_s(ipv6, "%39[^/]/%d", ip, INET6_ADDRSTRLEN, &prefix) == 2) {
+        vpc->prefix_v6 = prefix;                      //前缀
+        cidr_to_network_v6(ip, prefix, &vpc->ipv6);
+    }
     RB_INSERT(_ops_vpc_tree, &global->vpc, vpc);
+}
+static void on_data_vpc_del(ops_global* global, uint16_t id) {
+    ops_vpc the = {
+           .id = id
+    };
+    ops_vpc* vpc = RB_FIND(_ops_vpc_tree, &global->vpc, &the);
+    if (vpc == NULL) {
+        return;
+    }
+    //移除关联的所有成员
+    ops_members* c = NULL;
+    ops_members* cc = NULL;
+    RB_FOREACH_SAFE(c, _ops_members_tree, &global->members, cc) {
+        if (c->vid == id) {
+            on_data_member_del(global, c->id);
+        }
+        cc = NULL;
+    }
+    RB_REMOVE(_ops_vpc_tree, &global->vpc, vpc);
+    free(vpc);
 }
 //
 static void on_data_member_add(ops_global* global, uint32_t id, uint16_t bid, uint16_t vid, const char* ipv4, const char* ipv6) {
@@ -1905,12 +2005,17 @@ static void on_data_member_add(ops_global* global, uint32_t id, uint16_t bid, ui
     mem->id = id;
     mem->bid = bid;
     mem->vpc = v;
+    //IPV4
     struct sockaddr_in addr;
     uv_ip4_addr(ipv4, 0, &addr);
     memcpy(&mem->ipv4, &addr.sin_addr, sizeof(mem->ipv4));
+    mem->prefix_v4 = v->prefix_v4;
+    //IPV6
     struct sockaddr_in6 addr6;
     uv_ip6_addr(ipv6, 0, &addr6);
     memcpy(&mem->ipv6, &addr6.sin6_addr, sizeof(mem->ipv6));
+    mem->prefix_v6 = v->prefix_v6;
+    //记录
     RB_INSERT(_ops_members_tree, &global->members, mem);
     //生成路由
     ops_route_v4* v4 = (ops_route_v4*)malloc(sizeof(*v4));
@@ -1922,7 +2027,8 @@ static void on_data_member_add(ops_global* global, uint32_t id, uint16_t bid, ui
     v4->mid = id;
     memcpy(&v4->ip, &addr.sin_addr, sizeof(v4->ip));
     RB_INSERT(_ops_route_v4_tree, &global->route_v4, v4);
-    ops_route_v4* v6 = (ops_route_v6*)malloc(sizeof(*v6));
+
+    ops_route_v6* v6 = (ops_route_v6*)malloc(sizeof(*v6));
     if (!v6) {
         return;
     }
@@ -1938,17 +2044,53 @@ static void on_data_member_add(ops_global* global, uint32_t id, uint16_t bid, ui
     ops_bridge* bridge = RB_FIND(_ops_bridge_tree, &global->bridge, &bthe);
     if (!bridge)
         return;
-    char buf[4 + sizeof(ops_member)];
-    *(uint32_t*)buf = htonl(1);
+    char buf[1 + 4 + sizeof(ops_member)];
+    buf[0] = CTL_MEMBER_ADD;
+    *(uint32_t*)(&buf[1]) = htonl(1);
     ops_member _mem;
     _mem.id = htonl(id);
     _mem.vid = htons(vid);
-    memcpy(_mem.ipv4, v4->ip, sizeof(_mem.ipv4));
-    memcpy(_mem.ipv6, v6->ip, sizeof(_mem.ipv6));
-    memcpy(&buf[4], &_mem, sizeof(_mem));
+    memcpy(_mem.ipv4, &v4->ip, sizeof(_mem.ipv4));
+    _mem.prefix_v4 = v->prefix_v4;
+    memcpy(_mem.ipv6, &v6->ip, sizeof(_mem.ipv6));
+    _mem.prefix_v6 = v->prefix_v6;
+    memcpy(&buf[5], &_mem, sizeof(_mem));
     bridge_send(bridge, ops_packet_vpc, 0, 0, buf, sizeof(buf));
 }
-struct data_settings data_settings = { on_data_key_add, on_data_key_del, on_data_forward_add, on_data_forward_del, on_data_host_add ,on_data_host_del, on_data_vpc_add, on_data_member_add };
+static void on_data_member_del(ops_global* global, uint32_t id) {
+    ops_members the = {
+       .id = id
+    };
+    ops_members* mem = RB_FIND(_ops_members_tree, &global->members, &the);
+    if (mem == NULL) {
+        return;
+    }
+    //通知
+    ops_bridge bthe = {
+        .id = mem->bid
+    };
+    ops_bridge* bridge = RB_FIND(_ops_bridge_tree, &global->bridge, &bthe);
+    if (bridge) {
+        char buf[1 + 4];
+        buf[0] = CTL_MEMBER_DEL;//删除指令
+        *(uint32_t*)(&buf[1]) = htonl(id);
+        bridge_send(bridge, ops_packet_vpc, 0, 0, buf, sizeof(buf));
+    }
+    RB_REMOVE(_ops_members_tree, &global->members, mem);
+    free(mem);
+}
+struct data_settings data_settings = {
+    on_data_key_add,
+    on_data_key_del,
+    on_data_forward_add,
+    on_data_forward_del,
+    on_data_host_add ,
+    on_data_host_del,
+    on_data_vpc_add,
+    on_data_vpc_del,
+    on_data_member_add,
+    on_data_member_del
+};
 //----------------------------------------------------------------------------------------------------------------------
 //全局初始化
 static int init_global(ops_global* global) {
@@ -1982,6 +2124,8 @@ static int init_global(ops_global* global) {
     uv_ip4_addr("0.0.0.0", global->config.https_proxy_port, &_addr);
     uv_tcp_bind(&global->listen.https.tcp, &_addr, 0);
     uv_listen((uv_stream_t*)&global->listen.https.tcp, DEFAULT_BACKLOG, https_connection_cb);
+
+    return 0;
 }
 //加载配置
 static load_config(ops_global* global, int argc, char* argv[]) {
@@ -2029,7 +2173,9 @@ int main(int argc, char* argv[]) {
     //加载参数
     load_config(global, argc, argv);
     //初始化
-    init_global(global);
+    if (init_global(global)) {
+        return 1;
+    }
     //
     uv_run(loop, UV_RUN_DEFAULT);
     return 0;

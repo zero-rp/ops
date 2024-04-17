@@ -6,6 +6,8 @@
 #include <string.h>
 #include <assert.h>
 
+#pragma pack(push)  // 保存当前对齐状态
+#pragma pack(1)     // 设置一字节对齐
 //包类型
 enum ops_packet_type
 {
@@ -30,7 +32,9 @@ typedef struct _ops_packet {
     uint32_t service_id;                    //服务编号
     uint8_t data[];                         //数据
 }ops_packet;
-
+//转发服务
+#define CTL_FORWARD_ADD  0x01                //添加
+#define CTL_FORWARD_DEL  0x02                //删除
 //转发服务来源
 typedef struct _ops_forward_src {
     uint32_t sid;                            //服务编号
@@ -46,6 +50,8 @@ typedef struct _ops_forward_dst {
     char dst[256];                           //转发的目标地址
 }ops_forward_dst;
 //域名服务目标
+#define CTL_HOST_ADD    0x01                 //添加
+#define CTL_HOST_DEL    0x02                 //删除
 typedef struct _ops_host_dst {
     uint32_t sid;                            //服务编号
     uint8_t type;                            //服务类型,1 HTTP, 2 HTTPS
@@ -54,13 +60,16 @@ typedef struct _ops_host_dst {
     char dst[256];                           //转发的目标地址
 }ops_host_dst;
 //网络成员
+#define CTL_MEMBER_ADD  0x01                //添加
+#define CTL_MEMBER_DEL  0x02                //删除
 typedef struct _ops_member {
     uint16_t vid;                           //VPC编号
     uint32_t id;                            //成员编号
     uint8_t ipv4[4];                        //ipv4地址
+    uint8_t prefix_v4;                      //ipv4前缀
     uint8_t ipv6[16];                       //ipv6地址
+    uint8_t prefix_v6;                      //ipv6前缀
 }ops_member;
 
-
-
+#pragma pack(pop)   // 恢复之前的对齐状态
 #endif

@@ -75,9 +75,13 @@ typedef struct _opc_vpc {
     RB_ENTRY(_opc_vpc) entry;    //
     uint32_t id;                            //成员id
     uint16_t vid;                           //
-    uint8_t ipv4[4];                        //ipv4地址
-    uint8_t ipv6[16];                       //ipv6地址
-    void* data;                 //接口数据
+    struct in_addr ipv4;                    //ipv4地址
+    struct in_addr ipv4_mask;               //ipv4掩码
+    uint8_t prefix_v4;                      //ipv4前缀
+    struct in_addr6 ipv6;                   //ipv6地址
+    struct in_addr6 ipv6_mask;              //ipv6掩码
+    uint8_t prefix_v6;                      //ipv6前缀
+    void* data;                             //接口数据
     struct _opc_bridge* bridge;
 }opc_vpc;
 RB_HEAD(_opc_vpc_tree, _opc_vpc);
@@ -204,6 +208,7 @@ static uint64_t gettime() {
 //
 static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //--------------------------------------------------------------------------------------------------------forward
+#if 1
 //-----------------------------------------------------来源
 //失败关闭对端隧道
 static void forward_tunnel_src_err(opc_bridge* bridge, uint32_t service_id, uint32_t stream_id) {
@@ -221,7 +226,7 @@ static void forward_tunnel_src_close_cb(uv_handle_t* handle) {
 }
 static void forward_tunnel_src_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_forward_tunnel_src* conn = (opc_forward_tunnel_src*)req->data;
-    uv_close(&conn->tcp, forward_tunnel_src_close_cb);
+    uv_close((uv_handle_t*)&conn->tcp, forward_tunnel_src_close_cb);
     free(req);
 }
 static void forward_tunnel_src_shutdown(opc_forward_tunnel_src* tunnel) {
@@ -229,11 +234,11 @@ static void forward_tunnel_src_shutdown(opc_forward_tunnel_src* tunnel) {
     if (req != NULL) {
         memset(req, 0, sizeof(*req));
         req->data = tunnel;
-        uv_shutdown(req, &tunnel->tcp, forward_tunnel_src_shutdown_cb);
+        uv_shutdown(req, (uv_stream_t*)&tunnel->tcp, forward_tunnel_src_shutdown_cb);
     }
     else {
         //分配内存失败,直接强制关闭
-        uv_close(&tunnel->tcp, forward_tunnel_src_close_cb);
+        uv_close((uv_handle_t*)&tunnel->tcp, forward_tunnel_src_close_cb);
     }
 }
 //转发隧道来源数据到达
@@ -242,7 +247,7 @@ static void forward_tunnel_src_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
     if (nread <= 0) {
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, forward_tunnel_src_close_cb);
+            uv_close((uv_handle_t*)tcp, forward_tunnel_src_close_cb);
         }
         else {
             //shutdown
@@ -297,7 +302,7 @@ static void forward_tunnel_dst_close_cb(uv_handle_t* handle) {
 }
 static void forward_tunnel_dst_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_forward_tunnel_src* conn = (opc_forward_tunnel_src*)req->data;
-    uv_close(&conn->tcp, forward_tunnel_dst_close_cb);
+    uv_close((uv_handle_t*)&conn->tcp, forward_tunnel_dst_close_cb);
     free(req);
 }
 static void forward_tunnel_dst_shutdown(opc_forward_tunnel_dst* tunnel) {
@@ -305,11 +310,11 @@ static void forward_tunnel_dst_shutdown(opc_forward_tunnel_dst* tunnel) {
     if (req != NULL) {
         memset(req, 0, sizeof(*req));
         req->data = tunnel;
-        uv_shutdown(req, &tunnel->tcp, forward_tunnel_dst_shutdown_cb);
+        uv_shutdown(req, (uv_stream_t*)&tunnel->tcp, forward_tunnel_dst_shutdown_cb);
     }
     else {
         //分配内存失败,直接强制关闭
-        uv_close(&tunnel->tcp, forward_tunnel_dst_close_cb);
+        uv_close((uv_handle_t*)&tunnel->tcp, forward_tunnel_dst_close_cb);
     }
 }
 //转发隧道目标数据到达
@@ -318,7 +323,7 @@ static void forward_tunnel_dst_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
     if (nread <= 0) {
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, forward_tunnel_dst_close_cb);
+            uv_close((uv_handle_t*)tcp, forward_tunnel_dst_close_cb);
         }
         else {
             //shutdown
@@ -368,61 +373,74 @@ static void forward_tunnel_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, str
 }
 //服务器控制回调
 static void forward(opc_bridge* bridge, ops_packet* packet) {
-    //读取数量
-    int count = ntohl(*(uint32_t*)&packet->data[0]);
-    char* pos = &packet->data[4];
-    for (size_t i = 0; i < count; i++) {
-        //读取类型
-        uint8_t type = pos[0];
-        pos++;
-        if (type == 1) {//转发源
-            ops_forward_src src;
-            memcpy(&src, pos, sizeof(src));
-            pos += sizeof(src);
-            src.sid = ntohl(src.sid);
-            src.port = ntohs(src.port);
+    uint8_t ctl = packet->data[0];
+    char* pos = &packet->data[1];
+    switch (ctl)
+    {
+    case CTL_FORWARD_ADD: {
+        uint32_t count = ntohl(*(uint32_t*)pos);
+        pos += 4;
+        for (size_t i = 0; i < count; i++) {
+            //读取类型
+            uint8_t type = pos[0];
+            pos++;
+            if (type == 1) {//转发源
+                ops_forward_src src;
+                memcpy(&src, pos, sizeof(src));
+                pos += sizeof(src);
+                src.sid = ntohl(src.sid);
+                src.port = ntohs(src.port);
 
-            opc_forward_src* s = (opc_forward_src*)malloc(sizeof(*s));
-            if (!s) {
-                continue;
+                opc_forward_src* s = (opc_forward_src*)malloc(sizeof(*s));
+                if (!s) {
+                    continue;
+                }
+                memset(s, 0, sizeof(*s));
+                s->id = src.sid;
+                s->bridge = bridge;
+
+                //监听端口
+                struct sockaddr_in _addr;
+                uv_tcp_init(loop, &s->tcp);
+                s->tcp.data = s;
+                uv_ip4_addr("0.0.0.0", src.port, &_addr);
+                uv_tcp_bind(&s->tcp, &_addr, 0);
+                uv_listen((uv_stream_t*)&s->tcp, DEFAULT_BACKLOG, forward_src_connection_cb);
+
+                RB_INSERT(_opc_forward_src_tree, &bridge->forward_src, s);
             }
-            memset(s, 0, sizeof(*s));
-            s->id = src.sid;
-            s->bridge = bridge;
+            else if (type == 2) {//转发目标
+                ops_forward_dst dst;
+                memcpy(&dst, pos, sizeof(dst));
+                pos += sizeof(dst);
+                dst.sid = ntohl(dst.sid);
+                dst.port = ntohs(dst.port);
 
-            //监听端口
-            struct sockaddr_in _addr;
-            uv_tcp_init(loop, &s->tcp);
-            s->tcp.data = s;
-            uv_ip4_addr("0.0.0.0", src.port, &_addr);
-            uv_tcp_bind(&s->tcp, &_addr, 0);
-            uv_listen((uv_stream_t*)&s->tcp, DEFAULT_BACKLOG, forward_src_connection_cb);
+                opc_forward_dst* d = (opc_forward_dst*)malloc(sizeof(*d));
+                if (!d) {
+                    continue;
+                }
+                memset(d, 0, sizeof(*d));
+                d->id = dst.sid;
+                d->bridge = bridge;
+                memcpy(d->dst, dst.dst, sizeof(d->dst));
+                d->dst[sizeof(d->dst) - 1] = 0;
+                d->port = dst.port;
 
-            RB_INSERT(_opc_forward_src_tree, &bridge->forward_src, s);
-        }
-        else if (type == 2) {//转发目标
-            ops_forward_dst dst;
-            memcpy(&dst, pos, sizeof(dst));
-            pos += sizeof(dst);
-            dst.sid = ntohl(dst.sid);
-            dst.port = ntohs(dst.port);
-
-            opc_forward_dst* d = (opc_forward_dst*)malloc(sizeof(*d));
-            if (!d) {
-                continue;
+                RB_INSERT(_opc_forward_dst_tree, &bridge->forward_dst, d);
             }
-            memset(d, 0, sizeof(*d));
-            d->id = dst.sid;
-            d->bridge = bridge;
-            memcpy(d->dst, dst.dst, sizeof(d->dst));
-            d->dst[sizeof(d->dst) - 1] = 0;
-            d->port = dst.port;
+            else {
 
-            RB_INSERT(_opc_forward_dst_tree, &bridge->forward_dst, d);
+            }
         }
-        else {
+        break;
+    }
+    case CTL_FORWARD_DEL: {
 
-        }
+        break;
+    }
+    default:
+        break;
     }
 }
 static void forward_ctl(opc_bridge* bridge, ops_packet* packet) {
@@ -519,7 +537,7 @@ static void forward_data_local(opc_bridge* bridge, ops_packet* packet, int size)
         return;
     }
     req->data = buf->base;
-    uv_write(req, &tunnel->tcp, &buf, 1, write_cb);
+    uv_write(req, (uv_stream_t*)&tunnel->tcp, &buf, 1, write_cb);
 }
 static void forward_data_remote(opc_bridge* bridge, ops_packet* packet, int size) {
     opc_forward_tunnel_src  the = {
@@ -570,7 +588,9 @@ static void forward_free(opc_bridge* bridge) {
         fdc = NULL;
     }
 }
+#endif
 //--------------------------------------------------------------------------------------------------------host
+#if 1
 //转发隧道目标数据到达
 static void host_tunnel_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     opc_host_tunnel* tunnel = (opc_host_tunnel*)tcp->data;
@@ -626,24 +646,38 @@ static void host_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct addrin
 }
 
 static void host(opc_bridge* bridge, ops_packet* packet) {
-    int count = ntohl(*(uint32_t*)&packet->data[0]);
-    char* pos = &packet->data[4];
-    for (size_t i = 0; i < count; i++) {
-        ops_host_dst dst;
-        memcpy(&dst, pos, sizeof(dst));
-        pos += sizeof(dst);
-        dst.sid = ntohl(dst.sid);
-        dst.port = ntohs(dst.port);
+    uint8_t ctl = packet->data[0];
+    char* pos = &packet->data[5];
+    switch (ctl)
+    {
+    case CTL_HOST_ADD: {
+        uint32_t count = ntohl(*(uint32_t*)pos);
+        pos += 4;
+        for (size_t i = 0; i < count; i++) {
+            ops_host_dst dst;
+            memcpy(&dst, pos, sizeof(dst));
+            pos += sizeof(dst);
+            dst.sid = ntohl(dst.sid);
+            dst.port = ntohs(dst.port);
 
-        opc_host* d = (opc_host*)malloc(sizeof(*d));
-        memset(d, 0, sizeof(*d));
-        d->id = dst.sid;
-        d->bridge = bridge;
-        memcpy(d->dst, dst.dst, sizeof(d->dst));
-        d->dst[sizeof(d->dst) - 1] = 0;
-        d->port = dst.port;
+            opc_host* d = (opc_host*)malloc(sizeof(*d));
+            memset(d, 0, sizeof(*d));
+            d->id = dst.sid;
+            d->bridge = bridge;
+            memcpy(d->dst, dst.dst, sizeof(d->dst));
+            d->dst[sizeof(d->dst) - 1] = 0;
+            d->port = dst.port;
 
-        RB_INSERT(_opc_host_tree, &bridge->host, d);
+            RB_INSERT(_opc_host_tree, &bridge->host, d);
+        }
+        break;
+    }
+    case CTL_HOST_DEL: {
+
+        break;
+    }
+    default:
+        break;
     }
 }
 static void host_ctl(opc_bridge* bridge, ops_packet* packet) {
@@ -697,8 +731,25 @@ static void host_data(opc_bridge* bridge, ops_packet* packet, int size) {
 static void host_free(opc_bridge* bridge) {
 
 }
+#endif
 //--------------------------------------------------------------------------------------------------------vpc
-static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size);
+#if 1
+static void vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size);
+static void cidr_to_netmask_v4(int prefix, struct in_addr* netmask) {
+    netmask->s_addr = htonl(~((1 << (32 - prefix)) - 1));
+}
+static void cidr_to_netmask_v6(int prefix, struct in6_addr* netmask) {
+    for (int i = 0; i < 16; i++) {
+        if (prefix > 8) {
+            netmask->s6_addr[i] = 0xFF;
+            prefix -= 8;
+        }
+        else {
+            netmask->s6_addr[i] = (0xFF << (8 - prefix)) & 0xFF;
+            prefix = 0;
+        }
+    }
+}
 //ip数据过滤
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -759,8 +810,10 @@ typedef struct _win_tun {
     QUEUE wq;                       //队列
     int write;                      //锁
     int read;
-    uint8_t ipv4[4];                        //ipv4地址
-    uint8_t ipv6[16];                       //ipv6地址
+    struct in_addr ipv4;                        //ipv4地址
+    struct in_addr ipv4_mask;                   //ipv4掩码
+    struct in_addr6 ipv6;                       //ipv6地址
+    struct in_addr6 ipv6_mask;                  //ipv6掩码
     opc_vpc* vpc;
 }win_tun;
 
@@ -836,8 +889,8 @@ static DWORD WINAPI ReceivePackets(_Inout_ DWORD_PTR Ptr) {
                 goto end;
             }
             if (ip_version == 4) {
-                //目标为非自身网段和自身IP和广播IP不转发
-                if ((Packet[16] != tun->ipv4[0] || Packet[17] != tun->ipv4[1]) || (*(uint32_t*)(&tun->ipv4) == *(uint32_t*)(&Packet[16])) || Packet[19] == 0xff) {
+                //目标为自身IP和广播IP不转发
+                if ((*(uint32_t*)(&tun->ipv4) == *(uint32_t*)(&Packet[16])) || Packet[19] == 0xff) {
                     goto end;
                 }
             }
@@ -924,8 +977,8 @@ static win_tun* new_tun(opc_vpc* vpc) {
     InitializeUnicastIpAddressEntry(&AddressRow);
     WintunGetAdapterLUID(tun->Adapter, &AddressRow.InterfaceLuid);
     AddressRow.Address.Ipv4.sin_family = AF_INET;
-    memcpy(&AddressRow.Address.Ipv4.sin_addr.S_un.S_addr, &vpc->ipv4, sizeof(AddressRow.Address.Ipv4.sin_addr.S_un.S_addr));
-    AddressRow.OnLinkPrefixLength = 24; /* This is a /24 network */
+    memcpy(&AddressRow.Address.Ipv4.sin_addr, &vpc->ipv4, sizeof(AddressRow.Address.Ipv4.sin_addr));
+    AddressRow.OnLinkPrefixLength = vpc->prefix_v4;
     AddressRow.DadState = IpDadStatePreferred;
     int LastError = CreateUnicastIpAddressEntry(&AddressRow);
     if (LastError != ERROR_SUCCESS && LastError != ERROR_OBJECT_ALREADY_EXISTS) {
@@ -934,13 +987,15 @@ static win_tun* new_tun(opc_vpc* vpc) {
         free(tun);
         return NULL;
     }
-    memcpy(tun->ipv4, vpc->ipv4, sizeof(tun->ipv4));
+    memcpy(&tun->ipv4, &vpc->ipv4, sizeof(tun->ipv4));
+    memcpy(&tun->ipv4_mask, &vpc->ipv4_mask, sizeof(tun->ipv4_mask));
     //设置IPv6
     memset(&AddressRow, 0, sizeof(AddressRow));
     InitializeUnicastIpAddressEntry(&AddressRow);
     WintunGetAdapterLUID(tun->Adapter, &AddressRow.InterfaceLuid);
     AddressRow.Address.Ipv6.sin6_family = AF_INET6;
-    memcpy(&AddressRow.Address.Ipv6.sin6_addr.u.Byte, &vpc->ipv6, sizeof(AddressRow.Address.Ipv6.sin6_addr.u.Byte));
+    memcpy(&AddressRow.Address.Ipv6.sin6_addr, &vpc->ipv6, sizeof(AddressRow.Address.Ipv6.sin6_addr));
+    AddressRow.OnLinkPrefixLength = vpc->prefix_v6;
     AddressRow.DadState = IpDadStatePreferred;
     LastError = CreateUnicastIpAddressEntry(&AddressRow);
     if (LastError != ERROR_SUCCESS && LastError != ERROR_OBJECT_ALREADY_EXISTS) {
@@ -949,7 +1004,8 @@ static win_tun* new_tun(opc_vpc* vpc) {
         free(tun);
         return NULL;
     }
-    memcpy(tun->ipv6, vpc->ipv6, sizeof(tun->ipv6));
+    memcpy(&tun->ipv6, &vpc->ipv6, sizeof(tun->ipv6));
+    memcpy(&tun->ipv6_mask, &vpc->ipv6_mask, sizeof(tun->ipv6_mask));
     //创建同步对象
     tun->async.data = tun;
     uv_async_init(loop, &tun->async, win_tun_async_cb);
@@ -961,14 +1017,13 @@ static win_tun* new_tun(opc_vpc* vpc) {
     tun->Thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceivePackets, (LPVOID)tun, 0, NULL);
     return tun;
 }
-//关闭
-static void delete_tun(static win_tun*tun) {
-    //通知线程退出
-    tun->HaveQuit = TRUE;
-    SetEvent(tun->QuitEvent);
+//
+static void tun_close_cb(uv_handle_t* handle) {
+    win_tun* tun = (win_tun*)handle->data;
     //等待线程退出
     if (tun->Thread) {
         WaitForSingleObject(tun->Thread, INFINITE);
+        CloseHandle(tun->Thread);
     }
     //回收队列
     while (1) {
@@ -994,6 +1049,14 @@ static void delete_tun(static win_tun*tun) {
     }
     free(tun);
 }
+//关闭
+static void delete_tun(win_tun* tun) {
+    //关闭异步对象
+    uv_close(&tun->async, tun_close_cb);
+    //通知线程退出
+    tun->HaveQuit = TRUE;
+    SetEvent(tun->QuitEvent);
+}
 //往接口发送数据
 static void send_tun(opc_vpc* vpc, const char* data, int size) {
     win_tun* tun = vpc->data;
@@ -1015,8 +1078,10 @@ static void send_tun(opc_vpc* vpc, const char* data, int size) {
 typedef struct _linux_tun {
     uv_tcp_t tcp;
     int fd;
-    uint8_t ipv4[4];                        //ipv4地址
-    uint8_t ipv6[16];                       //ipv6地址
+    struct in_addr ipv4;                        //ipv4地址
+    struct in_addr ipv4_mask;                   //ipv4掩码
+    struct in_addr6 ipv6;                       //ipv6地址
+    struct in_addr6 ipv6_mask;                   //ipv4掩码
     opc_vpc* vpc;
 }linux_tun;
 static void tun_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
@@ -1040,8 +1105,8 @@ static void tun_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         goto end;
     }
     if (ip_version == 4) {
-        //目标为非自身网段和自身IP和广播IP不转发
-        if ((packet[16] != tun->ipv4[0] || packet[17] != tun->ipv4[1]) || (*(uint32_t*)(&tun->ipv4) == *(uint32_t*)(&packet[16])) || packet[19] == 0xff) {
+        //目标为自身IP和广播IP不转发
+        if ((*(uint32_t*)(&tun->ipv4) == *(uint32_t*)(&packet[16])) || packet[19] == 0xff) {
             goto end;
         }
     }
@@ -1095,20 +1160,17 @@ static linux_tun* new_tun(opc_vpc* vpc) {
 
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
-    memcpy(&addr.sin_addr, vpc->ipv4, sizeof(addr.sin_addr));
+    memcpy(&addr.sin_addr, &vpc->ipv4, sizeof(addr.sin_addr));
 
     bzero(&ifr, sizeof(ifr));
     strcpy(ifr.ifr_name, dev);
     bcopy(&addr, &ifr.ifr_addr, sizeof(addr));
 
-    // ifconfig tap0 10.0.1.5 #设定ip地址
+    //设定ip地址
     if ((err = ioctl(sockfd, SIOCSIFADDR, (void*)&ifr)) < 0) {
         perror("ioctl SIOSIFADDR");
         goto done;
     }
-
-    memcpy(tun->ipv4, vpc->ipv4, sizeof(tun->ipv4));
-    memcpy(tun->ipv6, vpc->ipv6, sizeof(tun->ipv6));
 
     /* 获得接口的标志 */
     if ((err = ioctl(sockfd, SIOCGIFFLAGS, (void*)&ifr)) < 0) {
@@ -1123,12 +1185,23 @@ static linux_tun* new_tun(opc_vpc* vpc) {
         goto done;
     }
     //设定子网掩码
-    inet_pton(AF_INET, "255.255.255.0", &addr.sin_addr);
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    memcpy(&addr.sin_addr, &vpc->ipv4_mask, sizeof(addr.sin_addr));
     bcopy(&addr, &ifr.ifr_netmask, sizeof(addr));
     if ((err = ioctl(sockfd, SIOCSIFNETMASK, (void*)&ifr)) < 0) {
         perror("ioctl SIOCSIFNETMASK");
         goto done;
     }
+
+    memcpy(&tun->ipv4, &vpc->ipv4, sizeof(tun->ipv4));
+    memcpy(&tun->ipv4_mask, &vpc->ipv4_mask, sizeof(tun->ipv4_mask));
+
+
+
+    memcpy(&tun->ipv6, &vpc->ipv6, sizeof(tun->ipv6));
+    memcpy(&tun->ipv6_mask, &vpc->ipv6_mask, sizeof(tun->ipv6_mask));
+
 done:
     close(sockfd);
 
@@ -1139,8 +1212,8 @@ done:
     return tun;
 }
 static void tun_close_cb(uv_handle_t* handle) {
-    linux_tun* tun = (linux_tun *)handle->data;
-    
+    linux_tun* tun = (linux_tun*)handle->data;
+
     free(tun);
 }
 //关闭
@@ -1179,36 +1252,69 @@ static uint16_t ip_checksum(uint8_t* buf, int len) {
 }
 
 //收到接口数据包
-static vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size) {
+static void vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size) {
     //发送数据
     bridge_send(vpc->bridge, ops_packet_vpc_data, vpc->vid, vpc->id, packet, size);
 }
+//删除vpc
+static void vpc_del(opc_vpc* vpc) {
+    delete_tun(vpc->data);
+    RB_REMOVE(_opc_vpc_tree, &vpc->bridge->vpc, vpc);
+    free(vpc);
+}
 static void vpc(opc_bridge* bridge, ops_packet* packet) {
-    int count = ntohl(*(uint32_t*)&packet->data[0]);
-    char* pos = &packet->data[4];
-    for (size_t i = 0; i < count; i++) {
-        ops_member mem;
-        memcpy(&mem, pos, sizeof(mem));
-        pos += sizeof(mem);
-        mem.id = ntohl(mem.id);
-        mem.vid = ntohs(mem.vid);
+    uint8_t ctl = packet->data[0];
+    char* pos = &packet->data[1];
+    switch (ctl)
+    {
+    case CTL_MEMBER_ADD: {
+        int count = ntohl(*(uint32_t*)pos);
+        pos += 4;
+        for (size_t i = 0; i < count; i++) {
+            ops_member mem;
+            memcpy(&mem, pos, sizeof(mem));
+            pos += sizeof(mem);
+            mem.id = ntohl(mem.id);
+            mem.vid = ntohs(mem.vid);
 
-        opc_vpc* vpc = (opc_vpc*)malloc(sizeof(*vpc));
-        if (!vpc) {
-            continue;
+            opc_vpc* vpc = (opc_vpc*)malloc(sizeof(*vpc));
+            if (!vpc) {
+                continue;
+            }
+            memset(vpc, 0, sizeof(*vpc));
+            vpc->bridge = bridge;
+            vpc->id = mem.id;
+            vpc->vid = mem.vid;
+            
+            memcpy(&vpc->ipv4, &mem.ipv4, sizeof(vpc->ipv4));
+            vpc->prefix_v4 = mem.prefix_v4;
+            cidr_to_netmask_v4(mem.prefix_v4, &vpc->ipv4_mask);
+
+            memcpy(&vpc->ipv6, &mem.ipv6, sizeof(vpc->ipv6));
+            vpc->prefix_v6 = mem.prefix_v6;
+            cidr_to_netmask_v6(mem.prefix_v6, &vpc->ipv6_mask);
+
+            //创建接口
+            vpc->data = new_tun(vpc);
+            //记录
+            RB_INSERT(_opc_vpc_tree, &bridge->vpc, vpc);
         }
-        memset(vpc, 0, sizeof(*vpc));
-        vpc->bridge = bridge;
-        vpc->id = mem.id;
-        vpc->vid = mem.vid;
-        memcpy(&vpc->ipv4, &mem.ipv4, sizeof(vpc->ipv4));
-        memcpy(&vpc->ipv6, &mem.ipv6, sizeof(vpc->ipv6));
-        //创建接口
-        vpc->data = new_tun(vpc);
-        //记录
-        RB_INSERT(_opc_vpc_tree, &bridge->vpc, vpc);
+        break;
     }
-
+    case CTL_MEMBER_DEL: {
+        uint32_t id = ntohl(*(uint32_t*)pos);
+        opc_vpc the = {
+            .id = id
+        };
+        opc_vpc* vpc = RB_FIND(_opc_vpc_tree, &bridge->vpc, &the);
+        if (vpc) {
+            vpc_del(vpc);
+        }
+        break;
+    }
+    default:
+        break;
+    }
 }
 static void vpc_data(opc_bridge* bridge, ops_packet* packet, int size) {
     opc_vpc the = {
@@ -1220,7 +1326,7 @@ static void vpc_data(opc_bridge* bridge, ops_packet* packet, int size) {
     }
     //处理icmp,ping命令
     uint8_t* data = packet->data;
-    uint8_t ip_version = data[0] >> 4, proto;
+    uint8_t ip_version = data[0] >> 4;
     if (ip_version == 4 && data[9] == 1 && data[20] == 8) {
         //修改目标地址
         uint8_t tmp[4];
@@ -1254,12 +1360,11 @@ static void vpc_free(opc_bridge* bridge) {
     opc_vpc* c = NULL;
     opc_vpc* cc = NULL;
     RB_FOREACH_SAFE(c, _opc_vpc_tree, &bridge->vpc, cc) {
-        delete_tun(c->data);
-        RB_REMOVE(_opc_vpc_tree, &bridge->vpc, c);
-        free(c);
+        vpc_del(c);
         cc = NULL;
     }
 }
+#endif
 //--------------------------------------------------------------------------------------------------------bridge
 //鉴权成功
 static void bridge_auth_ok(opc_bridge* bridge) {
@@ -1538,8 +1643,6 @@ int main(int argc, char* argv[]) {
     init_global(global);
     //开始连接
     start_connect(global);
-
-
 
     uv_run(loop, UV_RUN_DEFAULT);
     return 0;
