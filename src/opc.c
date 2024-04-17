@@ -78,8 +78,8 @@ typedef struct _opc_vpc {
     struct in_addr ipv4;                    //ipv4地址
     struct in_addr ipv4_mask;               //ipv4掩码
     uint8_t prefix_v4;                      //ipv4前缀
-    struct in_addr6 ipv6;                   //ipv6地址
-    struct in_addr6 ipv6_mask;              //ipv6掩码
+    struct in6_addr ipv6;                   //ipv6地址
+    struct in6_addr ipv6_mask;              //ipv6掩码
     uint8_t prefix_v6;                      //ipv6前缀
     void* data;                             //接口数据
     struct _opc_bridge* bridge;
@@ -1080,12 +1080,12 @@ typedef struct _linux_tun {
     int fd;
     struct in_addr ipv4;                        //ipv4地址
     struct in_addr ipv4_mask;                   //ipv4掩码
-    struct in_addr6 ipv6;                       //ipv6地址
-    struct in_addr6 ipv6_mask;                   //ipv4掩码
+    struct in6_addr ipv6;                       //ipv6地址
+    struct in6_addr ipv6_mask;                   //ipv4掩码
     opc_vpc* vpc;
 }linux_tun;
 static void tun_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
-    linux_tun* tun = (opc_bridge*)tcp->data;
+    linux_tun* tun = (linux_tun*)tcp->data;
     if (nread <= 0) {
         if (UV_EOF != nread) {
             //连接异常断开

@@ -45,7 +45,7 @@ typedef struct _ops_vpc {
     uint16_t id;                             //网络编号
     struct in_addr ipv4;                         //ipv4网段
     uint8_t prefix_v4;                      //ipv4前缀
-    struct in_addr6 ipv6;                        //ipv6网段
+    struct in6_addr ipv6;                        //ipv6网段
     uint8_t prefix_v6;                      //ipv6前缀
 }ops_vpc;
 RB_HEAD(_ops_vpc_tree, _ops_vpc);
@@ -58,7 +58,7 @@ typedef struct _ops_members {
     uint32_t id;                                //成员编号
     struct in_addr ipv4;                        //ipv4地址
     uint8_t prefix_v4;                      //ipv4前缀
-    struct in_addr6 ipv6;                       //ipv6地址
+    struct in6_addr ipv6;                       //ipv6地址
     uint8_t prefix_v6;                      //ipv6前缀
 }ops_members;
 RB_HEAD(_ops_members_tree, _ops_members);
@@ -74,7 +74,7 @@ typedef struct _ops_route_v6 {
     RB_ENTRY(_ops_route_v6) entry;              //
     uint16_t id;                                //客户ID
     uint32_t mid;                               //成员ID
-    struct in_addr6 ip;                             //地址
+    struct in6_addr ip;                             //地址
 }ops_route_v6;
 RB_HEAD(_ops_route_v6_tree, _ops_route_v6);
 //客户端
