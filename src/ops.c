@@ -1953,16 +1953,30 @@ static void on_data_vpc_add(ops_global* global, uint16_t id, const char* ipv4, c
     vpc->id = id;
 
     int prefix;
-    char ip[INET6_ADDRSTRLEN];
+    char cidr[INET6_ADDRSTRLEN + 6] = { 0 };
+    char* ip, *subnet;
     // IPv4
-    if (sscanf_s(ipv4, "%15[^/]/%d", ip, INET6_ADDRSTRLEN, &prefix) == 2) {
-        vpc->prefix_v4 = prefix;                      //前缀
-        cidr_to_network_v4(ip, prefix, &vpc->ipv4);
+    strncpy(cidr, ipv4, sizeof(cidr));
+    ip = strtok(cidr, "/");
+    if (ip) {
+        subnet = strtok(NULL, "/");
+        if (subnet) {
+            prefix = atoi(subnet);
+            vpc->prefix_v4 = prefix;                      //前缀
+            cidr_to_network_v4(ip, prefix, &vpc->ipv4);
+        }
     }
     // IPv6
-    if (sscanf_s(ipv6, "%39[^/]/%d", ip, INET6_ADDRSTRLEN, &prefix) == 2) {
-        vpc->prefix_v6 = prefix;                      //前缀
-        cidr_to_network_v6(ip, prefix, &vpc->ipv6);
+    cidr[0] = 0;
+    strncpy(cidr, ipv6, sizeof(cidr));
+    ip = strtok(cidr, "/");
+    if (ip) {
+        subnet = strtok(NULL, "/");
+        if (subnet) {
+            prefix = atoi(subnet);
+            vpc->prefix_v6 = prefix;                      //前缀
+            cidr_to_network_v6(ip, prefix, &vpc->ipv6);
+        }
     }
     RB_INSERT(_ops_vpc_tree, &global->vpc, vpc);
 }
