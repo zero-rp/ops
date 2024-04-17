@@ -1574,7 +1574,7 @@ static void bridge_auth_ok(ops_bridge* bridge) {
             count++;
         }
     }
-    *(uint32_t*)pack = htonl(count);
+    *(uint32_t*)(&pack[1]) = htonl(count);
     //下发转发服务
     if (count > 0) {
         bridge_send(bridge, ops_packet_forward, 0, 0, pack, sdslen(pack));
@@ -1597,7 +1597,7 @@ static void bridge_auth_ok(ops_bridge* bridge) {
             count++;
         }
     }
-    *(uint32_t*)pack = htonl(count);
+    *(uint32_t*)(&pack[1]) = htonl(count);
     //下发主机服务
     if (count > 0) {
         bridge_send(bridge, ops_packet_host, 0, 0, pack, sdslen(pack));
