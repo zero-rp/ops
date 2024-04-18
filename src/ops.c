@@ -2266,6 +2266,26 @@ static load_config(ops_global* global, int argc, char* argv[]) {
         if (item && item->valuestring) {
             global->config.admin_pass = strdup(item->valuestring);
         }
+        item = cJSON_GetObjectItem(config_json, "bridge_port");
+        if (item && item->valueint) {
+            global->config.bridge_port = item->valueint;
+        }
+        item = cJSON_GetObjectItem(config_json, "web_port");
+        if (item && item->valueint) {
+            global->config.web_port = item->valueint;
+        }
+        item = cJSON_GetObjectItem(config_json, "http_proxy_port");
+        if (item && item->valueint) {
+            global->config.http_proxy_port = item->valueint;
+        }
+        item = cJSON_GetObjectItem(config_json, "https_proxy_port");
+        if (item && item->valueint) {
+            global->config.https_proxy_port = item->valueint;
+        }
+        item = cJSON_GetObjectItem(config_json, "db_file");
+        if (item && item->valuestring) {
+            global->config.db_file = strdup(item->valuestring);
+        }
         cJSON_free(config_json);
     }
     //从命令行加载参数,最高优先级

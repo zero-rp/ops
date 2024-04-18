@@ -1805,7 +1805,47 @@ static int load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.server_ip = "127.0.0.1";
     global->config.server_port = 8025;
-
+    //从配置文件加载参数
+    const char* config_file = "opc.json";
+    for (size_t i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-c") == 0) {
+            i++;
+            config_file = argv[i];
+            break;
+        }
+    }
+    FILE* config_fd = fopen(config_file, "r");
+    cJSON* config_json = NULL;
+    if (config_fd) {
+        fseek(config_fd, 0, SEEK_END);
+        long size = ftell(config_fd);
+        fseek(config_fd, 0, SEEK_SET);
+        char* data = (char*)malloc(size + 1);
+        fread(data, 1, size, config_fd);
+        data[size] = '\0';
+        config_json = cJSON_Parse(data);
+        fclose(config_fd);
+        free(data);
+    }
+    if (config_json) {
+        cJSON* item = cJSON_GetObjectItem(config_json, "server_ip");
+        if (item && item->valuestring) {
+            global->config.server_ip = strdup(item->valuestring);
+        }
+        item = cJSON_GetObjectItem(config_json, "server_port");
+        if (item && item->valueint) {
+            global->config.server_port = item->valueint;
+        }
+        item = cJSON_GetObjectItem(config_json, "auth_key");
+        if (item && item->valuestring) {
+            global->config.auth_key = strdup(item->valuestring);
+        }
+        item = cJSON_GetObjectItem(config_json, "bind_ip");
+        if (item && item->valuestring) {
+            global->config.bind_ip = strdup(item->valuestring);
+        }
+        cJSON_free(config_json);
+    }
     //从命令行加载参数
     for (size_t i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {
