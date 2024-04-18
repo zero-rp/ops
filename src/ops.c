@@ -2235,7 +2235,40 @@ static load_config(ops_global* global, int argc, char* argv[]) {
     global->config.admin_user = "admin";
     global->config.admin_pass = "1234";
 
-    //从命令行加载参数
+    //从配置文件加载参数
+    const char* config_file = "ops.json";
+    for (size_t i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-c") == 0) {
+            i++;
+            config_file = argv[i];
+            break;
+        }
+    }
+    FILE* config_fd = fopen(config_file, "r");
+    cJSON* config_json = NULL;
+    if (config_fd) {
+        fseek(config_fd, 0, SEEK_END);
+        long size = ftell(config_fd);
+        fseek(config_fd, 0, SEEK_SET);
+        char* data = (char*)malloc(size + 1);
+        fread(data, 1, size, config_fd);
+        data[size] = '\0';
+        config_json = cJSON_Parse(data);
+        fclose(config_fd);
+        free(data);
+    }
+    if (config_json) {
+        cJSON* item = cJSON_GetObjectItem(config_json, "user");
+        if (item && item->valuestring) {
+            global->config.admin_user = strdup(item->valuestring);
+        }
+        item = cJSON_GetObjectItem(config_json, "pass");
+        if (item && item->valuestring) {
+            global->config.admin_pass = strdup(item->valuestring);
+        }
+        cJSON_free(config_json);
+    }
+    //从命令行加载参数,最高优先级
     for (size_t i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-p") == 0) {
             i++;
