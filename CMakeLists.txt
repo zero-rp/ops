@@ -32,6 +32,8 @@ add_executable(opc
     src/opc.c
     src/sds.c
     src/databuffer.c
+    third_party/cJSON/cJSON.c
+    third_party/cJSON/cJSON_Utils.c
 )
 target_link_libraries(opc uv_a ${LIBS})
 
