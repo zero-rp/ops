@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>后台管理</title>
   <link rel="stylesheet" href="layui/css/layui.css">
-
+  
   <style>
     html,
     body {
@@ -355,6 +355,13 @@
       </div> 
 
       <div class="layui-form-item">
+        <label class="layui-form-label">出口地址</label>
+        <div class="layui-input-block">
+          <input type="text" name="bind" lay-verify="ipv4|ipv6" placeholder="请输入" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
         <label class="layui-form-label">源监听端口</label>
         <div class="layui-input-block">
           <input type="text" name="src_port" lay-verify="required|number" placeholder="请输入" autocomplete="off" class="layui-input">
@@ -574,7 +581,11 @@
         method: "POST",
         contentType: 'application/json',
         parseData: function (res) {
-          return { code: res.code, msg: res.msg, count: (res.data.list || []).length, data: res.data.list };
+          if (res.code == 403) {
+            logout()
+          } else {
+            return { code: res.code, msg: res.msg, count: (res.data.list || []).length, data: res.data.list };
+          }
         }
       });
     }
@@ -650,9 +661,8 @@
             }
           });
         } else if (params.event == 'view') {
-          var tab = document.getElementById('table-bridge')
           if (len == 1) {
-            $(`.layui-table-main .layui-table tbody tr[data-index=${params.index}]`).after(`
+            $(`#table-bridge + .layui-table-view .layui-table-main .layui-table tbody tr[data-index=${params.index}]`).after(`
             <tr  data-index="${params.index}">
               <td colspan="6" style="padding: 30px 0 30px 15px"><b>客户端命令</b>：<code>./npc.exe -server=localhost:8024 -vkey=${params.data.key} -type=tcp</code></td>
               <td>
@@ -667,7 +677,7 @@
           }
         } else if (params.event == 'hide') {
           if (len == 2) {
-            $(`.layui-table-main .layui-table tbody tr[data-index=${params.index}]`)[1].remove()
+            $(`#table-bridge + .layui-table-view .layui-table-main .layui-table tbody tr[data-index=${params.index}]`)[1].remove()
           }
         }
       });
@@ -680,13 +690,13 @@
         url: '/api/host',
         cols: [[ //标题栏
           { field: 'id', title: 'id', sort: true },
-          { field: 'host', width: 200, title: 'host' },
-          { field: 'dst_id', title: 'dst_id' },
-          { field: 'type', title: 'type' },
-          { field: 'dst', title: 'dst' },
-          { field: 'dst_port', title: 'dst_port' },
-          { field: 'host_rewrite', title: 'host_rewrite' },
-          { field: 'info', title: 'info' },
+          { field: 'host', width: 200, title: '主机' },
+          { field: 'dst_id', title: '目标客户端' },
+          { field: 'type', title: '类型' },
+          { field: 'dst', title: '目标主机' },
+          { field: 'dst_port', title: '目标端口' },
+          { field: 'host_rewrite', title: '重写主机' },
+          { field: 'info', title: '备注' },
           { field: '', title: '操作', toolbar: '#tool-host' },
         ]]
       });
@@ -757,13 +767,14 @@
         url: '/api/forward',
         cols: [[ //标题栏
           { field: 'id', title: 'id', sort: true },
-          { field: 'src_id', width: 200, title: 'src_id' },
-          { field: 'dst_id', title: 'dst_id' },
-          { field: 'type', title: 'type' },
-          { field: 'src_port', title: 'dst' },
-          { field: 'dst', title: 'dst' },
-          { field: 'dst_port', title: 'dst_port' },
-          { field: 'info', title: 'info' },
+          { field: 'src_id', width: 200, title: '来源客户' },
+          { field: 'dst_id', title: '目标客户' },
+          { field: 'type', title: '类型' },
+          { field: 'src_port', title: '目标地址' },
+          { field: 'bind', title: '出口地址' },
+          { field: 'dst', title: '目标地址' },
+          { field: 'dst_port', title: '目标端口' },
+          { field: 'info', title: '备注' },
           { field: '', title: '操作', toolbar: '#tool-forward' },
         ]]
       });
@@ -837,7 +848,7 @@
           { field: 'id', title: 'id', sort: true },
           { field: 'ipv4', width: 200, title: 'ipv4' },
           { field: 'ipv6', title: 'ipv6' },
-          { field: 'info', title: 'info' },
+          { field: 'info', title: '备注' },
           { field: '', title: '操作', toolbar: '#tool-vpc' },
         ]]
       });
@@ -897,11 +908,11 @@
         url: '/api/member',
         cols: [[ //标题栏
           { field: 'id', title: 'id', sort: true },
-          { field: 'bid', width: 200, title: 'bid' },
-          { field: 'vid', width: 200, title: 'vid' },
+          { field: 'bid', width: 200, title: '客户端ID' },
+          { field: 'vid', width: 200, title: 'VPC ID' },
           { field: 'ipv4', width: 200, title: 'ipv4' },
           { field: 'ipv6', title: 'ipv6' },
-          { field: 'info', title: 'info' },
+          { field: 'info', title: '备注' },
           { field: '', title: '操作', toolbar: '#tool-member' },
         ]]
       });
