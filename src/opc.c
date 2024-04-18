@@ -607,7 +607,7 @@ static void forward_free(opc_bridge* bridge) {
     opc_forward_dst* fdc = NULL;
     opc_forward_dst* fdcc = NULL;
     RB_FOREACH_SAFE(fdc, _opc_forward_dst_tree, &bridge->forward_dst, fdcc) {
-        RB_REMOVE(_opc_forward_dst_tree, &bridge->forward_dst, fdcc);
+        RB_REMOVE(_opc_forward_dst_tree, &bridge->forward_dst, fdc);
         free(fdc);
         fdc = NULL;
     }
