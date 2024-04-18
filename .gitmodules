@@ -13,3 +13,6 @@
 [submodule "third_party/lsquic"]
 	path = third_party/lsquic
 	url = https://github.com/litespeedtech/lsquic.git
+[submodule "third_party/zlib"]
+	path = third_party/zlib
+	url = https://github.com/madler/zlib.git
