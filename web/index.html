@@ -22,10 +22,15 @@
 
     .layui-layout-left {
       width: 100%;
-      /* background-color: #f2f2f2; */
       height: 20px;
       padding: 15px 0 10px 30px;
       border-bottom: solid 1px #f2f2f2;
+    }
+
+    .layui-card-body {
+      font-size: 48px;
+      padding: 40px 0;
+      color: #16baaa;
     }
   </style>
 </head>
@@ -75,7 +80,7 @@
     <!-- Tab -->
     <div style="margin: 60px 0 0 200px;padding: 0 24px;">
       <!-- 头部区域 -->
-      <ul class="layui-layout-left" >
+      <ul class="layui-layout-left">
         <li class="layui-nav-item" lay-unselect>
           <a href="javascript:;" layadmin-event="refresh" title="刷新">
             <i class="layui-icon layui-icon-refresh-3"></i>
@@ -85,7 +90,45 @@
 
 
       <!--仪表盘-->
-      <div class="layui-tab-item layui-show">仪表盘</div>
+      <div class="layui-tab-item layui-show">
+
+        <div class="layui-row layui-col-space15" style="margin-top: 80px;">
+          <div class="layui-col-md2">
+            <div class="layui-card">
+              <div class="layui-card-header">http端口</div>
+              <div class="layui-card-body" id="http_port"></div>
+            </div>
+          </div>
+          <div class="layui-col-md2">
+            <div class="layui-card">
+              <div class="layui-card-header">https端口</div>
+              <div class="layui-card-body" id="https_port"></div>
+            </div>
+          </div>
+
+          <div class="layui-col-md2">
+            <div class="layui-card">
+              <div class="layui-card-header">web端口</div>
+              <div class="layui-card-body" id="web_port"></div>
+            </div>
+          </div>
+
+          <div class="layui-col-md2">
+            <div class="layui-card">
+              <div class="layui-card-header">客户端人数</div>
+              <div class="layui-card-body" id="bridge_count"></div>
+            </div>
+          </div>
+
+          <div class="layui-col-md2">
+            <div class="layui-card">
+              <div class="layui-card-header">客户端在线人数</div>
+              <div class="layui-card-body" id="bridge_online"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
       <!--客户端-->
       <div class="layui-tab-item">
         <table class="layui-hide" id="table-bridge"></table>
@@ -145,6 +188,7 @@
   <!-- 客户端 -->
   <script type="text/html" id="tool-bridge">
     <div class="layui-clear-space">
+      <button type="button" class="layui-btn layui-btn-xs layui-bg-green" lay-event="view">查看</button>
       <button type="button" class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">删除</button>
     </div>
   </script>
@@ -455,7 +499,16 @@
     if (sessionStorage.getItem('TOKEN')) {
       //TOKEN = sessionStorage.getItem('TOKEN')
       request({
-        url: '/api/info'
+        url: '/api/info',
+        done: function(res) {
+          console.log(res.config.https_port, `rrrrrrrr`)
+          $('#http_port').text(res.config.http_port)
+          $('#https_port').text(res.config.https_port)
+          $('#web_port').text(res.config.web_port)
+
+          $('#bridge_count').text(res.stat.bridge_count)
+          $('#bridge_online').text(res.stat.bridge_online)
+        }
       })
     }
 
@@ -539,9 +592,10 @@
         url: '/api/bridge',
         cols: [[ //标题栏
           { field: 'id', title: 'id', sort: true },
-          { field: 'online', width: 300, title: '在线', templet: '#tpl-host-online' },
+          { field: 'online', width: 90, title: '在线', templet: '#tpl-host-online' },
           { field: 'ping', width: 300, title: '延迟' },
-          { field: 'key', width: 300, title: 'key' },
+          { field: 'peer', width: 300, title: '远程IP' },
+          { field: 'local', width: 300, title: '本地IP' },
           { field: 'info', title: '备注' },
           { field: '', title: '操作', toolbar: '#tool-bridge' },
         ]]
@@ -583,6 +637,8 @@
 
       //bridge-单行的点击
       table.on('tool(table-bridge)', function (params) {
+        console.log(params)
+        var len = $(`.layui-table-main .layui-table tbody tr[data-index=${params.index}]`).length
         if (params.event == 'delete') {
           request({
             url: '/api/bridge_del',
@@ -593,6 +649,26 @@
 
             }
           });
+        } else if (params.event == 'view') {
+          var tab = document.getElementById('table-bridge')
+          if (len == 1) {
+            $(`.layui-table-main .layui-table tbody tr[data-index=${params.index}]`).after(`
+            <tr  data-index="${params.index}">
+              <td colspan="6" style="padding: 30px 0 30px 15px"><b>客户端命令</b>：<code>./npc.exe -server=localhost:8024 -vkey=${params.data.key} -type=tcp</code></td>
+              <td>
+                <div class="layui-table-cell laytable-cell-2-0-4">
+                  <div class="layui-clear-space">
+                    <button type="button" class="layui-btn layui-btn-xs layui-bg-green" lay-event="hide">收起</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `)
+          }
+        } else if (params.event == 'hide') {
+          if (len == 2) {
+            $(`.layui-table-main .layui-table tbody tr[data-index=${params.index}]`)[1].remove()
+          }
         }
       });
     }
@@ -864,9 +940,6 @@
                             vid: Number(val.id)
                           }
 
-                          console.log(req)
-                          console.log(isIPInCIDR("192.168.1.1", "192.168.1.0/24")); // 输出：true
-                          console.log(isIPInCIDR("2001:db8::", "2001:db8::/32")); // 输出：true
                           if (ipInCidr(val.ipv4, data.field.ipv4) && ipInCidr(val.ipv6, data.field.ipv6)) {
                             request({
                               url: '/api/member_add',

@@ -113,6 +113,7 @@ typedef struct _opc_bridge {
 typedef struct _opc_config {
     const char* auth_key;       //web api密钥
     const char* server_ip;      //服务器IP
+    const char* bind_ip;        //连接服务器使用的本地ip
     uint16_t server_port;       //服务器端口
 }opc_config;
 //
@@ -364,10 +365,28 @@ static void forward_tunnel_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, str
     tunnel->req.data = tunnel;
     uv_tcp_init(loop, &tunnel->tcp);
     //绑定本地地址
+    int bind_family = 0;
     if (strlen(tunnel->dst->bind) > 0) {
-        //uv_tcp_bind(&tunnel->req, , 0);
+        struct sockaddr_in6 addr;
+        if (uv_ip6_addr(tunnel->dst->bind, 0, &addr) == 0) {
+            bind_family = addr.sin6_family;
+            uv_tcp_bind(&tunnel->req, &addr, 0);
+        }
+        else if (uv_ip4_addr(tunnel->dst->bind, 0, &addr) == 0) {
+            bind_family = addr.sin6_family;
+            uv_tcp_bind(&tunnel->req, &addr, 0);
+        }
     }
-    uv_tcp_connect(&tunnel->req, &tunnel->tcp, res->ai_addr, forward_tunnel_dst_connect_cb);
+    struct addrinfo* addr = res->ai_addr;
+    //选择协议栈
+    if (bind_family && addr) {
+        do {
+            if (addr->ai_family == bind_family) {
+                break;
+            }
+        } while (addr);
+    }
+    uv_tcp_connect(&tunnel->req, &tunnel->tcp, addr, forward_tunnel_dst_connect_cb);
     //释放结果
     uv_freeaddrinfo(res);
 }
@@ -1506,9 +1525,9 @@ static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, 
     uv_write(req, &bridge->tcp, &buf, 1, write_cb);
 }
 //重连回调
-static int start_connect(opc_global* global);
+static int bridge_start_connect(opc_global* global);
 void bridge_re_timer_cb(uv_timer_t* handle) {
-    start_connect((opc_global*)handle->data);
+    bridge_start_connect((opc_global*)handle->data);
 }
 //关闭
 static void bridge_close_cb(uv_handle_t* handle) {
@@ -1588,9 +1607,8 @@ static void bridge_connect_cb(uv_connect_t* req, int status) {
     //
     bridge_connect_end(bridge);
 }
-//--------------------------------------------------------------------------------------------------------
 //启动连接
-static int start_connect(opc_global* global) {
+static int bridge_start_connect(opc_global* global) {
     opc_bridge* bridge = (opc_bridge*)malloc(sizeof(*bridge));
     if (bridge == NULL)
         return 0;
@@ -1607,12 +1625,18 @@ static int start_connect(opc_global* global) {
     uv_tcp_init(loop, &bridge->tcp);
     bridge->tcp.data = bridge;
     req->data = bridge;
+    if (global->config.bind_ip) {
+        struct sockaddr_in _bind;
+        uv_ip4_addr(global->config.bind_ip, 0, &_bind);
+        uv_tcp_bind(&bridge->tcp, &_bind, 0);
+    }
     struct sockaddr_in _addr;
     uv_ip4_addr(global->config.server_ip, global->config.server_port, &_addr);
     uv_tcp_connect(req, &bridge->tcp, &_addr, bridge_connect_cb);
     printf("Start Connect\r\n");
     return 0;
 }
+//--------------------------------------------------------------------------------------------------------
 //全局初始化
 static int init_global(opc_global* global) {
     uv_timer_init(loop, &global->re_timer);
@@ -1783,6 +1807,10 @@ static int load_config(opc_global* global, int argc, char* argv[]) {
             i++;
             global->config.server_ip = strdup(argv[i]);
         }
+        else if (strcmp(argv[i], "-b") == 0) {
+            i++;
+            global->config.bind_ip = strdup(argv[i]);
+        }
         else if (strcmp(argv[i], "-p") == 0) {
             i++;
             global->config.server_port = atoi(argv[i]);
@@ -1825,7 +1853,7 @@ static int run() {
     //初始化
     init_global(global);
     //开始连接
-    start_connect(global);
+    bridge_start_connect(global);
     //启动循环
     uv_run(loop, UV_RUN_DEFAULT);
 }

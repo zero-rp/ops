@@ -88,6 +88,14 @@ typedef struct _ops_bridge {
     uint32_t ping;                      //延迟
     uint64_t last_ping;                 //上次
     struct heap_node heap;
+    union {
+        struct sockaddr_in v4;
+        struct sockaddr_in6 v6;
+    } peer;
+    union {
+        struct sockaddr_in v4;
+        struct sockaddr_in6 v6;
+    } local;
 }ops_bridge;
 RB_HEAD(_ops_bridge_tree, _ops_bridge);
 //授权信息
@@ -626,6 +634,12 @@ static void web_on_request(ops_web* web, cJSON* body) {
             if (b) {
                 cJSON_AddBoolToObject(item, "online", 1);
                 cJSON_AddNumberToObject(item, "ping", b->ping);
+                char ip[INET6_ADDRSTRLEN] = { 0 };
+                uv_ip_name(&b->peer, ip, INET6_ADDRSTRLEN);
+                cJSON_AddStringToObject(item, "peer", ip);
+                ip[0] = 0;
+                uv_ip_name(&b->local, ip, INET6_ADDRSTRLEN);
+                cJSON_AddStringToObject(item, "local", ip);
             }
         }
         cJSON_AddItemToObject(data, "list", list);
@@ -1699,7 +1713,7 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
                 RB_INSERT(_ops_bridge_tree, &bridge->global->bridge, bridge);
                 //记录ping
                 bridge->last_ping = loop->time;
-                heap_insert(&bridge->global->ping_heap,&bridge->heap, ping_less_than);
+                heap_insert(&bridge->global->ping_heap, &bridge->heap, ping_less_than);
                 bridge_auth_ok(bridge);
             }
         }
@@ -1825,6 +1839,11 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
     if (uv_accept(tcp, (uv_stream_t*)&bridge->tcp) == 0) {
         //新客户
         printf("New Client\r\n");
+        //提取ip
+        int namelen = sizeof(bridge->peer);
+        uv_tcp_getpeername(&bridge->tcp, &bridge->peer, &namelen);
+        namelen = sizeof(bridge->peer);
+        uv_tcp_getsockname(&bridge->tcp, &bridge->local, &namelen);
         uv_read_start((uv_stream_t*)&bridge->tcp, alloc_buffer, bridge_read_cb);
     }
 }
@@ -2010,7 +2029,7 @@ static void on_data_vpc_add(ops_global* global, uint16_t id, const char* ipv4, c
 
     int prefix;
     char cidr[INET6_ADDRSTRLEN + 6] = { 0 };
-    char* ip, *subnet;
+    char* ip, * subnet;
     // IPv4
     strncpy(cidr, ipv4, sizeof(cidr));
     ip = strtok(cidr, "/");
@@ -2164,7 +2183,7 @@ struct data_settings data_settings = {
 //----------------------------------------------------------------------------------------------------------------------
 //全局初始化
 static int init_global(ops_global* global) {
-    struct sockaddr_in _addr;
+    struct sockaddr_in6 _addr;
     //
     heap_init(&global->ping_heap);
     uv_timer_init(loop, &global->ping_timer);
@@ -2176,28 +2195,28 @@ static int init_global(ops_global* global) {
     //web管理
     global->listen.web.tcp.data = global;
     uv_tcp_init(loop, &global->listen.web.tcp);
-    uv_ip4_addr("0.0.0.0", global->config.web_port, &_addr);
+    uv_ip6_addr("::0", global->config.web_port, &_addr);
     uv_tcp_bind(&global->listen.web.tcp, &_addr, 0);
     uv_listen((uv_stream_t*)&global->listen.web.tcp, DEFAULT_BACKLOG, web_connection_cb);
 
     //客户端桥接
     global->listen.bridge.data = global;
     uv_tcp_init(loop, &global->listen.bridge);
-    uv_ip4_addr("0.0.0.0", global->config.bridge_port, &_addr);
+    uv_ip6_addr("::0", global->config.bridge_port, &_addr);
     uv_tcp_bind(&global->listen.bridge, &_addr, 0);
     uv_listen((uv_stream_t*)&global->listen.bridge, DEFAULT_BACKLOG, bridge_connection_cb);
 
     //http端口
     global->listen.http.data = global;
     uv_tcp_init(loop, &global->listen.http);
-    uv_ip4_addr("0.0.0.0", global->config.http_proxy_port, &_addr);
+    uv_ip6_addr("::0", global->config.http_proxy_port, &_addr);
     uv_tcp_bind(&global->listen.http, &_addr, 0);
     uv_listen((uv_stream_t*)&global->listen.http, DEFAULT_BACKLOG, http_connection_cb);
 
     //https端口
     global->listen.https.tcp.data = global;
     uv_tcp_init(loop, &global->listen.https.tcp);
-    uv_ip4_addr("0.0.0.0", global->config.https_proxy_port, &_addr);
+    uv_ip6_addr("::0", global->config.https_proxy_port, &_addr);
     uv_tcp_bind(&global->listen.https.tcp, &_addr, 0);
     uv_listen((uv_stream_t*)&global->listen.https.tcp, DEFAULT_BACKLOG, https_connection_cb);
 
