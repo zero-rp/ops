@@ -28,6 +28,7 @@
     <ClInclude Include="..\..\src\common.h" />
     <ClInclude Include="..\..\src\data.h" />
     <ClInclude Include="..\..\src\databuffer.h" />
+    <ClInclude Include="..\..\src\heap.h" />
     <ClInclude Include="..\..\src\sds.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -147,6 +148,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\third_party\boringssl\include;..\..\third_party\sqlite;..\..\third_party\http-parser;..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

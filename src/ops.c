@@ -12,6 +12,7 @@
 #include "common.h"
 #include "data.h"
 #include "sds.h"
+#include "heap.h"
 
 #if (defined(_WIN32) || defined(_WIN64))
 #define strcasecmp stricmp
@@ -85,6 +86,8 @@ typedef struct _ops_bridge {
     uv_tcp_t tcp;                       //连接
     struct databuffer m_buffer;         //接收缓冲
     uint32_t ping;                      //延迟
+    uint64_t last_ping;                 //上次
+    struct heap_node heap;
 }ops_bridge;
 RB_HEAD(_ops_bridge_tree, _ops_bridge);
 //授权信息
@@ -202,6 +205,8 @@ typedef struct _ops_global {
     struct _ops_route_v4_tree route_v4;     //IPv4路由表
     struct _ops_route_v6_tree route_v6;     //IPv6路由表
     struct _ops_bridge_tree bridge;         //客户端
+    struct heap ping_heap;
+    uv_timer_t ping_timer;
     struct _ops_http_request_tree request;  //
     uint32_t request_id;                    //
     struct {
@@ -285,6 +290,25 @@ static int _ops_http_stream_compare(ops_http_stream* w1, ops_http_stream* w2) {
 }
 RB_GENERATE_STATIC(_ops_http_stream_tree, _ops_http_stream, entry, _ops_http_stream_compare)
 
+static int ping_less_than(const struct heap_node* ha, const struct heap_node* hb) {
+    const ops_bridge* a;
+    const ops_bridge* b;
+#define container_of(ptr, type, member) \
+  ((type *) ((char *) (ptr) - offsetof(type, member)))
+    a = container_of(ha, ops_bridge, heap);
+    b = container_of(hb, ops_bridge, heap);
+
+    if (a->last_ping < b->last_ping)
+        return 1;
+    if (b->last_ping < a->last_ping)
+        return 0;
+
+    /* Compare start_id when both have the same timeout. start_id is
+     * allocated with loop->timer_counter in uv_timer_start().
+     */
+    return a->id < b->id;
+}
+
 //分配内存
 static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
     buf->len = suggested_size;
@@ -294,7 +318,6 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
-
 static unsigned char hex_val(char hex) {
     if ((hex >= '0') && (hex <= '9'))
         return (hex - '0');
@@ -1651,7 +1674,9 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         };
         ops_key* key = RB_FIND(_ops_key_tree, &bridge->global->key, &_key);
         if (key == NULL) {
-            bridge_send(bridge, ops_packet_auth, 0, 0, NULL, 0);
+            char buf[1];
+            buf[0] = CTL_AUTH_ERR;//鉴权成功
+            bridge_send(bridge, ops_packet_auth, 0, 0, buf, sizeof(buf));
         }
         else {
             ops_bridge ths = {
@@ -1660,15 +1685,21 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
             //查找ID是否存在
             ops_bridge* p = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths);
             if (p != NULL) {
-                bridge_send(bridge, ops_packet_auth, 0, 0, NULL, 0);
+                //鉴权成功,但已经在线
+                char buf[1];
+                buf[0] = CTL_AUTH_ONLINE;//鉴权成功
+                bridge_send(bridge, ops_packet_auth, 0, 0, buf, sizeof(buf));
             }
             else {
                 char buf[1];
-                buf[0] = 1;//鉴权成功
-                bridge_send(bridge, ops_packet_auth, 0, 0, buf, 1);
+                buf[0] = CTL_AUTH_OK;//鉴权成功
+                bridge_send(bridge, ops_packet_auth, 0, 0, buf, sizeof(buf));
                 //记录客户端
                 bridge->id = key->id;
                 RB_INSERT(_ops_bridge_tree, &bridge->global->bridge, bridge);
+                //记录ping
+                bridge->last_ping = loop->time;
+                heap_insert(&bridge->global->ping_heap,&bridge->heap, ping_less_than);
                 bridge_auth_ok(bridge);
             }
         }
@@ -1678,6 +1709,9 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         uint64_t t = *(uint64_t*)&packet->data[0];
         bridge->ping = ntohl(*(uint32_t*)&packet->data[8]);
         bridge_send(bridge, ops_packet_ping, 0, 0, packet->data, 8);
+        heap_remove(&bridge->global->ping_heap, &bridge->heap, ping_less_than);
+        bridge->last_ping = loop->time;
+        heap_insert(&bridge->global->ping_heap, &bridge->heap, ping_less_than);
         break;
     }
     case ops_packet_forward_ctl: {//转发控制指令
@@ -1727,6 +1761,8 @@ static void bridge_close_cb(uv_handle_t* handle) {
     }
     //从句柄树中移除
     RB_REMOVE(_ops_bridge_tree, &bridge->global->bridge, bridge);
+    //
+    heap_remove(&bridge->global->ping_heap, &bridge->heap, ping_less_than);
     bridge->global->stat.bridge_online--;
     //回收资源
     databuffer_clear(&bridge->m_buffer, &bridge->global->m_mp);
@@ -1790,6 +1826,26 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
         //新客户
         printf("New Client\r\n");
         uv_read_start((uv_stream_t*)&bridge->tcp, alloc_buffer, bridge_read_cb);
+    }
+}
+//ping检查定时器
+static void bridge_ping_timer_cb(uv_timer_t* handle) {
+    ops_global* global = (ops_global*)handle->data;
+
+    struct heap_node* heap_node;
+    ops_bridge* bridge;
+    for (;;) {
+        heap_node = heap_min(&global->ping_heap);
+        if (heap_node == NULL)
+            break;
+
+        bridge = container_of(heap_node, ops_bridge, heap);
+        if (bridge->last_ping > (loop->time - 1000 * 30))
+            break;
+        //删除这个成员
+        heap_remove(&global->ping_heap, &bridge->heap, ping_less_than);
+        //踢掉用户
+        uv_close(&bridge->tcp, bridge_close_cb);
     }
 }
 //----------------------------------------------------------------------------------------------------------------------data
@@ -2109,6 +2165,12 @@ struct data_settings data_settings = {
 //全局初始化
 static int init_global(ops_global* global) {
     struct sockaddr_in _addr;
+    //
+    heap_init(&global->ping_heap);
+    uv_timer_init(loop, &global->ping_timer);
+    global->ping_timer.data = global;
+    uv_timer_start(&global->ping_timer, bridge_ping_timer_cb, 1000 * 5, 1000 * 5);
+
     //初始化数据
     data_init(global->config.db_file, global, &data_settings);
     //web管理

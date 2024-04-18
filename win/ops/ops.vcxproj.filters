@@ -11,5 +11,6 @@
     <ClInclude Include="..\..\src\common.h" />
     <ClInclude Include="..\..\src\data.h" />
     <ClInclude Include="..\..\src\sds.h" />
+    <ClInclude Include="..\..\src\heap.h" />
   </ItemGroup>
 </Project>

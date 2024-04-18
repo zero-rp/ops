@@ -90,7 +90,7 @@ typedef struct _opc_bridge {
     uv_tcp_t tcp;                                       //服务器通讯句柄
     struct _opc_global* global;
     struct databuffer m_buffer;                         //接收缓冲
-    uv_timer_t keep_timer;                              //心跳定时器
+    uv_timer_t keep_timer;                              //心跳,重鉴权定时器
     uint64_t keep_last;                                 //上次心跳
     uint32_t keep_ping;                                 //延迟
     struct {
@@ -1386,6 +1386,7 @@ static void bridge_connect_end(opc_bridge* bridge) {
     bridge_send(bridge, ops_packet_auth, 0, 0, buf, size);
     free(buf);
 }
+//ping检测定时器
 static void bridge_keep_timer_cb(uv_timer_t* handle) {
     opc_bridge* bridge = (opc_bridge*)handle->data;
     //检查是否超时
@@ -1395,6 +1396,11 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
     *(uint64_t*)&buf[0] = gettime();
     *(uint32_t*)&buf[8] = htonl(bridge->keep_ping);
     bridge_send(bridge, ops_packet_ping, 0, 0, buf, sizeof(buf));
+}
+//重鉴权定时器
+static void bridge_auth_timer_cb(uv_timer_t* handle) {
+    opc_bridge* bridge = (opc_bridge*)handle->data;
+    bridge_connect_end(bridge);
 }
 //收到服务端来的数据
 static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
@@ -1407,14 +1413,27 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     switch (packet->type)
     {
     case ops_packet_auth: {//鉴权数据
-        if (size == 1 && packet->data[0] == 0x01) {
+        switch (packet->data[0])
+        {
+        case CTL_AUTH_ERR: {
+            printf("Auth Err!\r\n");
+            break;
+        }
+        case CTL_AUTH_OK: {
             printf("Auth Ok!\r\n");
             //启动定时器
             uv_timer_start(&bridge->keep_timer, bridge_keep_timer_cb, 0, 1000 * 10);
             bridge_auth_ok(bridge);
+            break;
         }
-        else {
-            printf("Auth Err!\r\n");
+        case CTL_AUTH_ONLINE: {
+            printf("Wait ReAuth...\r\n");
+            //启动定时器
+            uv_timer_start(&bridge->keep_timer, bridge_auth_timer_cb, 1000 * 5, 0);
+            break;
+        }
+        default:
+            break;
         }
         break;
     }
@@ -1600,6 +1619,7 @@ static int init_global(opc_global* global) {
     global->re_timer.data = global;
 
 }
+//win系统服务
 #if defined(_WIN32) || defined(_WIN64)
 static int run();
 int install_service = 0;
@@ -1809,7 +1829,6 @@ static int run() {
     //启动循环
     uv_run(loop, UV_RUN_DEFAULT);
 }
-
 
 int main(int argc, char* argv[]) {
     loop = uv_default_loop();

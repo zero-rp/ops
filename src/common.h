@@ -25,6 +25,10 @@ enum ops_packet_type
     ops_packet_vpc,                         //局域网服务
     ops_packet_vpc_data,
 };
+//鉴权
+#define CTL_AUTH_ERR    0x01                //鉴权失败
+#define CTL_AUTH_OK     0x02                //鉴权成功
+#define CTL_AUTH_ONLINE 0x03                //鉴权成功,但已在线
 //包定义
 typedef struct _ops_packet {
     uint8_t type;                           //包类型
