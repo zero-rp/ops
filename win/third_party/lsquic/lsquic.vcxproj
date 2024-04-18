@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\third_party\lsquic\include\lsquic.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\include\lsquic_types.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\include\lsxpack_header.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\fiu-local.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\ls-qpack\huff-tables.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\ls-qpack\lsqpack.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\ls-qpack\lsxpack_header.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\ls-sfparser.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_adaptive_cc.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_alarmset.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_arr.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_attq.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_bbr.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_bw_sampler.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_byteswap.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_chsk_stream.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_cong_ctl.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_conn.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_conn_flow.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_conn_public.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_crand.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_crt_compress.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_crypto.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_cubic.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_data_in_if.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_enc_sess.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_engine_public.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_eng_hist.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_ev_log.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_frab_list.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_frame_common.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_frame_reader.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_frame_writer.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_full_conn.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_handshake.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hash.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hcsi_reader.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hcso_writer.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_headers.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_headers_stream.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hkdf.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hpi.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hq.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_http1x_if.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_ietf.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_int_types.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_logger.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_malo.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_mini_conn.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_mini_conn_ietf.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_minmax.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_min_heap.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_mm.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_pacer.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_common.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_gquic.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_ietf.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_in.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_out.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_resize.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_common.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_gquic_be.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_ietf.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_pr_queue.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_purga.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_push_promise.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qdec_hdl.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qenc_hdl.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qlog.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qpack_dec_logger.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qpack_enc_logger.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qpack_exp.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qtags.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_rechist.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_rtt.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_send_ctl.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_senhist.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_set.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_sfcw.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_shared_support.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_shsk_stream.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_sizes.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_spi.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_stock_shi.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_str.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_stream.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_tokgen.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_trans_params.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_trechist.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_util.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_varint.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_version.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_ver_neg.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_xxhash.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\lshpack\huff-tables.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\lshpack\lshpack.h" />
+    <ClInclude Include="..\..\..\third_party\lsquic\src\lshpack\lsxpack_header.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\common_cert_set_2.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\common_cert_set_3.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\ls-qpack\lsqpack.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\ls-sfparser.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_adaptive_cc.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_alarmset.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_arr.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_attq.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_bbr.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_bw_sampler.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_cfcw.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_chsk_stream.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_conn.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_crand.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_crt_compress.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_crypto.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_cubic.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_di_error.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_di_hash.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_di_nocopy.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_enc_sess_common.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_enc_sess_ietf.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_engine.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_eng_hist.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_ev_log.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_frab_list.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_frame_common.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_frame_reader.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_frame_writer.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_full_conn.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_full_conn_ietf.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_global.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_handshake.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hash.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hcsi_reader.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hcso_writer.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_headers_stream.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hkdf.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hpi.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_hspack_valid.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_http.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_http1x_if.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_logger.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_malo.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_mini_conn.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_mini_conn_ietf.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_minmax.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_min_heap.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_mm.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_pacer.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_common.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_gquic.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_in.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_out.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_packet_resize.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_common.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_gquic_be.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_gquic_common.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_ietf_v1.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_iquic_common.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_Q046.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_parse_Q050.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_pr_queue.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_purga.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qdec_hdl.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qenc_hdl.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qlog.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_qpack_exp.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_rechist.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_rtt.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_send_ctl.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_senhist.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_set.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_sfcw.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_shsk_stream.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_spi.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_stock_shi.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_str.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_stream.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_tokgen.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_trans_params.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_trechist.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_util.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_varint.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_version.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\liblsquic\lsquic_xxhash.c" />
+    <ClCompile Include="..\..\..\third_party\lsquic\src\lshpack\lshpack.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\third_party\lsquic\src\liblsquic\common_cert_set_2a.inc" />
+    <None Include="..\..\..\third_party\lsquic\src\liblsquic\common_cert_set_2b.inc" />
+    <None Include="..\..\..\third_party\lsquic\src\liblsquic\common_cert_set_3a.inc" />
+    <None Include="..\..\..\third_party\lsquic\src\liblsquic\common_cert_set_3b.inc" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}</ProjectGuid>
+    <RootNamespace>lsquic</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)..\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <StringPooling>true</StringPooling>
+      <ExceptionHandling>false</ExceptionHandling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;XXH_HEADER_NAME="lsquic_xxhash.h";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\..\..\third_party\lsquic\include;..\..\..\third_party\lsquic\wincompat;..\..\..\third_party\lsquic\src\lshpack;..\..\..\third_party\lsquic\src\liblsquic\ls-qpack;..\..\..\third_party\zlib;..\..\..\third_party\boringssl\include;..\..\..\third_party\lsquic\src\liblsquic</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;4819;4305;4146;</DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <ExceptionHandling>false</ExceptionHandling>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

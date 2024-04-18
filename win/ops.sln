@@ -19,6 +19,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sqlite", "third_party\sqlit
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "boringssl", "third_party\boringssl\boringssl.vcxproj", "{D5B91005-8DBB-4439-B7A2-3F21B04CB6C0}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lsquic", "third_party\lsquic\lsquic.vcxproj", "{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -83,6 +85,14 @@ Global
 		{D5B91005-8DBB-4439-B7A2-3F21B04CB6C0}.Release|x64.Build.0 = Release|x64
 		{D5B91005-8DBB-4439-B7A2-3F21B04CB6C0}.Release|x86.ActiveCfg = Release|Win32
 		{D5B91005-8DBB-4439-B7A2-3F21B04CB6C0}.Release|x86.Build.0 = Release|Win32
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}.Debug|x64.ActiveCfg = Debug|x64
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}.Debug|x64.Build.0 = Debug|x64
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}.Debug|x86.ActiveCfg = Debug|Win32
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}.Debug|x86.Build.0 = Debug|Win32
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}.Release|x64.ActiveCfg = Release|x64
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}.Release|x64.Build.0 = Release|x64
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}.Release|x86.ActiveCfg = Release|Win32
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -93,6 +103,7 @@ Global
 		{ADB90271-FF4D-41C1-A673-1E936A0EF693} = {0AA1C4BF-D08A-413C-9B85-42FF71493CBB}
 		{78B5B62D-A08C-4BCF-87C7-C851D80D8DD3} = {0AA1C4BF-D08A-413C-9B85-42FF71493CBB}
 		{D5B91005-8DBB-4439-B7A2-3F21B04CB6C0} = {0AA1C4BF-D08A-413C-9B85-42FF71493CBB}
+		{AD5B63D1-7BBB-4665-964A-7F2655CDAB90} = {0AA1C4BF-D08A-413C-9B85-42FF71493CBB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BB0234BD-94F4-43CA-A694-4DE9C2EE11C7}
