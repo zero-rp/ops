@@ -1915,6 +1915,8 @@ static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id
     forward->dst.port = dst_port;
     strncpy(forward->dst.dst, dst, sizeof(forward->dst.dst) - 1);
     forward->dst.dst[sizeof(forward->dst.dst) - 1] = 0;
+    strncpy(forward->dst.bind, bind, sizeof(forward->dst.bind) - 1);
+    forward->dst.bind[sizeof(forward->dst.bind) - 1] = 0;
     RB_INSERT(_ops_forward_tree, &global->forward, forward);
     //下发到相关通道
     ops_bridge the = {

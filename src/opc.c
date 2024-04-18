@@ -359,6 +359,7 @@ static void forward_tunnel_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, str
     if (status != 0) {
         //通知失败
         forward_tunnel_dst_err(tunnel->dst->bridge, tunnel->dst->id, tunnel->pree_id);
+        printf("No DNS Forward Id %d\r\n", tunnel->dst->id);
         return;
     }
     tunnel->tcp.data = tunnel;
@@ -419,10 +420,10 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
                 s->bridge = bridge;
 
                 //监听端口
-                struct sockaddr_in _addr;
+                struct sockaddr_in6 _addr;
                 uv_tcp_init(loop, &s->tcp);
                 s->tcp.data = s;
-                uv_ip4_addr("0.0.0.0", src.port, &_addr);
+                uv_ip6_addr("::0", src.port, &_addr);
                 uv_tcp_bind(&s->tcp, &_addr, 0);
                 uv_listen((uv_stream_t*)&s->tcp, DEFAULT_BACKLOG, forward_src_connection_cb);
 
@@ -444,6 +445,8 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
                 d->bridge = bridge;
                 memcpy(d->dst, dst.dst, sizeof(d->dst));
                 d->dst[sizeof(d->dst) - 1] = 0;
+                memcpy(d->bind, dst.bind, sizeof(d->bind));
+                d->bind[sizeof(d->bind) - 1] = 0;
                 d->port = dst.port;
 
                 RB_INSERT(_opc_forward_dst_tree, &bridge->forward_dst, d);
@@ -468,11 +471,13 @@ static void forward_ctl(opc_bridge* bridge, ops_packet* packet) {
     {
     case 0x01: {//发起请求
         //查找目标服务
+        printf("New Forward Request For Id %d\r\n", packet->service_id);
         opc_forward_dst ths = {
                .id = packet->service_id
         };
         opc_forward_dst* dst = RB_FIND(_opc_forward_dst_tree, &bridge->forward_dst, &ths);
         if (dst == NULL) {
+            printf("No Find Forward Id %d\r\n", packet->service_id);
             forward_tunnel_dst_err(bridge, packet->service_id, packet->stream_id);
             break;
         }

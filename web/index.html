@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>后台管理</title>
   <link rel="stylesheet" href="layui/css/layui.css">
-  
+
   <style>
     html,
     body {
@@ -357,7 +357,7 @@
       <div class="layui-form-item">
         <label class="layui-form-label">出口地址</label>
         <div class="layui-input-block">
-          <input type="text" name="bind" lay-verify="ipv4|ipv6" placeholder="请输入" autocomplete="off" class="layui-input">
+          <input type="text" name="bind" lay-verify="ipv46" placeholder="请输入" autocomplete="off" class="layui-input">
         </div>
       </div>
 
@@ -534,6 +534,19 @@
           return 'ipv4不合法';
         }
       },
+      ipv46: function(value) {
+        var v4reg = /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$/
+        var v6reg = /^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$/gm;
+
+        if (value && value.length > 0) {
+          if (
+            v4reg.test(value) || v6reg.test(value)
+          ) {
+          } else {
+            return '出口地址不合法';
+          }
+        }
+      },
       ipv6: function (value) {
         var v6reg = /^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$/gm;
         if (!v6reg.test(value)) {
@@ -649,7 +662,7 @@
       //bridge-单行的点击
       table.on('tool(table-bridge)', function (params) {
         console.log(params)
-        var len = $(`.layui-table-main .layui-table tbody tr[data-index=${params.index}]`).length
+        var len = $(`#table-bridge + .layui-table-view .layui-table-main .layui-table tbody tr[data-index=${params.index}]`).length
         if (params.event == 'delete') {
           request({
             url: '/api/bridge_del',
@@ -767,12 +780,12 @@
         url: '/api/forward',
         cols: [[ //标题栏
           { field: 'id', title: 'id', sort: true },
-          { field: 'src_id', width: 200, title: '来源客户' },
-          { field: 'dst_id', title: '目标客户' },
+          { field: 'src_id', width: 200, title: '源客户端' },
+          { field: 'dst_id', title: '目标客户端' },
           { field: 'type', title: '类型' },
-          { field: 'src_port', title: '目标地址' },
-          { field: 'bind', title: '出口地址' },
-          { field: 'dst', title: '目标地址' },
+          { field: 'src_port', title: '源监听端口' },
+          { field: 'bind', title: '出口IP' },
+          { field: 'dst', title: '目标主机' },
           { field: 'dst_port', title: '目标端口' },
           { field: 'info', title: '备注' },
           { field: '', title: '操作', toolbar: '#tool-forward' },
@@ -848,7 +861,7 @@
           { field: 'id', title: 'id', sort: true },
           { field: 'ipv4', width: 200, title: 'ipv4' },
           { field: 'ipv6', title: 'ipv6' },
-          { field: 'info', title: '备注' },
+          { field: 'info', title: 'info' },
           { field: '', title: '操作', toolbar: '#tool-vpc' },
         ]]
       });
@@ -908,11 +921,11 @@
         url: '/api/member',
         cols: [[ //标题栏
           { field: 'id', title: 'id', sort: true },
-          { field: 'bid', width: 200, title: '客户端ID' },
-          { field: 'vid', width: 200, title: 'VPC ID' },
+          { field: 'bid', width: 200, title: 'bid' },
+          { field: 'vid', width: 200, title: 'vid' },
           { field: 'ipv4', width: 200, title: 'ipv4' },
           { field: 'ipv6', title: 'ipv6' },
-          { field: 'info', title: '备注' },
+          { field: 'info', title: 'info' },
           { field: '', title: '操作', toolbar: '#tool-member' },
         ]]
       });
