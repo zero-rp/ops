@@ -1940,7 +1940,7 @@ static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id
     if (b) {
         char buf[1 + 4 + 1 + sizeof(ops_forward_dst)];
         buf[0] = CTL_FORWARD_ADD;
-        *(uint32_t*)(&buf[0]) = htonl(1);
+        *(uint32_t*)(&buf[1]) = htonl(1);
         buf[5] = 2;//类型,转发目标
         ops_forward_dst _dst;
         _dst.port = htons(dst_port);
