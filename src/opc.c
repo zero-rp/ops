@@ -1,9 +1,4 @@
-﻿#if defined(_WIN32) || defined(_WIN64)
-#include <sys/timeb.h>
-#else
-#include <time.h>
-#endif
-#include <uv.h>
+﻿#include <uv.h>
 #include <cJSON.h>
 #include <uv/tree.h>
 #include "databuffer.h"
@@ -177,34 +172,6 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 }
 static void write_cb(uv_write_t* req, int status) {
     free(req->data);
-}
-//获取毫秒时间
-static uint64_t gettime() {
-    uint64_t t;
-#if defined(_WIN32) || defined(_WIN64)
-    struct _timeb timebuffer;
-    _ftime_s(&timebuffer);
-    t = timebuffer.time * 1000;
-    t += timebuffer.millitm;
-#elif !defined(__APPLE__)
-
-#ifdef CLOCK_MONOTONIC_RAW
-#define CLOCK_TIMER CLOCK_MONOTONIC_RAW
-#else
-#define CLOCK_TIMER CLOCK_MONOTONIC
-#endif
-
-    struct timespec ti;
-    clock_gettime(CLOCK_REALTIME, &ti);
-    t = (uint64_t)ti.tv_sec * 1000;
-    t += (ti.tv_nsec / 1000000);
-#else
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    t = (uint64_t)tv.tv_sec * 1000;
-    t += (tv.tv_usec / 1000);
-#endif
-    return t;
 }
 //
 static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
@@ -422,6 +389,10 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
                 //监听端口
                 struct sockaddr_in6 _addr;
                 uv_tcp_init(loop, &s->tcp);
+                //允许复用
+                int val = 1;
+                setsockopt(s->tcp.socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+                //绑定
                 s->tcp.data = s;
                 uv_ip6_addr("::0", src.port, &_addr);
                 uv_tcp_bind(&s->tcp, &_addr, 0);
@@ -1390,6 +1361,8 @@ static void vpc_free(opc_bridge* bridge) {
 }
 #endif
 //--------------------------------------------------------------------------------------------------------bridge
+static int bridge_start_connect(opc_global* global);
+static void bridge_re_timer_cb(uv_timer_t* handle);
 //鉴权成功
 static void bridge_auth_ok(opc_bridge* bridge) {
     //提交设备信息
@@ -1410,14 +1383,43 @@ static void bridge_connect_end(opc_bridge* bridge) {
     bridge_send(bridge, ops_packet_auth, 0, 0, buf, size);
     free(buf);
 }
+//关闭
+static void bridge_close_cb(uv_handle_t* handle) {
+    opc_bridge* bridge = (opc_bridge*)handle->data;
+    bridge->global->bridge = NULL;
+    bridge->b.quit = 1;
+    //回收资源
+    databuffer_clear(&bridge->m_buffer, &bridge->global->m_mp);
+    //回收转发器
+    forward_free(bridge);
+    //回收主机
+    host_free(bridge);
+    //
+    vpc_free(bridge);
+    //定时重连
+    uv_timer_start(&bridge->global->re_timer, bridge_re_timer_cb, 1000 * 5, 0);
+    //
+    uv_timer_stop(handle);
+}
+static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
+    opc_bridge* bridge = (opc_bridge*)req->data;
+    uv_close(&bridge->tcp, bridge_close_cb);
+    free(req);
+}
 //ping检测定时器
 static void bridge_keep_timer_cb(uv_timer_t* handle) {
     opc_bridge* bridge = (opc_bridge*)handle->data;
     //检查是否超时
-
-
+    if (bridge->keep_last < (loop->time - 1000 * 30)) {
+        //
+        uv_timer_stop(handle);
+        //超时直接关闭
+        uv_close(&bridge->tcp, bridge_close_cb);
+        return;
+    }
+    //
     uint8_t buf[12];
-    *(uint64_t*)&buf[0] = gettime();
+    *(uint64_t*)&buf[0] = loop->time;
     *(uint32_t*)&buf[8] = htonl(bridge->keep_ping);
     bridge_send(bridge, ops_packet_ping, 0, 0, buf, sizeof(buf));
 }
@@ -1446,6 +1448,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
         case CTL_AUTH_OK: {
             printf("Auth Ok!\r\n");
             //启动定时器
+            bridge->keep_last = loop->time;
             uv_timer_start(&bridge->keep_timer, bridge_keep_timer_cb, 0, 1000 * 10);
             bridge_auth_ok(bridge);
             break;
@@ -1463,7 +1466,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     }
     case ops_packet_ping: {
         uint64_t t = *(uint64_t*)&packet->data[0];
-        bridge->keep_last = gettime();
+        bridge->keep_last = loop->time;
         bridge->keep_ping = bridge->keep_last - t;
         break;
     }
@@ -1530,30 +1533,8 @@ static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, 
     uv_write(req, &bridge->tcp, &buf, 1, write_cb);
 }
 //重连回调
-static int bridge_start_connect(opc_global* global);
-void bridge_re_timer_cb(uv_timer_t* handle) {
+static void bridge_re_timer_cb(uv_timer_t* handle) {
     bridge_start_connect((opc_global*)handle->data);
-}
-//关闭
-static void bridge_close_cb(uv_handle_t* handle) {
-    opc_bridge* bridge = (opc_bridge*)handle->data;
-    bridge->global->bridge = NULL;
-    bridge->b.quit = 1;
-    //回收资源
-    databuffer_clear(&bridge->m_buffer, &bridge->global->m_mp);
-    //回收转发器
-    forward_free(bridge);
-    //回收主机
-    host_free(bridge);
-    //
-    vpc_free(bridge);
-    //定时重连
-    uv_timer_start(&bridge->global->re_timer, bridge_re_timer_cb, 1000 * 5, 0);
-}
-static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
-    opc_bridge* bridge = (opc_bridge*)req->data;
-    uv_close(&bridge->tcp, bridge_close_cb);
-    free(req);
 }
 //数据到达
 static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {

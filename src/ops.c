@@ -1859,7 +1859,7 @@ static void bridge_ping_timer_cb(uv_timer_t* handle) {
             break;
 
         bridge = container_of(heap_node, ops_bridge, heap);
-        if (bridge->last_ping > (loop->time - 1000 * 30))
+        if (bridge->last_ping < (loop->time - 1000 * 30))
             break;
         //删除这个成员
         heap_remove(&global->ping_heap, &bridge->heap, ping_less_than);
