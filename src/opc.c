@@ -389,13 +389,16 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
                 //监听端口
                 struct sockaddr_in6 _addr;
                 uv_tcp_init(loop, &s->tcp);
-                //允许复用
-                int val = 1;
-                setsockopt(s->tcp.socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
                 //绑定
                 s->tcp.data = s;
                 uv_ip6_addr("::0", src.port, &_addr);
                 uv_tcp_bind(&s->tcp, &_addr, 0);
+                //允许复用
+                uv_os_fd_t fd;
+                if (uv_fileno(&s->tcp, &fd) == 0) {
+                    int val = 1;
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+                }
                 uv_listen((uv_stream_t*)&s->tcp, DEFAULT_BACKLOG, forward_src_connection_cb);
 
                 RB_INSERT(_opc_forward_src_tree, &bridge->forward_src, s);
