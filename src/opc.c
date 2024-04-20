@@ -4,6 +4,10 @@
 #include "databuffer.h"
 #include "common.h"
 
+#if HAVE_QUIC
+#include <lsquic.h>
+#endif
+
 #define DEFAULT_BACKLOG 128
 
 //转发隧道来源
@@ -82,6 +86,14 @@ typedef struct _opc_vpc {
 RB_HEAD(_opc_vpc_tree, _opc_vpc);
 //
 typedef struct _opc_bridge {
+#if HAVE_QUIC
+    struct {
+        uv_udp_t udp;
+        struct lsquic_stream_if stream_if;
+        struct lsquic_engine_api engine_api;
+        lsquic_engine_t* engine;
+    }quic;
+#endif
     uv_tcp_t tcp;                                       //服务器通讯句柄
     struct _opc_global* global;
     struct databuffer m_buffer;                         //接收缓冲
@@ -227,7 +239,6 @@ static void forward_tunnel_src_read_cb(uv_stream_t* tcp, ssize_t nread, const uv
     bridge_send(tunnel->src->bridge, ops_packet_forward_data_local, tunnel->src->id, tunnel->pree_id, buf->base, nread);
     free(buf->base);
 }
-
 //转发连接进入
 static void forward_src_connection_cb(uv_stream_t* tcp, int status) {
     opc_forward_src* src = (opc_forward_src*)tcp->data;
@@ -252,6 +263,39 @@ static void forward_src_connection_cb(uv_stream_t* tcp, int status) {
         buf[0] = 0x01;//发起请求
         bridge_send(src->bridge, ops_packet_forward_ctl, src->id, tunnel->stream_id, buf, sizeof(buf));
     }
+}
+//转发源监听关闭
+static void forward_src_close_cb(uv_handle_t* handle) {
+    opc_forward_src* src = (opc_forward_src*)handle->data;
+    RB_REMOVE(_opc_forward_src_tree, &src->bridge->tunnel_src, src);
+    free(src);
+}
+//新转发源
+static void forward_src_add(opc_bridge* bridge, ops_forward_src *src) {
+    opc_forward_src* s = (opc_forward_src*)malloc(sizeof(*s));
+    if (!s) {
+        return;
+    }
+    memset(s, 0, sizeof(*s));
+    s->id = src->sid;
+    s->bridge = bridge;
+
+    //监听端口
+    struct sockaddr_in6 _addr;
+    uv_tcp_init(loop, &s->tcp);
+    //绑定
+    s->tcp.data = s;
+    uv_ip6_addr("::0", src->port, &_addr);
+    uv_tcp_bind(&s->tcp, &_addr, 0);
+    //允许复用
+    uv_os_fd_t fd;
+    if (uv_fileno(&s->tcp, &fd) == 0) {
+        int val = 1;
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+    }
+    uv_listen((uv_stream_t*)&s->tcp, DEFAULT_BACKLOG, forward_src_connection_cb);
+
+    RB_INSERT(_opc_forward_src_tree, &bridge->forward_src, s);
 }
 //-----------------------------------------------------目标
 //失败关闭对端隧道
@@ -378,30 +422,7 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
                 src.sid = ntohl(src.sid);
                 src.port = ntohs(src.port);
 
-                opc_forward_src* s = (opc_forward_src*)malloc(sizeof(*s));
-                if (!s) {
-                    continue;
-                }
-                memset(s, 0, sizeof(*s));
-                s->id = src.sid;
-                s->bridge = bridge;
-
-                //监听端口
-                struct sockaddr_in6 _addr;
-                uv_tcp_init(loop, &s->tcp);
-                //绑定
-                s->tcp.data = s;
-                uv_ip6_addr("::0", src.port, &_addr);
-                uv_tcp_bind(&s->tcp, &_addr, 0);
-                //允许复用
-                uv_os_fd_t fd;
-                if (uv_fileno(&s->tcp, &fd) == 0) {
-                    int val = 1;
-                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
-                }
-                uv_listen((uv_stream_t*)&s->tcp, DEFAULT_BACKLOG, forward_src_connection_cb);
-
-                RB_INSERT(_opc_forward_src_tree, &bridge->forward_src, s);
+                forward_src_add(bridge, &src);
             }
             else if (type == 2) {//转发目标
                 ops_forward_dst dst;
@@ -562,22 +583,22 @@ static void forward_data_remote(opc_bridge* bridge, ops_packet* packet, int size
 }
 //回收资源
 static void forward_free(opc_bridge* bridge) {
+    //关闭源隧道
     opc_forward_tunnel_src* sc = NULL;
     RB_FOREACH(sc, _opc_forward_tunnel_src_tree, &bridge->tunnel_src) {
         forward_tunnel_src_shutdown(sc);
     }
+    //关闭目标隧道
     opc_forward_tunnel_dst* dc = NULL;
-    opc_forward_tunnel_dst* dcc = NULL;
-    RB_FOREACH_SAFE(dc, _opc_forward_tunnel_dst_tree, &bridge->tunnel_dst, dcc) {
+    RB_FOREACH(dc, _opc_forward_tunnel_dst_tree, &bridge->tunnel_dst) {
         forward_tunnel_dst_shutdown(dc);
     }
-
+    //关闭源
     opc_forward_src* fsc = NULL;
     RB_FOREACH(fsc, _opc_forward_src_tree, &bridge->forward_src) {
-
-
+        uv_close((uv_handle_t*)&fsc->tcp, forward_src_close_cb);
     }
-
+    //关闭目标
     opc_forward_dst* fdc = NULL;
     opc_forward_dst* fdcc = NULL;
     RB_FOREACH_SAFE(fdc, _opc_forward_dst_tree, &bridge->forward_dst, fdcc) {
@@ -1366,6 +1387,10 @@ static void vpc_free(opc_bridge* bridge) {
 //--------------------------------------------------------------------------------------------------------bridge
 static int bridge_start_connect(opc_global* global);
 static void bridge_re_timer_cb(uv_timer_t* handle);
+//检查是否退出
+static void bridge_check() {
+
+}
 //鉴权成功
 static void bridge_auth_ok(opc_bridge* bridge) {
     //提交设备信息

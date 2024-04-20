@@ -125,6 +125,20 @@ int data_bridge_del(uint16_t id) {
     }
     return -1;
 }
+int data_bridge_new_key(uint16_t id, const char* key) {
+    char* zErrMsg = 0;
+    char sql[256] = { 0 };
+    //删除
+    snprintf(sql, sizeof(sql), "UPDATE bridge SET key = \"%s\" WHERE id = %d;", key, id);
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        if (sqlite3_changes(db) == 1) {
+            //触发回调
+            settings->on_key_new(userdata, id, key);
+            return 0;
+        }
+    }
+    return -1;
+}
 
 cJSON* data_forward_get() {
     char* zErrMsg = 0;
@@ -132,7 +146,6 @@ cJSON* data_forward_get() {
     sqlite3_exec(db, "SELECT * FROM forward;", _get_json_callback, list, &zErrMsg);
     return list;
 }
-
 int data_forward_add(int src_id, int dst_id, int type, int src_port, const char* bind, const char* dst, uint16_t dst_port, const char* info) {
     char sql[1024] = { 0 };
     snprintf(sql, sizeof(sql), "INSERT INTO forward (`src_id`, `dst_id`, `type`, `src_port`, `bind`, `dst`, `dst_port`, `info`)VALUES(%d, %d, %d, %d, \"%s\", \"%s\", %d, \"%s\");",
@@ -149,7 +162,21 @@ int data_forward_add(int src_id, int dst_id, int type, int src_port, const char*
     }
     return -1;
 }
-
+int data_forward_update(int id, int src_id, int dst_id, int type, int src_port, const char* bind, const char* dst, uint16_t dst_port, const char* info) {
+    char sql[1024] = { 0 };
+    snprintf(sql, sizeof(sql), 
+        "UPDATE forward SET `src_id` = %d, `dst_id` = %d, `type` = %d, `src_port` = %d, `bind` = \"%s\", `dst` = \"%s\", `dst_port` = %d, `info` = \"%s\" WHERE id = %d",
+        src_id, dst_id, type, src_port, bind, dst, dst_port, info ? info : "", id);
+    //更新
+    char* zErrMsg = 0;
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        if (sqlite3_changes(db) == 1) {
+            //触发回调
+            settings->on_forward_update(userdata, id, src_id, dst_id, type, src_port, bind, dst, dst_port);
+            return 0;
+        }
+    }
+}
 int data_forward_del(uint32_t id) {
     char* zErrMsg = 0;
     char sql[256] = { 0 };
@@ -165,14 +192,12 @@ int data_forward_del(uint32_t id) {
     return -1;
 }
 
-
 cJSON* data_host_get() {
     char* zErrMsg = 0;
     cJSON* list = cJSON_CreateArray();
     sqlite3_exec(db, "SELECT * FROM host;", _get_json_callback, list, &zErrMsg);
     return list;
 }
-
 int data_host_add(const char* host, int dst_id, int type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite, const char* info) {
     char sql[1024] = { 0 };
     snprintf(sql, sizeof(sql), "INSERT INTO host (`host`, `dst_id`, `type`, `bind`, `dst`, `dst_port`, `host_rewrite`, `info`)VALUES(\"%s\",%d, %d, \"%s\", \"%s\", %d, \"%s\", \"%s\");",
@@ -189,7 +214,6 @@ int data_host_add(const char* host, int dst_id, int type, const char* bind, cons
     }
     return -1;
 }
-
 int data_host_del(uint32_t id) {
     char* zErrMsg = 0;
     char sql[512] = { 0 };
@@ -232,7 +256,6 @@ cJSON* data_vpc_get() {
     sqlite3_exec(db, "SELECT * FROM vpc;", _get_json_callback, list, &zErrMsg);
     return list;
 }
-
 int data_vpc_add(const char* ipv4, const char* ipv6, const char* info) {
     char sql[1024] = { 0 };
     snprintf(sql, sizeof(sql), "INSERT INTO vpc (`ipv4`, `ipv6`, `info`)VALUES(\"%s\",\"%s\", \"%s\");",
@@ -249,7 +272,6 @@ int data_vpc_add(const char* ipv4, const char* ipv6, const char* info) {
     }
     return -1;
 }
-
 int data_vpc_del(uint16_t id) {
     char* zErrMsg = 0;
     char sql[256] = { 0 };
@@ -271,7 +293,6 @@ cJSON* data_member_get() {
     sqlite3_exec(db, "SELECT * FROM member;", _get_json_callback, list, &zErrMsg);
     return list;
 }
-
 int data_member_add(uint16_t bid, uint16_t vid, const char* ipv4, const char* ipv6, const char* info) {
     char sql[1024] = { 0 };
     snprintf(sql, sizeof(sql), "INSERT INTO member (`bid`,`vid`,`ipv4`, `ipv6`, `info`)VALUES(%d, %d, \"%s\",\"%s\", \"%s\");",
@@ -288,7 +309,6 @@ int data_member_add(uint16_t bid, uint16_t vid, const char* ipv4, const char* ip
     }
     return -1;
 }
-
 int data_member_del(uint32_t id) {
     char* zErrMsg = 0;
     char sql[256] = { 0 };

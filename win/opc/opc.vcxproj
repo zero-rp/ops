@@ -139,9 +139,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;HAVE_QUIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\third_party\sqlite;..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\third_party\sqlite;..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src..\..\third_party\sqlite;..\..\third_party\http-parser;..\..\third_party\libuv\include;..\..\third_party\cJSON;..\..\src;..\..\third_party\lsquic\include;..\..\third_party\lsquic\wincompat</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
