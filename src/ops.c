@@ -382,7 +382,8 @@ static unsigned char hex2str(unsigned char* buf, unsigned char len, char* str) {
     return j;
 }
 
-//向客户发送数据
+//声明
+static ops_bridge* bridge_find(ops_global* global, uint16_t id);
 static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //----------------------------------------------------------------------------------------------------------------------WEB管理处理
 #if 1
@@ -637,10 +638,7 @@ static void web_on_request(ops_web* web, cJSON* body) {
             if (!id || !id->valuestring) {
                 continue;
             }
-            ops_bridge ths = {
-                .id = atoi(id->valuestring)
-            };
-            ops_bridge* b = RB_FIND(_ops_bridge_tree, &web->global->bridge, &ths);
+            ops_bridge* b = bridge_find(web->global, atoi(id->valuestring));
             if (b) {
                 cJSON_AddBoolToObject(item, "online", 1);
                 cJSON_AddNumberToObject(item, "ping", b->ping);
@@ -1087,10 +1085,7 @@ static int http_on_message_complete(http_parser* p) {
         return 0;
     }
     //查找目标客户端是否在线
-    ops_bridge ths_b = {
-        .id = host->dst_id
-    };
-    ops_bridge* b = RB_FIND(_ops_bridge_tree, &s->conn->global->bridge, &ths_b);
+    ops_bridge* b = bridge_find(s->conn->global, host->dst_id);
     if (b == NULL) {
         return 0;
     }
@@ -1408,6 +1403,30 @@ static void host_data(ops_bridge* bridge, ops_packet* packet, int size) {
     }
     http_send(req->stream->conn, packet->data, size);
 }
+static void host_load(ops_bridge* bridge) {
+    //查询主机服务
+    sds pack = sdsnewlen(NULL, 5);//预留数量和指令
+    pack[0] = CTL_HOST_ADD;
+    int count = 0;
+    ops_host* hc = NULL;
+    RB_FOREACH(hc, _ops_host_tree, &bridge->global->host) {
+        if (hc->dst_id == bridge->id) {
+            ops_host_dst dst;
+            dst.port = htons(hc->dst.port);
+            dst.sid = htonl(hc->dst.sid);
+            dst.type = hc->dst.type;
+            memcpy(dst.dst, hc->dst.dst, sizeof(dst.dst));
+            pack = sdscatlen(pack, &dst, sizeof(dst));
+            count++;
+        }
+    }
+    *(uint32_t*)(&pack[1]) = htonl(count);
+    //下发主机服务
+    if (count > 0) {
+        bridge_send(bridge, ops_packet_host, 0, 0, pack, sdslen(pack));
+    }
+    sdsfree(pack);
+}
 //事件
 static void on_data_host_add(ops_global* global, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite) {
     ops_host* host = malloc(sizeof(*host));
@@ -1427,10 +1446,7 @@ static void on_data_host_add(ops_global* global, uint32_t id, const char* src_ho
     host->dst.dst[sizeof(host->dst.dst) - 1] = 0;
     RB_INSERT(_ops_host_tree, &global->host, host);
     //下发
-    ops_bridge the = {
-        .id = dst_id
-    };
-    ops_bridge* bridge = RB_FIND(_ops_bridge_tree, &global->bridge, &the);
+    ops_bridge* bridge = bridge_find(global, dst_id);
     if (!bridge) {
         return;
     }
@@ -1490,6 +1506,7 @@ static void https_connection_cb(uv_stream_t* tcp, int status) {
 }
 //----------------------------------------------------------------------------------------------------------------------forward
 #if 1
+//数据处理
 static void forward_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
     //查找服务
     ops_forward ths = {
@@ -1505,10 +1522,7 @@ static void forward_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
     {
     case 0x01: {//发起请求
         //查找目标客户端是否存在
-        ops_bridge ths_b = {
-                .id = p->dst_id
-        };
-        ops_bridge* b = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths_b);
+        ops_bridge* b = bridge_find(bridge->global, p->dst_id);
         if (b == NULL) {
             uint8_t buf[2];
             buf[0] = 0x02;//来自目标的命令
@@ -1522,10 +1536,7 @@ static void forward_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
     }
     case 0x02: {
         //查找来源客户端是否存在
-        ops_bridge ths_b = {
-                .id = p->src_id
-        };
-        ops_bridge* b = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths_b);
+        ops_bridge* b = bridge_find(bridge->global, p->src_id);
         if (b == NULL) {
             //来源已经不存在
             uint8_t buf[2];
@@ -1552,10 +1563,7 @@ static void forward_data_remote(ops_bridge* bridge, ops_packet* packet, int size
         return;
     }
     //查找来源客户端是否存在
-    ops_bridge ths_b = {
-            .id = p->src_id
-    };
-    ops_bridge* b = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths_b);
+    ops_bridge* b = bridge_find(bridge->global, p->src_id);
     if (b == NULL) {
         bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
         return;
@@ -1573,16 +1581,84 @@ static void forward_data_local(ops_bridge* bridge, ops_packet* packet, int size)
         return;
     }
     //查找目标客户端是否存在
-    ops_bridge ths_b = {
-            .id = p->dst_id
-    };
-    ops_bridge* b = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths_b);
+    ops_bridge* b = bridge_find(bridge->global, p->dst_id);
     if (b == NULL) {
         bridge_send(bridge, ops_packet_forward_ctl, packet->service_id, packet->stream_id, NULL, 0);
         return;
     }
     //发送
     bridge_send(b, ops_packet_forward_data_local, packet->service_id, packet->stream_id, packet->data, size);
+}
+static void forward_push_dst(ops_bridge* bridge, ops_forward* p) {
+    char buf[1 + 4 + 1 + sizeof(ops_forward_dst)];
+    buf[0] = CTL_FORWARD_ADD;
+    *(uint32_t*)(&buf[1]) = htonl(1);
+    buf[5] = 2;//类型,转发目标
+    ops_forward_dst _dst;
+    _dst.port = htons(p->dst.port);
+    _dst.sid = htonl(p->dst.sid);
+    _dst.type = p->dst.type;
+    memcpy(_dst.dst, p->dst.dst, sizeof(_dst.dst));
+    memcpy(&buf[6], &_dst, sizeof(_dst));
+    bridge_send(bridge, ops_packet_forward, 0, 0, buf, sizeof(buf));
+}
+static void forward_push_src(ops_bridge* bridge, ops_forward* p) {
+    char buf[1 + 4 + 1 + sizeof(ops_forward_src)];
+    buf[0] = CTL_FORWARD_ADD;
+    *(uint32_t*)(&buf[1]) = htonl(1);
+    buf[5] = 1;//类型,转发源
+    ops_forward_src _src;
+    _src.port = htons(p->src.port);
+    _src.sid = htonl(p->src.sid);
+    _src.type = p->src.type;
+    memcpy(&buf[6], &_src, sizeof(_src));
+    bridge_send(bridge, ops_packet_forward, 0, 0, buf, sizeof(buf));
+}
+static void forward_push_del(ops_bridge* bridge, uint32_t sid) {
+    char buf[1 + 4];
+    buf[0] = CTL_FORWARD_DEL;
+    *(uint32_t*)(&buf[1]) = htonl(sid);
+    bridge_send(bridge, ops_packet_forward, 0, 0, buf, sizeof(buf));
+}
+//加载服务
+static void forward_load(ops_bridge* bridge) {
+    char buf[1 + sizeof(ops_forward_dst) + sizeof(ops_forward_src)];
+    sds pack = sdsnewlen(NULL, 5);//预留数量和指令
+    pack[0] = CTL_FORWARD_ADD;
+    int count = 0;
+    //查询客户端转发服务
+    ops_forward* tc = NULL;
+    RB_FOREACH(tc, _ops_forward_tree, &bridge->global->forward) {
+        //来源
+        if (tc->src_id == bridge->id) {
+            buf[0] = 1;//类型,转发源
+            ops_forward_src src;
+            src.port = htons(tc->src.port);
+            src.sid = htonl(tc->src.sid);
+            src.type = tc->src.type;
+            memcpy(&buf[1], &src, sizeof(src));
+            pack = sdscatlen(pack, buf, 1 + sizeof(ops_forward_src));
+            count++;
+        }
+        //出口
+        if (tc->dst_id == bridge->id) {
+            buf[0] = 2;//类型,转发目标
+            ops_forward_dst dst;
+            dst.port = htons(tc->dst.port);
+            dst.sid = htonl(tc->dst.sid);
+            dst.type = tc->dst.type;
+            memcpy(dst.dst, tc->dst.dst, sizeof(dst.dst));
+            memcpy(&buf[1], &dst, sizeof(dst));
+            pack = sdscatlen(pack, buf, 1 + sizeof(ops_forward_dst));
+            count++;
+        }
+    }
+    *(uint32_t*)(&pack[1]) = htonl(count);
+    //下发转发服务
+    if (count > 0) {
+        bridge_send(bridge, ops_packet_forward, 0, 0, pack, sdslen(pack));
+    }
+    sdsfree(pack);
 }
 //通道发生改变
 static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* bind, const char* dst, uint16_t dst_port) {
@@ -1605,36 +1681,13 @@ static void on_data_forward_add(ops_global* global, uint32_t id, uint16_t src_id
     forward->dst.bind[sizeof(forward->dst.bind) - 1] = 0;
     RB_INSERT(_ops_forward_tree, &global->forward, forward);
     //下发到相关通道
-    ops_bridge the = {
-        .id = src_id
-    };
-    ops_bridge* b = RB_FIND(_ops_bridge_tree, &global->bridge, &the);
+    ops_bridge* b = bridge_find(global, src_id);
     if (b) {
-        char buf[1 + 4 + 1 + sizeof(ops_forward_src)];
-        buf[0] = CTL_FORWARD_ADD;
-        *(uint32_t*)(&buf[1]) = htonl(1);
-        buf[5] = 1;//类型,转发源
-        ops_forward_src _src;
-        _src.port = htons(src_port);
-        _src.sid = htonl(id);
-        _src.type = type;
-        memcpy(&buf[6], &_src, sizeof(_src));
-        bridge_send(b, ops_packet_forward, 0, 0, buf, sizeof(buf));
+        forward_push_src(b, forward);
     }
-    the.id = dst_id;
-    b = RB_FIND(_ops_bridge_tree, &global->bridge, &the);
+    b = bridge_find(global, dst_id);
     if (b) {
-        char buf[1 + 4 + 1 + sizeof(ops_forward_dst)];
-        buf[0] = CTL_FORWARD_ADD;
-        *(uint32_t*)(&buf[1]) = htonl(1);
-        buf[5] = 2;//类型,转发目标
-        ops_forward_dst _dst;
-        _dst.port = htons(dst_port);
-        _dst.sid = htonl(id);
-        _dst.type = type;
-        memcpy(_dst.dst, dst, sizeof(_dst.dst));
-        memcpy(&buf[6], &_dst, sizeof(_dst));
-        bridge_send(b, ops_packet_forward, 0, 0, buf, sizeof(buf));
+        forward_push_dst(b, forward);
     }
 }
 static void on_data_forward_update(ops_global* global, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* bind, const char* dst, uint16_t dst_port) {
@@ -1648,21 +1701,29 @@ static void on_data_forward_update(ops_global* global, uint32_t id, uint16_t src
     }
     if (forward->src_id != src_id) {
         //源客户端已修改,通知源客户端删除
-
-
+        ops_bridge* b = bridge_find(global, forward->src_id);
+        if (b) {
+            forward_push_del(b, forward->id);
+        }
         forward->src_id = src_id;
     }
     if (forward->dst_id != dst_id) {
         //目标客户端已修改,通知原客户端删除
-
+        ops_bridge* b = bridge_find(global, forward->dst_id);
+        if (b) {
+            forward_push_del(b, forward->id);
+        }
         forward->dst_id = dst_id;
     }
     if (forward->src.type != type || forward->src.port != src_port) {
         //源信息修改
         forward->src.type = type;
         forward->src.port = src_port;
-        //下发
-
+        //下发源
+        ops_bridge* b = bridge_find(global, forward->src_id);
+        if (b) {
+            forward_push_src(b, forward);
+        }
     }
     if (forward->dst.type != type || forward->dst.port != dst_port || strcmp(forward->dst.dst, dst) || strcmp(forward->dst.bind, bind)) {
         //目标信息修改
@@ -1672,8 +1733,11 @@ static void on_data_forward_update(ops_global* global, uint32_t id, uint16_t src
         forward->dst.dst[sizeof(forward->dst.dst) - 1] = 0;
         strncpy(forward->dst.bind, bind, sizeof(forward->dst.bind) - 1);
         forward->dst.bind[sizeof(forward->dst.bind) - 1] = 0;
-        //下发
-
+        //下发目标
+        ops_bridge* b = bridge_find(global, forward->dst_id);
+        if (b) {
+            forward_push_dst(b, forward);
+        }
     }
 }
 static void on_data_forward_del(ops_global* global, uint32_t id) {
@@ -1686,7 +1750,14 @@ static void on_data_forward_del(ops_global* global, uint32_t id) {
         return;
     }
     //通知相关客户端当前服务已移除
-
+    ops_bridge* b = bridge_find(global, forward->src_id);
+    if (b) {
+        forward_push_del(b, forward->id);
+    }
+    b = bridge_find(global, forward->dst_id);
+    if (b) {
+        forward_push_del(b, forward->id);
+    }
     RB_REMOVE(_ops_forward_tree, &global->forward, forward);
     free(forward);
 }
@@ -1725,7 +1796,7 @@ static void cidr_to_network_v6(const char* ip, int prefix, struct in6_addr* netw
 static void vpc_data(ops_bridge* bridge, ops_packet* packet, int size) {
     uint8_t* data = packet->data;
     uint8_t ip_version = packet->data[0] >> 4;
-    ops_bridge the = { 0 };
+    uint16_t bid = 0;
     uint32_t mid = 0;
     switch (ip_version)
     {
@@ -1736,7 +1807,7 @@ static void vpc_data(ops_bridge* bridge, ops_packet* packet, int size) {
         if (!r) {
             return;
         }
-        the.id = r->id;
+        bid = r->id;
         mid = r->mid;
         break;
     }
@@ -1747,7 +1818,7 @@ static void vpc_data(ops_bridge* bridge, ops_packet* packet, int size) {
         if (!r) {
             return;
         }
-        the.id = r->id;
+        bid = r->id;
         mid = r->mid;
         break;
     }
@@ -1755,12 +1826,39 @@ static void vpc_data(ops_bridge* bridge, ops_packet* packet, int size) {
         return;
     }
     //查找客户端
-    ops_bridge* b = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &the);
+    ops_bridge* b = bridge_find(bridge->global, bid);
     if (!b) {
         return;
     }
     //转发
     bridge_send(b, ops_packet_vpc_data, packet->service_id, mid, packet->data, size);
+}
+static void vpc_load(ops_bridge* bridge) {
+    sds pack = sdsnewlen(NULL, 5);//预留数量和指令
+    //查询相关的vpc节点
+    pack = sdsnewlen(NULL, 5);//预留数量和指令
+    pack[0] = CTL_MEMBER_ADD;
+    int count = 0;
+    ops_members* mc = NULL;
+    RB_FOREACH(mc, _ops_members_tree, &bridge->global->members) {
+        if (mc->bid == bridge->id) {
+            ops_member mem;
+            mem.id = htonl(mc->id);
+            mem.vid = htons(mc->vpc->id);
+            memcpy(mem.ipv4, &mc->ipv4, sizeof(mem.ipv4));
+            mem.prefix_v4 = mc->prefix_v4;
+            memcpy(mem.ipv6, &mc->ipv6, sizeof(mem.ipv6));
+            mem.prefix_v6 = mc->prefix_v6;
+            pack = sdscatlen(pack, &mem, sizeof(mem));
+            count++;
+        }
+    }
+    *(uint32_t*)(&pack[1]) = htonl(count);
+    //下发主机服务
+    if (count > 0) {
+        bridge_send(bridge, ops_packet_vpc, 0, 0, pack, sdslen(pack));
+    }
+    sdsfree(pack);
 }
 //成员事件
 static void on_data_member_add(ops_global* global, uint32_t id, uint16_t bid, uint16_t vid, const char* ipv4, const char* ipv6) {
@@ -1814,10 +1912,7 @@ static void on_data_member_add(ops_global* global, uint32_t id, uint16_t bid, ui
     memcpy(&v6->ip, &addr6.sin6_addr, sizeof(v6->ip));
     RB_INSERT(_ops_route_v6_tree, &global->route_v6, v6);
     //下发成员
-    ops_bridge bthe = {
-        .id = bid
-    };
-    ops_bridge* bridge = RB_FIND(_ops_bridge_tree, &global->bridge, &bthe);
+    ops_bridge* bridge = bridge_find(global, bid);
     if (!bridge)
         return;
     char buf[1 + 4 + sizeof(ops_member)];
@@ -1842,10 +1937,7 @@ static void on_data_member_del(ops_global* global, uint32_t id) {
         return;
     }
     //通知
-    ops_bridge bthe = {
-        .id = mem->bid
-    };
-    ops_bridge* bridge = RB_FIND(_ops_bridge_tree, &global->bridge, &bthe);
+    ops_bridge* bridge = bridge_find(global, mem->bid);
     if (bridge) {
         char buf[1 + 4];
         buf[0] = CTL_MEMBER_DEL;//删除指令
@@ -1914,6 +2006,13 @@ static void on_data_vpc_del(ops_global* global, uint16_t id) {
 #endif
 //----------------------------------------------------------------------------------------------------------------------bridge
 #if 1
+//查找客户端
+static ops_bridge* bridge_find(ops_global* global, uint16_t id) {
+    ops_bridge ths = {
+        .id = id
+    };
+    return RB_FIND(_ops_bridge_tree, &global->bridge, &ths);
+}
 //向客户发送数据
 static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
     uv_buf_t buf[] = { 0 };
@@ -1936,91 +2035,11 @@ static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, 
 }
 //客户端鉴权成功
 static void bridge_auth_ok(ops_bridge* bridge) {
-    char buf[1 + sizeof(ops_forward_dst) + sizeof(ops_forward_src) + sizeof(ops_host_dst)];
-    sds pack = sdsnewlen(NULL, 5);//预留数量和指令
-    pack[0] = CTL_FORWARD_ADD;
-    int count = 0;
-    //查询客户端转发服务
-    ops_forward* tc = NULL;
-    RB_FOREACH(tc, _ops_forward_tree, &bridge->global->forward) {
-        //来源
-        if (tc->src_id == bridge->id) {
-            buf[0] = 1;//类型,转发源
-            ops_forward_src src;
-            src.port = htons(tc->src.port);
-            src.sid = htonl(tc->src.sid);
-            src.type = tc->src.type;
-            memcpy(&buf[1], &src, sizeof(src));
-            pack = sdscatlen(pack, buf, 1 + sizeof(ops_forward_src));
-            count++;
-        }
-        //出口
-        if (tc->dst_id == bridge->id) {
-            buf[0] = 2;//类型,转发目标
-            ops_forward_dst dst;
-            dst.port = htons(tc->dst.port);
-            dst.sid = htonl(tc->dst.sid);
-            dst.type = tc->dst.type;
-            memcpy(dst.dst, tc->dst.dst, sizeof(dst.dst));
-            memcpy(&buf[1], &dst, sizeof(dst));
-            pack = sdscatlen(pack, buf, 1 + sizeof(ops_forward_dst));
-            count++;
-        }
-    }
-    *(uint32_t*)(&pack[1]) = htonl(count);
-    //下发转发服务
-    if (count > 0) {
-        bridge_send(bridge, ops_packet_forward, 0, 0, pack, sdslen(pack));
-    }
-    sdsfree(pack);
-    //查询主机服务
-    pack = sdsnewlen(NULL, 5);//预留数量和指令
-    pack[0] = CTL_HOST_ADD;
-    count = 0;
-    ops_host* hc = NULL;
-    RB_FOREACH(hc, _ops_host_tree, &bridge->global->host) {
-        if (hc->dst_id == bridge->id) {
-            ops_host_dst dst;
-            dst.port = htons(hc->dst.port);
-            dst.sid = htonl(hc->dst.sid);
-            dst.type = hc->dst.type;
-            memcpy(dst.dst, hc->dst.dst, sizeof(dst.dst));
-            memcpy(&buf, &dst, sizeof(dst));
-            pack = sdscatlen(pack, buf, sizeof(ops_host_dst));
-            count++;
-        }
-    }
-    *(uint32_t*)(&pack[1]) = htonl(count);
-    //下发主机服务
-    if (count > 0) {
-        bridge_send(bridge, ops_packet_host, 0, 0, pack, sdslen(pack));
-    }
-    sdsfree(pack);
-    //查询相关的vpc节点
-    pack = sdsnewlen(NULL, 5);//预留数量和指令
-    pack[0] = CTL_MEMBER_ADD;
-    count = 0;
-    ops_members* mc = NULL;
-    RB_FOREACH(mc, _ops_members_tree, &bridge->global->members) {
-        if (mc->bid == bridge->id) {
-            ops_member mem;
-            mem.id = htonl(mc->id);
-            mem.vid = htons(mc->vpc->id);
-            memcpy(mem.ipv4, &mc->ipv4, sizeof(mem.ipv4));
-            mem.prefix_v4 = mc->prefix_v4;
-            memcpy(mem.ipv6, &mc->ipv6, sizeof(mem.ipv6));
-            mem.prefix_v6 = mc->prefix_v6;
-            memcpy(&buf, &mem, sizeof(mem));
-            pack = sdscatlen(pack, buf, sizeof(mem));
-            count++;
-        }
-    }
-    *(uint32_t*)(&pack[1]) = htonl(count);
-    //下发主机服务
-    if (count > 0) {
-        bridge_send(bridge, ops_packet_vpc, 0, 0, pack, sdslen(pack));
-    }
-    sdsfree(pack);
+    forward_load(bridge);
+
+    host_load(bridge);
+
+    vpc_load(bridge);
 
     //更新统计
     bridge->global->stat.bridge_online++;
@@ -2049,11 +2068,8 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
             bridge_send(bridge, ops_packet_auth, 0, 0, buf, sizeof(buf));
         }
         else {
-            ops_bridge ths = {
-                .id = key->id
-            };
             //查找ID是否存在
-            ops_bridge* p = RB_FIND(_ops_bridge_tree, &bridge->global->bridge, &ths);
+            ops_bridge* p = bridge_find(bridge->global, key->id);
             if (p != NULL) {
                 //鉴权成功,但已经在线
                 char buf[1];
@@ -2266,16 +2282,16 @@ static void on_data_key_new(ops_global* global, uint16_t id, const char* k) {
 #endif
 //----------------------------------------------------------quic
 #if HAVE_QUIC
-static int send_packets_out(void* ctx, const struct lsquic_out_spec* specs,unsigned n_specs) {
+static int send_packets_out(void* ctx, const struct lsquic_out_spec* specs, unsigned n_specs) {
 
     int n = 0;
-    for (n = 0; n < n_specs; ++n){
-       // msg.msg_name = (void*)specs[n].dest_sa;
-        //msg.msg_namelen = sizeof(struct sockaddr_in);
-        //msg.msg_iov = specs[n].iov;
-        //msg.msg_iovlen = specs[n].iovlen;
-        //if (sendmsg(sockfd, &msg, 0) < 0)
-        //    break;
+    for (n = 0; n < n_specs; ++n) {
+        // msg.msg_name = (void*)specs[n].dest_sa;
+         //msg.msg_namelen = sizeof(struct sockaddr_in);
+         //msg.msg_iov = specs[n].iov;
+         //msg.msg_iovlen = specs[n].iovlen;
+         //if (sendmsg(sockfd, &msg, 0) < 0)
+         //    break;
     }
 
     return (int)n;

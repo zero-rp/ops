@@ -453,6 +453,8 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
         break;
     }
     case CTL_FORWARD_DEL: {
+        uint32_t sid = ntohl(*(uint32_t*)pos);
+
 
         break;
     }
