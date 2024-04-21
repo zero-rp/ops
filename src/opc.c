@@ -1179,13 +1179,13 @@ static linux_tun* new_tun(opc_vpc* vpc) {
         return -1;
     }
 
-    bzero(&addr, sizeof(addr));
+    memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     memcpy(&addr.sin_addr, &vpc->ipv4, sizeof(addr.sin_addr));
 
-    bzero(&ifr, sizeof(ifr));
+    memset(&ifr, 0, sizeof(ifr));
     strcpy(ifr.ifr_name, dev);
-    bcopy(&addr, &ifr.ifr_addr, sizeof(addr));
+    memcpy(&ifr.ifr_addr, &addr,sizeof(addr));
 
     //设定ip地址
     if ((err = ioctl(sockfd, SIOCSIFADDR, (void*)&ifr)) < 0) {
@@ -1206,10 +1206,10 @@ static linux_tun* new_tun(opc_vpc* vpc) {
         goto done;
     }
     //设定子网掩码
-    bzero(&addr, sizeof(addr));
+    memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     memcpy(&addr.sin_addr, &vpc->ipv4_mask, sizeof(addr.sin_addr));
-    bcopy(&addr, &ifr.ifr_netmask, sizeof(addr));
+    memcpy(&ifr.ifr_netmask, &addr, sizeof(addr));
     if ((err = ioctl(sockfd, SIOCSIFNETMASK, (void*)&ifr)) < 0) {
         perror("ioctl SIOCSIFNETMASK");
         goto done;
@@ -1659,6 +1659,16 @@ static int init_global(opc_global* global) {
     global->re_timer.data = global;
 
 }
+//主流程
+static opc_global* global = NULL;
+static int run() {
+    //初始化
+    init_global(global);
+    //开始连接
+    bridge_start_connect(global);
+    //启动循环
+    uv_run(loop, UV_RUN_DEFAULT);
+}
 //win系统服务
 #if defined(_WIN32) || defined(_WIN64)
 static int run();
@@ -1811,6 +1821,36 @@ BOOL Install(int argc, char* argv[]) {
     return TRUE;
 }
 #endif
+//安卓
+#ifdef __ANDROID__
+#include <jni.h>
+
+uv_thread_t* android_tid = NULL;
+
+static void android_thr(void* arg) {
+    loop = uv_default_loop();
+    global = (opc_global*)malloc(sizeof(opc_global));
+    if (global == NULL)
+        return;
+    memset(global, 0, sizeof(*global));
+
+    run();
+}
+
+
+
+jint JNICALL Java_org_ops_client_MainActivity_init(JNIEnv *env, jobject *this) {
+    char * str = "Hello from C++";
+    if (android_tid) {
+        return -1;
+    }
+    android_tid = (uv_thread_t*)malloc(sizeof(*android_tid));
+    if(uv_thread_create(android_tid, android_thr, NULL) == 0) {
+        return 0;
+    }
+    return -2;
+}
+#else
 //加载配置
 static int load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
@@ -1903,16 +1943,6 @@ static int load_config(opc_global* global, int argc, char* argv[]) {
     }
     return 0;
 }
-//主流程
-static opc_global* global = NULL;
-static int run() {
-    //初始化
-    init_global(global);
-    //开始连接
-    bridge_start_connect(global);
-    //启动循环
-    uv_run(loop, UV_RUN_DEFAULT);
-}
 
 int main(int argc, char* argv[]) {
     loop = uv_default_loop();
@@ -1954,3 +1984,4 @@ int main(int argc, char* argv[]) {
     run();
     return 0;
 }
+#endif

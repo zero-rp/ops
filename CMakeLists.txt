@@ -19,21 +19,38 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     add_definitions(-DWIN32_LEAN_AND_MEAN)
 endif()
 #生成
-add_executable(ops
-    src/ops.c
-    src/sds.c
-    src/databuffer.c
-    src/data.c
-    third_party/cJSON/cJSON.c
-    third_party/cJSON/cJSON_Utils.c
-)
-target_link_libraries(ops uv_a http-parser sqlite crypto zlibstatic ${LIBS})
-add_executable(opc
-    src/opc.c
-    src/sds.c
-    src/databuffer.c
-    third_party/cJSON/cJSON.c
-    third_party/cJSON/cJSON_Utils.c
-)
-target_link_libraries(opc uv_a zlibstatic ${LIBS})
+if(ANDROID)
+    add_library(opc SHARED
+            src/opc.c
+            src/sds.c
+            src/databuffer.c
+            third_party/cJSON/cJSON.c
+            third_party/cJSON/cJSON_Utils.c
+            )
+    target_link_libraries(opc
+            uv_a
+            z
+            android
+            log)
+else ()
+    add_executable(ops
+            src/ops.c
+            src/sds.c
+            src/databuffer.c
+            src/data.c
+            third_party/cJSON/cJSON.c
+            third_party/cJSON/cJSON_Utils.c
+            )
+    target_link_libraries(ops uv_a http-parser sqlite crypto zlibstatic ${LIBS})
+
+    add_executable(opc
+            src/opc.c
+            src/sds.c
+            src/databuffer.c
+            third_party/cJSON/cJSON.c
+            third_party/cJSON/cJSON_Utils.c
+            )
+    target_link_libraries(opc uv_a zlibstatic ${LIBS})
+endif ()
+
 
