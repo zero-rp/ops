@@ -22,7 +22,7 @@ jobs:
         
     - name: Set up the working directory
       run: |
-        echo "Set directory."
+        cd ./android
       working-directory: ./android
         
     - name: Grant execute permission for gradlew
