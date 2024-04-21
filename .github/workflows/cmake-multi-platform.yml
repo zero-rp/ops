@@ -78,23 +78,3 @@ jobs:
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }}
-runs-on: ubuntu-latest
- 
-    steps:
-    - uses: actions/checkout@v2
- 
-    - name: Set up JDK 1.8
-      uses: actions/setup-java@v1
-      with:
-        java-version: 1.8
- 
-    - name: Set up Android SDK
-      uses: android-actions/sdk-manager@v1
-      with:
-        permissions: write
- 
-    - name: Grant execute permission for files in $PATH
-      run: chmod +x $HOME/android-sdk-linux/tools/bin/sdkmanager
- 
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug
