@@ -1100,7 +1100,7 @@ static int http_on_message_complete(http_parser* p) {
 static int http_on_body(http_parser* p, const char* buf, size_t len) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
-    if (req->body) {
+    if (!req->body) {
         req->body = sdsnewlen(buf, len);
     }
     else {

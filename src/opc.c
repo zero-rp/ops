@@ -36,7 +36,7 @@ typedef struct _opc_forward_tunnel_dst {
     struct _opc_bridge* bridge;
 }opc_forward_tunnel_dst;
 RB_HEAD(_opc_forward_tunnel_dst_tree, _opc_forward_tunnel_dst);
-//转发器
+//转发源
 typedef struct _opc_forward_src {
     RB_ENTRY(_opc_forward_src) entry;               //
     int ref;                                        //计数
@@ -46,50 +46,58 @@ typedef struct _opc_forward_src {
     struct _opc_bridge* bridge;
 }opc_forward_src;
 RB_HEAD(_opc_forward_src_tree, _opc_forward_src);
+//转发目标
 typedef struct _opc_forward_dst {
-    RB_ENTRY(_opc_forward_dst) entry;    //
-    int ref;                            //计数
-    obj_del del;                                        //释放
-    uint32_t id;                        //转发服务ID
-    char bind[256];                     //绑定本地地址
-    char dst[256];                      //目标
-    uint16_t port;                      //目标端口
+    RB_ENTRY(_opc_forward_dst) entry;               //
+    int ref;                                        //计数
+    obj_del del;                                    //释放
+    uint32_t id;                                    //转发服务ID
+    char bind[256];                                 //绑定本地地址
+    char dst[256];                                  //目标
+    uint16_t port;                                  //目标端口
 }opc_forward_dst;
 RB_HEAD(_opc_forward_dst_tree, _opc_forward_dst);
 //主机隧道目标
 typedef struct _opc_host_tunnel {
-    RB_ENTRY(_opc_host_tunnel) entry;    //
-    uint32_t stream_id;                         //流ID
-    uint32_t pree_id;                           //对端流ID
-    uv_tcp_t tcp;                               //
+    RB_ENTRY(_opc_host_tunnel) entry;               //
+    int ref;                                        //计数
+    obj_del del;                                    //释放
+    uint32_t stream_id;                             //流ID
+    uint32_t pree_id;                               //对端流ID
+    uv_tcp_t tcp;                                   //
     uv_connect_t req;
     uv_getaddrinfo_t req_info;
     struct _opc_host* dst;
+    struct _opc_bridge* bridge;
 }opc_host_tunnel;
 RB_HEAD(_opc_host_tunnel_tree, _opc_host_tunnel);
 //主机
 typedef struct _opc_host {
-    RB_ENTRY(_opc_host) entry;    //
-    uint32_t id;                        //转发服务ID
-    uv_tcp_t tcp;                       //监听
+    RB_ENTRY(_opc_host) entry;                      //
+    int ref;                                        //计数
+    obj_del del;                                    //释放
+    uint32_t id;                                    //转发服务ID
+    uv_tcp_t tcp;                                   //监听
     uint16_t port;
-    char bind[256];                     //
-    char dst[256];                      //目标
+    char bind[256];                                 //
+    char dst[256];                                  //目标
     struct _opc_bridge* bridge;
 }opc_host;
 RB_HEAD(_opc_host_tree, _opc_host);
 //VPC
 typedef struct _opc_vpc {
-    RB_ENTRY(_opc_vpc) entry;    //
-    uint32_t id;                            //成员id
-    uint16_t vid;                           //
-    struct in_addr ipv4;                    //ipv4地址
-    struct in_addr ipv4_mask;               //ipv4掩码
-    uint8_t prefix_v4;                      //ipv4前缀
-    struct in6_addr ipv6;                   //ipv6地址
-    struct in6_addr ipv6_mask;              //ipv6掩码
-    uint8_t prefix_v6;                      //ipv6前缀
-    void* data;                             //接口数据
+    RB_ENTRY(_opc_vpc) entry;                       //
+    int ref;                                        //计数
+    obj_del del;                                    //释放
+    uint32_t id;                                    //成员id
+    uint16_t vid;                                   //
+    struct in_addr ipv4;                            //ipv4地址
+    struct in_addr ipv4_mask;                       //ipv4掩码
+    uint8_t prefix_v4;                              //ipv4前缀
+    struct in6_addr ipv6;                           //ipv6地址
+    struct in6_addr ipv6_mask;                      //ipv6掩码
+    uint8_t prefix_v6;                              //ipv6前缀
+    void* data;                                     //接口数据
     struct _opc_bridge* bridge;
 }opc_vpc;
 RB_HEAD(_opc_vpc_tree, _opc_vpc);
@@ -741,7 +749,7 @@ static void host_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct addrin
     //释放结果
     uv_freeaddrinfo(res);
 }
-
+//-----------------------------------------------------服务器控制回调
 static void host(opc_bridge* bridge, ops_packet* packet) {
     uint8_t ctl = packet->data[0];
     char* pos = &packet->data[1];
@@ -847,7 +855,16 @@ static void cidr_to_netmask_v6(int prefix, struct in6_addr* netmask) {
         }
     }
 }
-//ip数据过滤
+static uint16_t ip_checksum(uint8_t* buf, int len) {
+    uint32_t sum = 0;
+    for (; len > 1; len -= 2, buf += 2)
+        sum += *(uint16_t*)buf;
+    if (len)
+        sum += *buf;
+    sum = (sum >> 16) + (sum & 0xffff);
+    sum += (sum >> 16);
+    return (uint16_t)(~sum);
+}
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <iphlpapi.h>
@@ -1337,27 +1354,21 @@ static void send_tun(opc_vpc* vpc, const char* data, int size) {
 }
 #endif
 
-static uint16_t ip_checksum(uint8_t* buf, int len) {
-    uint32_t sum = 0;
-    for (; len > 1; len -= 2, buf += 2)
-        sum += *(uint16_t*)buf;
-    if (len)
-        sum += *buf;
-    sum = (sum >> 16) + (sum & 0xffff);
-    sum += (sum >> 16);
-    return (uint16_t)(~sum);
-}
-
 //收到接口数据包
 static void vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size) {
     //发送数据
     bridge_send(vpc->bridge, ops_packet_vpc_data, vpc->vid, vpc->id, packet, size);
 }
+//
+static void vpc_obj_free(opc_vpc* p) {
+    RB_REMOVE(_opc_vpc_tree, &p->bridge->vpc, p);
+    obj_unref(p->bridge);//ref_22
+    free(p);
+}
 //删除vpc
 static void vpc_del(opc_vpc* vpc) {
     delete_tun(vpc->data);
-    RB_REMOVE(_opc_vpc_tree, &vpc->bridge->vpc, vpc);
-    free(vpc);
+    obj_unref(vpc);//ref_21
 }
 static void vpc(opc_bridge* bridge, ops_packet* packet) {
     uint8_t ctl = packet->data[0];
@@ -1374,12 +1385,12 @@ static void vpc(opc_bridge* bridge, ops_packet* packet) {
             mem.id = ntohl(mem.id);
             mem.vid = ntohs(mem.vid);
 
-            opc_vpc* vpc = (opc_vpc*)malloc(sizeof(*vpc));
+            obj_new(vpc, opc_vpc);//ref_21
             if (!vpc) {
                 continue;
             }
-            memset(vpc, 0, sizeof(*vpc));
-            vpc->bridge = bridge;
+            vpc->del = vpc_obj_free;
+            vpc->bridge = obj_ref(bridge);//ref_22
             vpc->id = mem.id;
             vpc->vid = mem.vid;
 
