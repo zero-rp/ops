@@ -997,7 +997,7 @@
                             vid: Number(val.id)
                           }
 
-                          if (ipInCidr(val.ipv4, data.field.ipv4) && ipInCidr(val.ipv6, data.field.ipv6)) {
+                          if (ipInCidr(data.field.ipv4, val.ipv4) && ipInCidr(data.field.ipv6, val.ipv6)) {
                             request({
                               url: '/api/member_add',
                               data: req,
@@ -1134,10 +1134,39 @@
 
     return ipBinary.startsWith(subnetBinary);
 }
+function ipv6ToBinary(ipv6) {
+  // Split the IPv6 address into its components
+  var components = ipv6.split(':');
 
+  // Handle zero compression (::)
+  var zeroCompressionIndex = components.indexOf('');
+  if (zeroCompressionIndex !== -1) {
+      var zeroCount = 8 - components.length + 1; // Calculate the number of missing components
+      components.splice(zeroCompressionIndex, 1);
+      for (var i = 0; i < zeroCount; i++) {
+          components.splice(zeroCompressionIndex, 0, '0000'); // Replace :: with zero components
+      }
+  }
+
+  // Convert each component to binary and pad to 16 bits
+  var binaryComponents = components.map(function (component) {
+      // Handle the case when the component is an empty string
+      if (component === '') {
+          return '0000000000000000'; // 16 zeros for an empty component
+      }
+
+      var binary = parseInt(component, 16).toString(2);
+      return Array(17 - binary.length).join('0') + binary;
+  });
+
+  // Concatenate the binary components
+  var binaryString = binaryComponents.join('');
+
+  return binaryString;
+}
 function ipToBinary(ip) {
     if (ip.includes(':')) { // IPv6
-        return ip.split(':').map(part => parseInt(part, 16).toString(2).padStart(16, '0')).join('');
+      return ipv6ToBinary(ip);
     } else { // IPv4
         return ip.split('.').map(part => parseInt(part, 10).toString(2).padStart(8, '0')).join('');
     }

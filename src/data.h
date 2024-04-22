@@ -16,7 +16,7 @@ typedef void (*data_forward_del_cb)(void*, uint32_t id);
 typedef void (*data_host_add_cb)(void*, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite);
 typedef void (*data_host_del_cb)(void*, const char* host);
 typedef void (*data_vpc_add_cb)(void*, uint16_t id, const char* ipv4, const char* ipv6);
-typedef void (*data_vpc_del_cb)(void*, uint32_t id);
+typedef void (*data_vpc_del_cb)(void*, uint16_t id);
 typedef void (*data_member_add_cb)(void*, uint32_t id, uint16_t bid, uint16_t vid, const char* ipv4, const char* ipv6);
 typedef void (*data_member_del_cb)(void*, uint32_t id);
 

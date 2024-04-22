@@ -1429,7 +1429,7 @@ static void bridge_close_cb(uv_handle_t* handle) {
     //定时重连
     uv_timer_start(&bridge->global->re_timer, bridge_re_timer_cb, 1000 * 5, 0);
     //
-    uv_timer_stop(handle);
+    uv_timer_stop(&bridge->keep_timer);
 }
 static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_bridge* bridge = (opc_bridge*)req->data;
