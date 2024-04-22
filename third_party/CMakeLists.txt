@@ -6,7 +6,9 @@ ADD_SUBDIRECTORY(libuv)
 
 ADD_SUBDIRECTORY(sqlite)
 
-if(!ANDROID)
+if(ANDROID)
+
+else ()
 option(ZLIB_BUILD_EXAMPLES OFF)
 ADD_SUBDIRECTORY(zlib)
 endif ()

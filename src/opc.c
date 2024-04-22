@@ -668,7 +668,7 @@ static void host_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct addrin
 
 static void host(opc_bridge* bridge, ops_packet* packet) {
     uint8_t ctl = packet->data[0];
-    char* pos = &packet->data[5];
+    char* pos = &packet->data[1];
     switch (ctl)
     {
     case CTL_HOST_ADD: {
