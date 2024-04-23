@@ -15,13 +15,12 @@ enum ops_packet_type
     ops_packet_ping,                        //延迟测试和保活
     ops_packet_info,                        //上报信息
     ops_packet_plugin,
-    ops_packet_forward,                     //转发服务
-    ops_packet_forward_ctl,                 //转发隧道控制包
-    ops_packet_forward_data_remote,         //隧道数据
-    ops_packet_forward_data_local,
-    ops_packet_host,                        //域名转发
-    ops_packet_host_ctl,                    //域名转发控制包
-    ops_packet_host_data,
+    ops_packet_dst,                         //目标
+    ops_packet_dst_ctl,                     //目标控制
+    ops_packet_dst_data,                    //目标数据
+    ops_packet_forward,                     //转发
+    ops_packet_forward_ctl,                 //转发控制
+    ops_packet_forward_data,                //转发数据
     ops_packet_vpc,                         //局域网服务
     ops_packet_vpc_data,
 };
@@ -36,33 +35,32 @@ typedef struct _ops_packet {
     uint32_t service_id;                    //服务编号
     uint8_t data[];                         //数据
 }ops_packet;
+//目标定义
+#define CTL_DST_ADD  0x01                       //添加目标
+#define CTL_DST_DEL  0x02                       //添加目标
+#define CTL_DST_CTL_OPEN    0x01                //打开目标
+#define CTL_DST_CTL_SUC     0x02                //打开成功
+#define CTL_DST_CTL_ERR     0x03                //打开目标
+typedef struct _ops_dst {
+    uint8_t stype;                           //源服务类型
+    uint32_t sid;                            //服务编号
+    uint8_t type;                            //服务类型,1 TCP, 2 UDP
+    char bind[256];                          //绑定的本地出口地址
+    uint16_t port;                           //转发的目标端口
+    char dst[256];                           //转发的目标地址
+}ops_dst;
 //转发服务
-#define CTL_FORWARD_ADD  0x01                //添加
-#define CTL_FORWARD_DEL  0x02                //删除
+#define CTL_FORWARD_ADD  0x01                   //添加
+#define CTL_FORWARD_DEL  0x02                   //删除
+#define CTL_FORWARD_CTL_OPEN    0x01            //打开目标
+#define CTL_FORWARD_CTL_SUC     0x02            //打开目标
+#define CTL_FORWARD_CTL_ERR     0x03            //打开目标
 //转发服务来源
-typedef struct _ops_forward_src {
+typedef struct _ops_forward {
     uint32_t sid;                            //服务编号
     uint8_t type;                            //服务类型,1 TCP, 2 UDP
     uint16_t port;                           //服务监听端口
-}ops_forward_src;
-//转发服务目标
-typedef struct _ops_forward_dst {
-    uint32_t sid;                            //服务编号
-    uint8_t type;                            //服务类型,1 TCP, 2 UDP
-    char bind[256];                          //绑定的本地地址
-    uint16_t port;                           //转发的目标端口
-    char dst[256];                           //转发的目标地址
-}ops_forward_dst;
-//域名服务目标
-#define CTL_HOST_ADD    0x01                 //添加
-#define CTL_HOST_DEL    0x02                 //删除
-typedef struct _ops_host_dst {
-    uint32_t sid;                            //服务编号
-    uint8_t type;                            //服务类型,1 HTTP, 2 HTTPS
-    char bind[256];                          //绑定的本地地址
-    uint16_t port;                           //转发的目标端口
-    char dst[256];                           //转发的目标地址
-}ops_host_dst;
+}ops_forward;
 //网络成员
 #define CTL_MEMBER_ADD  0x01                //添加
 #define CTL_MEMBER_DEL  0x02                //删除
@@ -74,6 +72,7 @@ typedef struct _ops_member {
     uint8_t ipv6[16];                       //ipv6地址
     uint8_t prefix_v6;                      //ipv6前缀
 }ops_member;
+
 
 #pragma pack(pop)   // 恢复之前的对齐状态
 #endif
