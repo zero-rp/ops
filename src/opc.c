@@ -1633,7 +1633,7 @@ static int run() {
     bridge_start_connect(global);
     //启动循环
     uv_run(loop, UV_RUN_DEFAULT);
-    retrun 0;
+    return 0;
 }
 //win系统服务
 #if defined(_WIN32) || defined(_WIN64)
