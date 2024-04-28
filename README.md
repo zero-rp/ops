@@ -25,16 +25,19 @@ ops默认配置文件使用了80，443，8088，8025端口
 
 - 启动
 
-对于linux|darwin ```sudo ops```
+对于linux|darwin ```sudo ops``` 或者 ```sudo ops -c ops.json```
 
-对于windows，管理员身份运行cmd，进入程序目录 ```ops.exe```
+对于windows，管理员身份运行cmd，进入程序目录 ```ops.exe``` 或者 ```ops.exe -c ops.json```
+
+程序会默认读取运行目录下的ops.json文件加载配置
 
 - 访问服务端ip:web服务端口（默认为8088）
 - 使用用户名和密码登陆（默认admin/1234，正式使用一定要更改）
 - 创建客户端
 
 - 参数说明
-- - -p: 网桥端口,默认8025
+- - -c: 配置文件路径,建议使用配置文件启动
+  - -p: 网桥端口,默认8025
   - -w: web管理访问端口,默认8088
   - -h: http模式端口,默认80
   - -s: https模式端口,默认443
@@ -48,5 +51,25 @@ ops默认配置文件使用了80，443，8088，8025端口
   - -p: 服务器端口,默认8025
   - -a: 通信密钥
 
-### 配置
+## 使用配置文件
+- 配置文件使用json格式配置
+### 服务端配置字段说明
+  - user: web管理登录用户,默认admin
+  - pass: web登录密码,默认1234
+  - bridge_port: 网桥端口,默认8025
+  - web_port: web管理访问端口,默认8088
+  - http_proxy_port: http模式端口,默认80
+  - https_proxy_port: https模式端口,默认443
+#### 例
+  ```
+  {
+    "user": "test",
+    "pass": "123456",
+    "bridge_port": 8025,
+    "web_port": 8088,
+    "http_proxy_port": 80,
+    "https_proxy_port": 443
+  }
+  ```
+## 配置
 - 客户端连接后，在web中配置对应穿透服务即可
