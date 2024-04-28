@@ -320,10 +320,10 @@ static opc_dst_tunnel* dst_tunnel_new(opc_bridge* bridge, opc_dst* dst, uint32_t
 }
 //--------------------------目标
 //新转发目标
-static void dst_new(opc_bridge* bridge, ops_dst* dst) {
-    obj_new(d, opc_dst);
+static int dst_new(opc_bridge* bridge, ops_dst* dst) {
+    obj_new(d, opc_dst);//ref_23
     if (!d) {
-        return;
+        return -1;
     }
     d->del = obj_free;
     d->id = dst->sid;
@@ -334,11 +334,12 @@ static void dst_new(opc_bridge* bridge, ops_dst* dst) {
     d->port = dst->port;
 
     RB_INSERT(_opc_dst_tree, &bridge->dst, d);
+    return 0;
 }
 //删除转发目标
 static void dst_del(opc_bridge* bridge, opc_dst* dst) {
     RB_REMOVE(_opc_dst_tree, &bridge->dst, dst);
-    obj_unref(dst);
+    obj_unref(dst);//ref_23
 }
 //-----------------------------------------------------服务器控制回调
 static void dst(opc_bridge* bridge, ops_packet* packet) {
@@ -355,8 +356,9 @@ static void dst(opc_bridge* bridge, ops_packet* packet) {
             pos += sizeof(dst);
             dst.sid = ntohl(dst.sid);
             dst.port = ntohs(dst.port);
-
-            dst_new(bridge, &dst);
+            if (dst_new(bridge, &dst) == 0) {
+                printf("Load Dst id:[%d],dst:[%s],dst_port:[%d]\r\n", dst.sid, dst.dst, dst.port);
+            }
         }
         break;
     }
@@ -460,6 +462,21 @@ static void dst_data(opc_bridge* bridge, ops_packet* packet, int size) {
 }
 //回收资源
 static void dst_free(opc_bridge* bridge) {
+    //关闭目标隧道
+    opc_dst_tunnel* dc = NULL;
+    opc_dst_tunnel* dcc = NULL;
+    RB_FOREACH_SAFE(dc, _opc_dst_tunnel_tree, &bridge->dst_tunnel, dcc) {
+        dst_tunnel_shutdown(dc);
+        dc = NULL;
+    }
+    //关闭目标
+    opc_dst* fdc = NULL;
+    opc_dst* fdcc = NULL;
+    RB_FOREACH_SAFE(fdc, _opc_dst_tree, &bridge->dst, fdcc) {
+        dst_del(bridge, fdc);
+        fdc = NULL;
+    }
+
 }
 #endif
 //--------------------------------------------------------------------------------------------------------forward
@@ -563,10 +580,10 @@ static void forward_close_cb(uv_handle_t* handle) {
     obj_unref(src);//ref_9
 }
 //新转发源
-static void forward_new(opc_bridge* bridge, ops_forward* src) {
+static int forward_new(opc_bridge* bridge, ops_forward* src) {
     obj_new(s, opc_forward);//ref_9
     if (!s) {
-        return;
+        return -1;
     }
     s->del = forward_obj_free;
     s->id = src->sid;
@@ -589,6 +606,7 @@ static void forward_new(opc_bridge* bridge, ops_forward* src) {
     uv_listen((uv_stream_t*)&s->tcp, DEFAULT_BACKLOG, forward_connection_cb);
 
     RB_INSERT(_opc_forward_tree, &bridge->forward, s);
+    return 0;
 }
 //-----------------------------------------------------服务器控制回调
 static void forward(opc_bridge* bridge, ops_packet* packet) {
@@ -606,7 +624,9 @@ static void forward(opc_bridge* bridge, ops_packet* packet) {
             src.sid = ntohl(src.sid);
             src.port = ntohs(src.port);
 
-            forward_new(bridge, &src);
+            if (forward_new(bridge, &src) == 0) {
+                printf("Load Forward id:[%d],src_port:[%d]\r\n", src.sid, src.port);
+            }
         }
         break;
     }
@@ -679,15 +699,6 @@ static void forward_free(opc_bridge* bridge) {
         forward_tunnel_shutdown(sc);
         sc = NULL;
     }
-    /*
-    //关闭目标隧道
-    opc_forward_tunnel_dst* dc = NULL;
-    opc_forward_tunnel_dst* dcc = NULL;
-    RB_FOREACH_SAFE(dc, _opc_forward_tunnel_dst_tree, &bridge->tunnel_dst, dcc) {
-        forward_tunnel_dst_shutdown(dc);
-        dc = NULL;
-    }
-    */
     //关闭源
     opc_forward* fsc = NULL;
     opc_forward* fscc = NULL;
@@ -695,15 +706,6 @@ static void forward_free(opc_bridge* bridge) {
         uv_close((uv_handle_t*)&fsc->tcp, forward_close_cb);
         fsc = NULL;
     }
-    /*
-    //关闭目标
-    opc_forward_dst* fdc = NULL;
-    opc_forward_dst* fdcc = NULL;
-    RB_FOREACH_SAFE(fdc, _opc_forward_dst_tree, &bridge->forward_dst, fdcc) {
-        forward_dst_del(bridge, fdc);
-        fdc = NULL;
-    }
-    */
 }
 #endif
 //--------------------------------------------------------------------------------------------------------vpc
