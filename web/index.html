@@ -336,6 +336,8 @@
             <option value="0" {{ d.data.type == "0" ? 'selected' : '' }}>所有</option>
             <option value="1" {{ d.data.type == "1" ? 'selected' : '' }}>TCP</option>
             <option value="2" {{ d.data.type == "2" ? 'selected' : '' }}>UDP</option>
+            <option value="3" {{ d.data.type == "3" ? 'selected' : '' }}>SOCKS5</option>
+            <option value="4" {{ d.data.type == "4" ? 'selected' : '' }}>HTTP</option>
           </select>
         </div>
       </div> 
@@ -802,7 +804,7 @@
           { field: 'id', title: 'id', sort: true },
           { field: 'src_id', width: 200, title: '源客户端' },
           { field: 'dst_id', title: '目标客户端' },
-          { field: 'type', title: '类型' },
+          { field: 'type', title: '类型', templet: function(d) { return d.type == "1" ? "TCP" : d.type == "2" ? "UDP" : d.type == "3" ? "SOCKS5" : d.type == "4" ? "HTTP" : ""; } },
           { field: 'src_port', title: '源监听端口' },
           { field: 'bind', title: '出口IP' },
           { field: 'dst', title: '目标主机' },

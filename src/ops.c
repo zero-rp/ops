@@ -1685,9 +1685,8 @@ static void forward_ctl(ops_bridge* bridge, ops_packet* packet, int size) {
             break;
         }
         //打开目标
-        uint8_t buf[1];
-        buf[0] = CTL_DST_CTL_OPEN;
-        bridge_send(b, ops_packet_dst_ctl, p->dst, packet->stream_id, buf, sizeof(buf));
+        packet->data[0] = CTL_DST_CTL_OPEN;
+        bridge_send(b, ops_packet_dst_ctl, p->dst, packet->stream_id, packet->data, size);
         break;
     }
     case CTL_FORWARD_CTL_ERR: {
