@@ -55,10 +55,10 @@ typedef struct _ops_dst {
 #define CTL_FORWARD_CTL_OPEN    0x01            //打开目标
 #define CTL_FORWARD_CTL_SUC     0x02            //打开目标
 #define CTL_FORWARD_CTL_ERR     0x03            //打开目标
-#define FORWARD_TYPE_TCP    0x01
-#define FORWARD_TYPE_UDP    0x02
-#define FORWARD_TYPE_SOCK5  0x03
-#define FORWARD_TYPE_HTTP   0x04
+#define FORWARD_TYPE_TCP        0x01
+#define FORWARD_TYPE_UDP        0x02
+#define FORWARD_TYPE_SOCKS5     0x03
+#define FORWARD_TYPE_HTTP       0x04
 //转发服务来源
 typedef struct _ops_forward {
     uint32_t sid;                            //服务编号

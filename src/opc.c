@@ -570,7 +570,7 @@ static void forward_tunnel_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf
 static void forward_tunnel_handshake(opc_forward_tunnel* tunnel, uint8_t* data, int size) {
     switch (tunnel->src->type)
     {
-    case FORWARD_TYPE_SOCK5: {
+    case FORWARD_TYPE_SOCKS5: {
         switch (tunnel->handshake)
         {
         case 0: {
@@ -755,7 +755,7 @@ static void forward_connection_cb(uv_stream_t* tcp, int status) {
         //日志
         printf("New Forward\r\n");
         //需要先握手获取目标信息
-        if (src->type == FORWARD_TYPE_SOCK5 || src->type == FORWARD_TYPE_HTTP) {
+        if (src->type == FORWARD_TYPE_SOCKS5 || src->type == FORWARD_TYPE_HTTP) {
             //开始接收本地数据
             uv_read_start((uv_stream_t*)&tunnel->tcp, alloc_buffer, forward_tunnel_read_cb);
         }
@@ -795,7 +795,7 @@ static int forward_new(opc_bridge* bridge, ops_forward* src) {
     switch (s->type)
     {
     case FORWARD_TYPE_TCP:
-    case FORWARD_TYPE_SOCK5:
+    case FORWARD_TYPE_SOCKS5:
     case FORWARD_TYPE_HTTP: {
         uv_tcp_init(loop, &s->tcp.tcp);
         s->tcp.tcp.data = obj_ref(s);//ref_10
@@ -986,7 +986,6 @@ typedef struct _win_tun_packet {
 }win_tun_packet;
 
 typedef struct _win_tun {
-    HMODULE mod;                    //动态库
     WINTUN_ADAPTER_HANDLE Adapter;  //网卡
     WINTUN_SESSION_HANDLE Session;  //会话
     HANDLE Thread;                  //线程
@@ -1134,6 +1133,7 @@ static void win_tun_async_cb(uv_async_t* handle) {
         free(packet);
     }
 }
+static HMODULE tun_mod;                    //动态库
 //创建
 static win_tun* new_tun(opc_vpc* vpc) {
     win_tun* tun = malloc(sizeof(*tun));
@@ -1141,12 +1141,14 @@ static win_tun* new_tun(opc_vpc* vpc) {
         return NULL;
     }
     memset(tun, 0, sizeof(*tun));
-    tun->vpc = vpc;
+    tun->vpc = obj_ref(vpc); //ref_24
     //加载模块
-    tun->mod = InitializeWintun();
-    if (!tun->mod) {
-        free(tun);
-        return NULL;
+    if (!tun_mod) {
+        tun_mod = InitializeWintun();
+        if (!tun_mod) {
+            free(tun);
+            return NULL;
+        }
     }
     //创建网卡
     GUID Guid = { vpc->id, 0xcafe, 0xbeef, { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef } };
@@ -1154,7 +1156,6 @@ static win_tun* new_tun(opc_vpc* vpc) {
     _snwprintf(name, sizeof(name), L"opc %d", vpc->id);
     tun->Adapter = WintunCreateAdapter(name, L"opc", &Guid);
     if (!tun->Adapter) {
-        FreeLibrary(tun->mod);
         free(tun);
         return NULL;
     }
@@ -1169,7 +1170,6 @@ static win_tun* new_tun(opc_vpc* vpc) {
     int LastError = CreateUnicastIpAddressEntry(&AddressRow);
     if (LastError != ERROR_SUCCESS && LastError != ERROR_OBJECT_ALREADY_EXISTS) {
         WintunCloseAdapter(tun->Adapter);
-        FreeLibrary(tun->mod);
         free(tun);
         return NULL;
     }
@@ -1186,7 +1186,6 @@ static win_tun* new_tun(opc_vpc* vpc) {
     LastError = CreateUnicastIpAddressEntry(&AddressRow);
     if (LastError != ERROR_SUCCESS && LastError != ERROR_OBJECT_ALREADY_EXISTS) {
         WintunCloseAdapter(tun->Adapter);
-        FreeLibrary(tun->mod);
         free(tun);
         return NULL;
     }
@@ -1230,9 +1229,7 @@ static void tun_close_cb(uv_handle_t* handle) {
     if (tun->QuitEvent) {
         CloseHandle(tun->QuitEvent);
     }
-    if (tun->mod) {
-        FreeLibrary(tun->mod);
-    }
+    obj_unref(tun->vpc);//ref_24
     free(tun);
 }
 //关闭
@@ -1313,7 +1310,7 @@ static linux_tun* new_tun(opc_vpc* vpc) {
         return NULL;
     }
     memset(tun, 0, sizeof(*tun));
-    tun->vpc = vpc;
+    tun->vpc = obj_ref(vpc);//ref_25
 
     if ((tun->fd = open("/dev/net/tun", O_RDWR)) < 0) {
         free(tun);
@@ -1399,7 +1396,7 @@ done:
 }
 static void tun_close_cb(uv_handle_t* handle) {
     linux_tun* tun = (linux_tun*)handle->data;
-
+    obj_unref(tun->vpc);//ref_25
     free(tun);
 }
 //关闭
@@ -1571,6 +1568,11 @@ static void bridge_connect_end(opc_bridge* bridge) {
     bridge_send(bridge, ops_packet_auth, 0, 0, buf, size);
     free(buf);
 }
+//
+static void bridge_keep_close_cb(uv_handle_t* handle) {
+    opc_bridge* bridge = (opc_bridge*)handle->data;
+    obj_unref(bridge);//ref_4
+}
 //关闭
 static void bridge_close_cb(uv_handle_t* handle) {
     opc_bridge* bridge = (opc_bridge*)handle->data;
@@ -1587,13 +1589,9 @@ static void bridge_close_cb(uv_handle_t* handle) {
     forward_free(bridge);
     //
     vpc_free(bridge);
-    //定时重连
-    uv_timer_start(&bridge->global->re_timer, bridge_re_timer_cb, 1000 * 5, 0);
-    //
+    //关闭定时器
     if (bridge->keep_timer.data) {
-        uv_timer_stop(&bridge->keep_timer);
-        obj_unref(bridge);//ref_4
-        bridge->keep_timer.data = NULL;
+        uv_close(&bridge->keep_timer, bridge_keep_close_cb);
     }
     //
     obj_unref(bridge);//ref_5
@@ -1610,7 +1608,7 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
     opc_bridge* bridge = (opc_bridge*)handle->data;
     //检查是否超时
     if (bridge->keep_last < (loop->time - 1000 * 30)) {
-        //
+        //暂停掉定时器
         uv_timer_stop(handle);
         //超时直接关闭
         uv_close(&bridge->tcp, bridge_close_cb);
@@ -1787,12 +1785,22 @@ static void bridge_connect_cb(uv_connect_t* req, int status) {
     //
     bridge_connect_end(bridge);
 }
+//
+static void bridge_obj_free(opc_bridge* p) {
+    //定时重连
+    uv_timer_start(&p->global->re_timer, bridge_re_timer_cb, 1000 * 5, 0);
+    //
+    if (p->global->bridge == p) {
+        p->global->bridge = NULL;
+    }
+    free(p);
+}
 //启动连接
 static int bridge_start_connect(opc_global* global) {
     obj_new(bridge, opc_bridge);//ref_1
     if (bridge == NULL)
         return 0;
-    bridge->del = obj_free;
+    bridge->del = bridge_obj_free;
     bridge->global = global;
     uv_connect_t* req = (uv_connect_t*)malloc(sizeof(uv_connect_t));
     if (req == NULL) {
@@ -1818,7 +1826,8 @@ static int bridge_start_connect(opc_global* global) {
 }
 //重连回调
 static void bridge_re_timer_cb(uv_timer_t* handle) {
-    bridge_start_connect((opc_global*)handle->data);
+    opc_global* global = (opc_global*)handle->data;
+    bridge_start_connect(global);
 }
 //--------------------------------------------------------------------------------------------------------
 //全局初始化

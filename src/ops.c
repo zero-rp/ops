@@ -2351,7 +2351,7 @@ static void bridge_ping_timer_cb(uv_timer_t* handle) {
         //删除这个成员
         heap_remove(&global->ping_heap, &bridge->heap, ping_less_than);
         //踢掉用户
-        //uv_close(&bridge->tcp, bridge_close_cb);
+        uv_close(&bridge->tcp, bridge_close_cb);
     }
 }
 //事件
