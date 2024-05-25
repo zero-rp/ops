@@ -96,14 +96,6 @@ RB_HEAD(_opc_vpc_tree, _opc_vpc);
 typedef struct _opc_bridge {
     int ref;                                            //计数
     obj_del del;                                        //释放
-#if HAVE_QUIC
-    struct {
-        uv_udp_t udp;
-        struct lsquic_stream_if stream_if;
-        struct lsquic_engine_api engine_api;
-        lsquic_engine_t* engine;
-    }quic;
-#endif
     uv_tcp_t tcp;                                       //服务器通讯句柄
     struct _opc_global* global;
     struct databuffer m_buffer;                         //接收缓冲
@@ -134,6 +126,16 @@ typedef struct _opc_config {
 typedef struct _opc_global {
     uv_tcp_t tcp;                       //连接
     struct messagepool m_mp;            //接收缓冲
+#if HAVE_QUIC
+    struct {
+        uv_udp_t udp;
+        uv_timer_t event;
+        struct lsquic_stream_if stream_if;
+        struct lsquic_engine_api engine_api;
+        struct lsquic_engine_settings engine_settings;
+        lsquic_engine_t* engine;
+    }quic;
+#endif
     uv_timer_t re_timer;                //重连定时器
     struct _opc_bridge* bridge;
     opc_config config;                  //
@@ -1829,11 +1831,160 @@ static void bridge_re_timer_cb(uv_timer_t* handle) {
     opc_global* global = (opc_global*)handle->data;
     bridge_start_connect(global);
 }
+//----------------------------------------------------------quic
+#if HAVE_QUIC
+static void quic_timer_cb(uv_timer_t* handle);
+static void quic_process_conns(opc_global* global) {
+    int diff = 0;
+    lsquic_engine_process_conns(global->quic.engine);
+    if (lsquic_engine_earliest_adv_tick(global->quic.engine, &diff)) {
+        if (diff < 0 || (unsigned)diff < global->quic.engine_settings.es_clock_granularity) {
+            uv_timer_start(&global->quic.event, quic_timer_cb, global->quic.engine_settings.es_clock_granularity / 1000, 0);
+        }
+        else {
+            uv_timer_start(&global->quic.event, quic_timer_cb, diff / 1000, 0);
+        }
+    }
+}
+static void quic_timer_cb(uv_timer_t* handle) {
+    opc_global* global = (opc_global*)handle->data;
+    quic_process_conns(global);
+}
+typedef struct quic_send_t {
+    uv_udp_send_t req;
+    uv_buf_t* buf;
+    int len;
+} quic_send_t;
+static void quic_send_cb(quic_send_t* req, int status) {
+    if (req->buf) {
+        for (size_t i = 0; i < req->len; i++) {
+            if (req->buf[i].base) {
+                free(req->buf[i].base);
+            }
+        }
+        free(req->buf);
+    }
+    free(req);
+}
+static int send_packets_out(void* ctx, const struct lsquic_out_spec* specs, unsigned n_specs) {
+    opc_global* global = (opc_global*)ctx;
+    int n = 0;
+    for (n = 0; n < n_specs; ++n) {
+        quic_send_t* req = malloc(sizeof(quic_send_t));
+        if (!req)
+            break;
+        req->buf = malloc(sizeof(uv_buf_t) * specs[n].iovlen);
+        if (!req->buf) {
+            free(req->buf);
+            break;
+        }
+        req->len = specs[n].iovlen;
+        for (size_t i = 0; i < specs[n].iovlen; i++) {
+            req->buf[i].base = malloc(specs[n].iov[i].iov_len);
+            if (req->buf[i].base) {
+                req->buf[i].len = specs[n].iov[i].iov_len;
+                memcpy(req->buf[i].base, specs[n].iov[i].iov_base, specs[n].iov[i].iov_len);
+            }
+        }
+        if (uv_udp_send(&req->req, &global->quic.udp, req->buf, specs[n].iovlen, specs[n].dest_sa, quic_send_cb) != 0) {
+            break;
+        }
+    }
+    return (int)n;
+}
+static void bridge_udp_recv_cb(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags) {
+    opc_global* global = (opc_global*)handle->data;
+    if (nread) {
+        struct sockaddr_in6 local;
+        int namelen = sizeof(local);
+        uv_udp_getsockname(handle, &local, &namelen);
+        lsquic_engine_packet_in(global->quic.engine, buf->base, nread, &local, addr, global, 0);
+        quic_process_conns(global);
+        free(buf->base);
+    }
+}
+//新连接
+static lsquic_conn_ctx_t* quic_on_new_conn(void* stream_if_ctx, lsquic_conn_t* conn) {
+
+    return NULL;
+}
+//链接关闭
+static void quic_on_conn_closed(lsquic_conn_t* conn) {
+
+}
+//新流
+static struct lsquic_stream_ctx* quic_on_new_stream(void* unused, struct lsquic_stream* stream) {
+    lsquic_stream_wantread(stream, 1);
+}
+static size_t quic_readf(void* ctx, const unsigned char* buf, size_t len, int fin) {
+
+}
+static void quic_on_read(struct lsquic_stream* stream, struct lsquic_stream_ctx* stream_ctx) {
+    lsquic_stream_readf(stream, quic_readf, stream_ctx);
+}
+static void quic_on_write(struct lsquic_stream* stream, struct lsquic_stream_ctx* stream_ctx) {
+
+}
+
+
+static void quic_on_close(lsquic_stream_t* stream, lsquic_stream_ctx_t* stream_ctx) {
+
+}
+
+static void bridge_init_quic(opc_global* global) {
+    struct sockaddr_in6 _addr;
+    lsquic_global_init(LSQUIC_GLOBAL_CLIENT);
+
+    lsquic_set_log_level("DEBUG");
+    lsquic_log_to_fstream(stderr, LLTS_HHMMSSMS);
+
+    lsquic_engine_init_settings(&global->quic.engine_settings, 0);
+
+    global->quic.stream_if.on_new_conn = quic_on_new_conn;
+    global->quic.stream_if.on_conn_closed = quic_on_conn_closed;
+    global->quic.stream_if.on_new_stream = quic_on_new_stream;
+    global->quic.stream_if.on_read = quic_on_read;
+    global->quic.stream_if.on_write = quic_on_write;
+    global->quic.stream_if.on_close = quic_on_close;
+
+    global->quic.engine_api.ea_settings = &global->quic.engine_settings;
+    global->quic.engine_api.ea_stream_if = &global->quic.stream_if;
+    global->quic.engine_api.ea_stream_if_ctx = global;
+    global->quic.engine_api.ea_packets_out = send_packets_out;
+    global->quic.engine_api.ea_packets_out_ctx = global;
+    global->quic.engine_api.ea_cert_lu_ctx = global;
+
+    char err_buf[100];
+    if (0 != lsquic_engine_check_settings(global->quic.engine_api.ea_settings, 0, err_buf, sizeof(err_buf))) {
+        return -1;
+    }
+
+    global->quic.engine = lsquic_engine_new(0, &global->quic.engine_api);
+
+
+    //事件定时器
+    uv_timer_init(loop, &global->quic.event);
+    global->quic.event.data = global;
+
+    //监听udp端口
+    uv_udp_init(loop, &global->quic.udp);
+    global->quic.udp.data = global;
+    uv_ip6_addr("::0", 0, &_addr);
+    uv_udp_bind(&global->quic.udp, &_addr, 0);
+    uv_udp_recv_start(&global->quic.udp, alloc_buffer, bridge_udp_recv_cb);
+}
+
+#endif
 //--------------------------------------------------------------------------------------------------------
 //全局初始化
 static int init_global(opc_global* global) {
     uv_timer_init(loop, &global->re_timer);
     global->re_timer.data = global;
+
+
+#if HAVE_QUIC
+    bridge_init_quic(global);
+#endif
 
 }
 //主流程
