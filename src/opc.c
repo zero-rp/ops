@@ -648,7 +648,7 @@ static void forward_tunnel_handshake(opc_forward_tunnel* tunnel, uint8_t* data, 
                         memcpy(&in.sin_port, &data[8], 2);
                         uv_ip4_name(&in, dst, sizeof(dst));
                     }
-                    if (data[3] == 0x04 && size == 10) {
+                    if (data[3] == 0x04 && size == 22) {
                         //IPV6
                         struct sockaddr_in6 in;
                         in.sin6_family = AF_INET6;
