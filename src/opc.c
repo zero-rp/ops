@@ -3,19 +3,18 @@
 #include <uv/tree.h>
 #include "databuffer.h"
 #include "common.h"
+#include "obj.h"
 
 #if HAVE_QUIC
 #include <lsquic.h>
 #endif
 
 #define DEFAULT_BACKLOG 128
-typedef void (*obj_del) (void*);
 
 //目标隧道
 typedef struct _opc_dst_tunnel {
     RB_ENTRY(_opc_dst_tunnel) entry;        //
-    int ref;                                        //计数
-    obj_del del;                                    //释放
+    obj_field ref;                                        //计数
     uint32_t stream_id;                             //流ID
     uint32_t pree_id;                               //对端流ID
     uv_tcp_t tcp;                                   //
@@ -28,8 +27,7 @@ RB_HEAD(_opc_dst_tunnel_tree, _opc_dst_tunnel);
 //目标
 typedef struct _opc_dst {
     RB_ENTRY(_opc_dst) entry;               //
-    int ref;                                        //计数
-    obj_del del;                                    //释放
+    obj_field ref;                                        //计数
     uint32_t id;                                    //转发服务ID
     char bind[256];                                 //绑定本地地址
     char dst[256];                                  //目标
@@ -39,8 +37,7 @@ RB_HEAD(_opc_dst_tree, _opc_dst);
 //转发隧道
 typedef struct _opc_forward_tunnel {
     RB_ENTRY(_opc_forward_tunnel) entry;        //
-    int ref;                                        //计数
-    obj_del del;                                    //释放
+    obj_field ref;                                        //计数
     uint32_t stream_id;                             //流ID
     uint32_t pree_id;                               //对端流ID
     union {
@@ -54,8 +51,7 @@ RB_HEAD(_opc_forward_tunnel_tree, _opc_forward_tunnel);
 //转发
 typedef struct _opc_forward {
     RB_ENTRY(_opc_forward) entry;               //
-    int ref;                                        //计数
-    obj_del del;                                    //释放
+    obj_field ref;                                        //计数
     uint32_t id;                                    //转发服务ID
     uint8_t type;                                   //转发类型
     union {
@@ -78,8 +74,7 @@ RB_HEAD(_opc_forward_tree, _opc_forward);
 //VPC
 typedef struct _opc_vpc {
     RB_ENTRY(_opc_vpc) entry;                       //
-    int ref;                                        //计数
-    obj_del del;                                    //释放
+    obj_field ref;                                        //计数
     uint32_t id;                                    //成员id
     uint16_t vid;                                   //
     struct in_addr ipv4;                            //ipv4地址
@@ -94,8 +89,7 @@ typedef struct _opc_vpc {
 RB_HEAD(_opc_vpc_tree, _opc_vpc);
 //网桥
 typedef struct _opc_bridge {
-    int ref;                                            //计数
-    obj_del del;                                        //释放
+    obj_field ref;                                            //计数
     uv_tcp_t tcp;                                       //服务器通讯句柄
     struct _opc_global* global;
     struct databuffer m_buffer;                         //接收缓冲
@@ -141,13 +135,6 @@ typedef struct _opc_global {
     opc_config config;                  //
 }opc_global;
 
-//对象申请
-#define obj_new(name, s)  s*name = (s*)malloc(sizeof(*name)); if(name){ memset(name, 0, sizeof(*name)); name->ref = 1; }
-//对象加引用
-#define obj_ref(p) p; p->ref++;
-//对象减引用
-#define obj_unref(p) p; p->ref--; if(p->ref<=0){ p->del(p); p = NULL; }
-
 static uv_loop_t* loop = NULL;
 
 static int _opc_dst_compare(opc_dst* w1, opc_dst* w2) {
@@ -189,9 +176,6 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
-static void obj_free(void* p) {
-    free(p);
-}
 //
 static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //--------------------------------------------------------------------------------------------------------dst
@@ -201,7 +185,6 @@ static void dst_tunnel_free(opc_dst_tunnel* p) {
     RB_REMOVE(_opc_dst_tunnel_tree, &p->bridge->dst_tunnel, p);
     obj_unref(p->dst);//ref_16
     obj_unref(p->bridge);//ref_17
-    free(p);
 }
 //失败关闭对端隧道
 static void dst_tunnel_err(opc_bridge* bridge, uint32_t service_id, uint32_t stream_id) {
@@ -318,11 +301,11 @@ static void dst_tunnel_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct 
     uv_freeaddrinfo(res);
 }
 //新目标隧道
-static opc_dst_tunnel* dst_tunnel_new(opc_bridge* bridge, opc_dst* dst, uint32_t pree_id, uint8_t *data, int size) {
+static opc_dst_tunnel* dst_tunnel_new(opc_bridge* bridge, opc_dst* dst, uint32_t pree_id, uint8_t* data, int size) {
     obj_new(tunnel, opc_dst_tunnel);//ref_14
     if (!tunnel)
         return NULL;
-    tunnel->del = dst_tunnel_free;
+    tunnel->ref.del = dst_tunnel_free;
 
     tunnel->dst = obj_ref(dst);//ref_16
     tunnel->bridge = obj_ref(bridge);//ref_17
@@ -356,7 +339,7 @@ static int dst_new(opc_bridge* bridge, ops_dst* dst) {
     if (!d) {
         return -1;
     }
-    d->del = obj_free;
+    d->ref.del = NULL;
     d->id = dst->sid;
     memcpy(d->dst, dst->dst, sizeof(d->dst));
     d->dst[sizeof(d->dst) - 1] = 0;
@@ -743,7 +726,7 @@ static void forward_connection_cb(uv_stream_t* tcp, int status) {
     obj_new(tunnel, opc_forward_tunnel);//ref_7
     if (!tunnel)
         return;
-    tunnel->del = forward_tunnel_free;
+    tunnel->ref.del = forward_tunnel_free;
 
     uv_tcp_init(loop, &tunnel->tcp);//初始化tcp bridge句柄
     tunnel->tcp.data = obj_ref(tunnel);//ref_8
@@ -776,7 +759,6 @@ static void forward_connection_cb(uv_stream_t* tcp, int status) {
 static void forward_obj_free(opc_forward* p) {
     RB_REMOVE(_opc_forward_tree, &p->bridge->forward, p);
     obj_unref(p->bridge);//ref_6
-    free(p);
 }
 //转发源监听关闭
 static void forward_close_cb(uv_handle_t* handle) {
@@ -790,7 +772,7 @@ static int forward_new(opc_bridge* bridge, ops_forward* src) {
     if (!s) {
         return -1;
     }
-    s->del = forward_obj_free;
+    s->ref.del = forward_obj_free;
     s->id = src->sid;
     s->type = src->type;
     s->bridge = obj_ref(bridge);//ref_6
@@ -1143,7 +1125,6 @@ static win_tun* new_tun(opc_vpc* vpc) {
         return NULL;
     }
     memset(tun, 0, sizeof(*tun));
-    tun->vpc = obj_ref(vpc); //ref_24
     //加载模块
     if (!tun_mod) {
         tun_mod = InitializeWintun();
@@ -1193,6 +1174,8 @@ static win_tun* new_tun(opc_vpc* vpc) {
     }
     memcpy(&tun->ipv6, &vpc->ipv6, sizeof(tun->ipv6));
     memcpy(&tun->ipv6_mask, &vpc->ipv6_mask, sizeof(tun->ipv6_mask));
+    //
+    tun->vpc = obj_ref(vpc); //ref_24
     //创建同步对象
     tun->async.data = tun;
     uv_async_init(loop, &tun->async, win_tun_async_cb);
@@ -1434,11 +1417,12 @@ static void vpc_on_packet(opc_vpc* vpc, uint8_t* packet, int size) {
 static void vpc_obj_free(opc_vpc* p) {
     RB_REMOVE(_opc_vpc_tree, &p->bridge->vpc, p);
     obj_unref(p->bridge);//ref_22
-    free(p);
 }
 //删除vpc
 static void vpc_del(opc_vpc* vpc) {
-    delete_tun(vpc->data);
+    if (vpc->data) {
+        delete_tun(vpc->data);
+    }
     obj_unref(vpc);//ref_21
 }
 static void vpc(opc_bridge* bridge, ops_packet* packet) {
@@ -1460,7 +1444,7 @@ static void vpc(opc_bridge* bridge, ops_packet* packet) {
             if (!vpc) {
                 continue;
             }
-            vpc->del = vpc_obj_free;
+            vpc->ref.del = vpc_obj_free;
             vpc->bridge = obj_ref(bridge);//ref_22
             vpc->id = mem.id;
             vpc->vid = mem.vid;
@@ -1589,7 +1573,7 @@ static void bridge_close_cb(uv_handle_t* handle) {
     dst_free(bridge);
     //回收转发器
     forward_free(bridge);
-    //
+    //回收vpc
     vpc_free(bridge);
     //关闭定时器
     if (bridge->keep_timer.data) {
@@ -1599,6 +1583,7 @@ static void bridge_close_cb(uv_handle_t* handle) {
     obj_unref(bridge);//ref_5
     //
     obj_unref(bridge);//ref_1
+    //
 }
 static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_bridge* bridge = (opc_bridge*)req->data;
@@ -1795,14 +1780,13 @@ static void bridge_obj_free(opc_bridge* p) {
     if (p->global->bridge == p) {
         p->global->bridge = NULL;
     }
-    free(p);
 }
 //启动连接
 static int bridge_start_connect(opc_global* global) {
     obj_new(bridge, opc_bridge);//ref_1
     if (bridge == NULL)
         return 0;
-    bridge->del = bridge_obj_free;
+    bridge->ref.del = bridge_obj_free;
     bridge->global = global;
     uv_connect_t* req = (uv_connect_t*)malloc(sizeof(uv_connect_t));
     if (req == NULL) {
@@ -1989,11 +1973,22 @@ static int init_global(opc_global* global) {
 }
 //主流程
 static opc_global* global = NULL;
+
+static void obj_check(uv_timer_t* handle) {
+    obj_print();
+}
+
 static int run() {
     //初始化
     init_global(global);
     //开始连接
     bridge_start_connect(global);
+#ifdef _DEBUG
+    //启动定时器
+    uv_timer_t timer;
+    uv_timer_init(loop, &timer);
+    uv_timer_start(&timer, obj_check, 5000, 5000);
+#endif
     //启动循环
     uv_run(loop, UV_RUN_DEFAULT);
     return 0;

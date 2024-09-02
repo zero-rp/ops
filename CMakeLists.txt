@@ -65,6 +65,7 @@ else ()
     add_executable(opc
             src/opc.c
             src/sds.c
+            src/obj.c
             src/databuffer.c
             third_party/cJSON/cJSON.c
             third_party/cJSON/cJSON_Utils.c
