@@ -2542,7 +2542,7 @@ static void bridge_init_quic(ops_global* global) {
 
 	char err_buf[100];
 	if (0 != lsquic_engine_check_settings(global->quic.engine_api.ea_settings, LSENG_SERVER, err_buf, sizeof(err_buf))) {
-		return -1;
+		return;
 	}
 
 	global->quic.engine = lsquic_engine_new(LSENG_SERVER, &global->quic.engine_api);
@@ -2560,7 +2560,7 @@ static void bridge_init_quic(ops_global* global) {
 	memset(ticket_keys, 0, sizeof(ticket_keys));
 	if (1 != SSL_CTX_set_tlsext_ticket_keys(global->quic.ssl_ctx_main, ticket_keys, sizeof(ticket_keys)))
 	{
-		return -1;
+		return;
 	}
 	//记录key
 	//SSL_CTX_set_keylog_callback(global->quic.ssl_ctx_main, keylog_log_line);
@@ -2578,11 +2578,11 @@ static void bridge_init_quic(ops_global* global) {
 	SSL_CTX_set_alpn_select_cb(global->quic.ssl_ctx, select_alpn, NULL);
 	SSL_CTX_set_early_data_enabled(global->quic.ssl_ctx, 1);
 	if (1 != SSL_CTX_use_certificate_chain_file(global->quic.ssl_ctx, "server-cert.pem")) {
-		return -1;
+		return;
 	}
 
 	else if (1 != SSL_CTX_use_PrivateKey_file(global->quic.ssl_ctx, "server-key.pem", SSL_FILETYPE_PEM)) {
-		return -1;
+		return;
 	}
 	const int was = SSL_CTX_set_session_cache_mode(global->quic.ssl_ctx, 1);
 
