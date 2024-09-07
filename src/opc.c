@@ -1,6 +1,7 @@
 ﻿#include <uv.h>
 #include <cJSON.h>
 #include <uv/tree.h>
+#include <openssl/ssl.h>
 #include "databuffer.h"
 #include "common.h"
 #include "obj.h"
@@ -26,8 +27,8 @@ typedef struct _opc_dst_tunnel {
 RB_HEAD(_opc_dst_tunnel_tree, _opc_dst_tunnel);
 //目标
 typedef struct _opc_dst {
-    RB_ENTRY(_opc_dst) entry;               //
-    obj_field ref;                                        //计数
+    RB_ENTRY(_opc_dst) entry;                       //
+    obj_field ref;                                  //计数
     uint32_t id;                                    //转发服务ID
     char bind[256];                                 //绑定本地地址
     char dst[256];                                  //目标
@@ -87,10 +88,19 @@ typedef struct _opc_vpc {
     struct _opc_bridge* bridge;
 }opc_vpc;
 RB_HEAD(_opc_vpc_tree, _opc_vpc);
+typedef struct _send_buffer {
+    uint8_t* data;
+    uint32_t size;
+    uint32_t pos;
+    struct _send_buffer* next;
+}send_buffer;
 //网桥
 typedef struct _opc_bridge {
-    obj_field ref;                                            //计数
+    obj_field ref;                                      //计数
     uv_tcp_t tcp;                                       //服务器通讯句柄
+    struct lsquic_stream* stream;                       //quic
+    send_buffer* send;                                  //发送缓冲
+    send_buffer* tail;                                  //发送缓冲尾
     struct _opc_global* global;
     struct databuffer m_buffer;                         //接收缓冲
     uv_timer_t keep_timer;                              //心跳,重鉴权定时器
@@ -115,6 +125,7 @@ typedef struct _opc_config {
     const char* server_ip;      //服务器IP
     const char* bind_ip;        //连接服务器使用的本地ip
     uint16_t server_port;       //服务器端口
+    uint16_t use_quic;          //是否使用quic
 }opc_config;
 //
 typedef struct _opc_global {
@@ -128,6 +139,9 @@ typedef struct _opc_global {
         struct lsquic_engine_api engine_api;
         struct lsquic_engine_settings engine_settings;
         lsquic_engine_t* engine;
+        SSL_CTX* ssl_ctx;
+        char* token;
+        int token_len;
     }quic;
 #endif
     uv_timer_t re_timer;                //重连定时器
@@ -500,7 +514,6 @@ static void forward_tunnel_free(opc_forward_tunnel* p) {
     RB_REMOVE(_opc_forward_tunnel_tree, &p->bridge->forward_tunnel, p);
     obj_unref(p->bridge);//ref_12
     obj_unref(p->src);//ref_11
-    free(p);
 }
 //失败关闭对端隧道
 static void forward_tunnel_err(opc_bridge* bridge, uint32_t service_id, uint32_t stream_id) {
@@ -1530,6 +1543,8 @@ static void vpc_free(opc_bridge* bridge) {
 #endif
 //--------------------------------------------------------------------------------------------------------bridge
 static void bridge_re_timer_cb(uv_timer_t* handle);
+static void quic_process_conns(opc_global* global);
+
 //检查是否退出
 static void bridge_check() {
 
@@ -1704,15 +1719,48 @@ static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, 
     pack->service_id = htonl(service_id);
     pack->stream_id = htonl(stream_id);
     memcpy(pack->data, data, len);
-    uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
-    if (req == NULL) {
-        free(buf->base);
-        return;
+    if (bridge->stream) {
+        send_buffer* buffer = malloc(sizeof(send_buffer));
+        memset(buffer, 0, sizeof(*buffer));
+        buffer->data = buf->base;
+        buffer->size = buf->len;
+        //写入队列
+        if (bridge->tail == NULL) {
+            bridge->send = buffer;
+        }
+        else {
+            bridge->tail->next = buffer;
+        }
+        bridge->tail = buffer;
+        //
+        lsquic_stream_wantwrite(bridge->stream, 1);
     }
-    req->data = buf->base;
-    uv_write(req, &bridge->tcp, &buf, 1, write_cb);
+    else {
+        uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
+        if (req == NULL) {
+            free(buf->base);
+            return;
+        }
+        req->data = buf->base;
+        uv_write(req, &bridge->tcp, &buf, 1, write_cb);
+    }
 }
 //数据到达
+static void bridge_on_read(opc_bridge* bridge, char* buf, int len) {
+    opc_global* global = bridge->global;
+    //记录到缓冲区
+    databuffer_push(&bridge->m_buffer, &global->m_mp, buf, len);
+    for (;;) {
+        int size = databuffer_readheader(&bridge->m_buffer, &global->m_mp, 4);
+        if (size < 0) {
+            return;
+        }
+        char* temp = malloc(size);
+        databuffer_read(&bridge->m_buffer, &global->m_mp, temp, size);
+        bridge_on_data(bridge, temp, size);
+        databuffer_reset(&bridge->m_buffer);
+    }
+}
 static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     opc_bridge* bridge = (opc_bridge*)tcp->data;
     opc_global* global = bridge->global;
@@ -1737,20 +1785,19 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
         }
         return;
     }
-    //记录到缓冲区
-    databuffer_push(&bridge->m_buffer, &global->m_mp, buf->base, nread);
-    for (;;) {
-        int size = databuffer_readheader(&bridge->m_buffer, &global->m_mp, 4);
-        if (size < 0) {
-            return;
-        }
-        char* temp = malloc(size);
-        databuffer_read(&bridge->m_buffer, &global->m_mp, temp, size);
-        bridge_on_data(bridge, temp, size);
-        databuffer_reset(&bridge->m_buffer);
-    }
+    bridge_on_read(bridge, buf->base, nread);
 }
 //连接返回
+static void bridge_on_connect(opc_bridge* bridge) {
+    //连接成功
+    bridge->global->bridge = obj_ref(bridge);//ref_3
+
+    uv_timer_init(loop, &bridge->keep_timer);
+    bridge->keep_timer.data = obj_ref(bridge);//ref_4
+
+    //
+    bridge_connect_end(bridge);
+}
 static void bridge_connect_cb(uv_connect_t* req, int status) {
     opc_bridge* bridge = (opc_bridge*)req->data;
     obj_unref(bridge);//ref_2
@@ -1761,16 +1808,10 @@ static void bridge_connect_cb(uv_connect_t* req, int status) {
         uv_close(&bridge->tcp, bridge_close_cb);
         return;
     }
-    //连接成功
-    bridge->global->bridge = obj_ref(bridge);//ref_3
-
-    uv_timer_init(loop, &bridge->keep_timer);
-    bridge->keep_timer.data = obj_ref(bridge);//ref_4
-
     //
     uv_read_start((uv_stream_t*)&bridge->tcp, alloc_buffer, bridge_read_cb);
-    //
-    bridge_connect_end(bridge);
+
+    bridge_on_connect(bridge);
 }
 //
 static void bridge_obj_free(opc_bridge* p) {
@@ -1788,6 +1829,26 @@ static int bridge_start_connect(opc_global* global) {
         return 0;
     bridge->ref.del = bridge_obj_free;
     bridge->global = global;
+    if (global->config.use_quic) {
+        //获取本地地址
+        struct sockaddr_in6 local = { 0 };
+        int namelen = sizeof(local);
+        uv_udp_getsockname(&global->quic.udp, &local, &namelen);
+        //连接
+        struct sockaddr_in6 _addr;
+        //
+        if (uv_ip6_addr(global->config.server_ip, global->config.server_port, &_addr) < 0) {
+            char tmp[1024] = { 0 };
+            snprintf(tmp, sizeof(tmp), "::ffff:%s", global->config.server_ip);
+            if (uv_ip6_addr(tmp, global->config.server_port, &_addr) < 0) {
+                
+            }
+        }
+        void* ctx = obj_ref(bridge);
+        lsquic_engine_connect(global->quic.engine, N_LSQVER, &local, &_addr, global, ctx, "localhost", 0, NULL, 0, global->quic.token, global->quic.token_len);
+        quic_process_conns(global);
+        return 0;
+    }
     uv_connect_t* req = (uv_connect_t*)malloc(sizeof(uv_connect_t));
     if (req == NULL) {
         free(req);
@@ -1887,30 +1948,88 @@ static void bridge_udp_recv_cb(uv_udp_t* handle, ssize_t nread, const uv_buf_t* 
         free(buf->base);
     }
 }
+//获取ssl_ctx
+static SSL_CTX* get_ssl_ctx(void* peer_ctx, const struct sockaddr* unused) {
+    opc_global* global = peer_ctx;
+    return global->quic.ssl_ctx;
+}
 //新连接
 static lsquic_conn_ctx_t* quic_on_new_conn(void* stream_if_ctx, lsquic_conn_t* conn) {
-
-    return NULL;
+    opc_bridge* bridge = (opc_bridge*)lsquic_conn_get_ctx(conn);
+    return bridge;
 }
 //链接关闭
 static void quic_on_conn_closed(lsquic_conn_t* conn) {
-
+    lsquic_conn_set_ctx(conn, NULL);
+}
+//握手完成
+static void quic_on_hsk_done(lsquic_conn_t* c, enum lsquic_hsk_status s) {
+    //创建流
+    lsquic_conn_make_stream(c);
+}
+static void quic_on_new_token(lsquic_conn_t* c, const unsigned char* token, size_t token_size) {
+    opc_global* global = (opc_global*)c;
+    if (global->quic.token)
+        free(global->quic.token);
+    global->quic.token = malloc(token_size);
+    memcpy(global->quic.token, token, token_size);
+    global->quic.token_len = token_size;
 }
 //新流
 static struct lsquic_stream_ctx* quic_on_new_stream(void* unused, struct lsquic_stream* stream) {
+    opc_global* global = (opc_global*)unused;
+    opc_bridge* bridge = (opc_bridge*)lsquic_conn_get_ctx(lsquic_stream_conn(stream));
+    //开始读
     lsquic_stream_wantread(stream, 1);
+    //主流
+    if (bridge->stream == NULL) {
+        bridge->stream = stream;
+        bridge_on_connect(bridge);
+    }
+    return bridge;
 }
 static size_t quic_readf(void* ctx, const unsigned char* buf, size_t len, int fin) {
-
+    char* tmp = malloc(len);
+    memcpy(tmp, buf, len);
+    bridge_on_read((opc_bridge*)ctx, (char*)tmp, len);
+    return len;
 }
 static void quic_on_read(struct lsquic_stream* stream, struct lsquic_stream_ctx* stream_ctx) {
     lsquic_stream_readf(stream, quic_readf, stream_ctx);
 }
 static void quic_on_write(struct lsquic_stream* stream, struct lsquic_stream_ctx* stream_ctx) {
-
+    opc_bridge* bridge = (opc_bridge*)stream_ctx;
+    if (stream == bridge->stream && bridge->send) {
+        send_buffer* buffer = bridge->send;
+        do {
+            ssize_t ok = lsquic_stream_write(stream, buffer->data + buffer->pos, buffer->size - buffer->pos);
+            if (ok < 0) {
+                break;
+            }
+            //本次写完
+            if (ok == buffer->size - buffer->pos) {
+                free(buffer->data);
+                send_buffer* temp = buffer;
+                buffer = buffer->next;
+                free(temp);
+                //队列写完
+                if (buffer == NULL) {
+                    bridge->send = NULL;
+                    bridge->tail = NULL;
+                    lsquic_stream_wantwrite(stream, 0);
+                    break;
+                }
+            }
+            else {
+                //没写完,等下一次发送
+                buffer->pos += ok;
+                break;
+            }
+        } while (buffer != NULL);
+    }
+    lsquic_stream_flush(stream);
 }
-
-
+//流关闭
 static void quic_on_close(lsquic_stream_t* stream, lsquic_stream_ctx_t* stream_ctx) {
 
 }
@@ -1919,8 +2038,8 @@ static void bridge_init_quic(opc_global* global) {
     struct sockaddr_in6 _addr;
     lsquic_global_init(LSQUIC_GLOBAL_CLIENT);
 
-    lsquic_set_log_level("DEBUG");
-    lsquic_log_to_fstream(stderr, LLTS_HHMMSSMS);
+    //lsquic_set_log_level("DEBUG");
+    //lsquic_log_to_fstream(stderr, LLTS_HHMMSSMS);
 
     lsquic_engine_init_settings(&global->quic.engine_settings, 0);
 
@@ -1930,6 +2049,8 @@ static void bridge_init_quic(opc_global* global) {
     global->quic.stream_if.on_read = quic_on_read;
     global->quic.stream_if.on_write = quic_on_write;
     global->quic.stream_if.on_close = quic_on_close;
+    global->quic.stream_if.on_hsk_done = quic_on_hsk_done;
+    global->quic.stream_if.on_new_token = quic_on_new_token;
 
     global->quic.engine_api.ea_settings = &global->quic.engine_settings;
     global->quic.engine_api.ea_stream_if = &global->quic.stream_if;
@@ -1937,14 +2058,21 @@ static void bridge_init_quic(opc_global* global) {
     global->quic.engine_api.ea_packets_out = send_packets_out;
     global->quic.engine_api.ea_packets_out_ctx = global;
     global->quic.engine_api.ea_cert_lu_ctx = global;
+    global->quic.engine_api.ea_get_ssl_ctx = &get_ssl_ctx;
 
     char err_buf[100];
     if (0 != lsquic_engine_check_settings(global->quic.engine_api.ea_settings, 0, err_buf, sizeof(err_buf))) {
-        return -1;
+        return;
     }
 
     global->quic.engine = lsquic_engine_new(0, &global->quic.engine_api);
 
+    //SSL
+    global->quic.ssl_ctx = SSL_CTX_new(TLS_method());
+    SSL_CTX_set_min_proto_version(global->quic.ssl_ctx, TLS1_3_VERSION);
+    SSL_CTX_set_max_proto_version(global->quic.ssl_ctx, TLS1_3_VERSION);
+    //设置ALPN
+    SSL_CTX_set_alpn_protos(global->quic.ssl_ctx, "\x04quic", 5);
 
     //事件定时器
     uv_timer_init(loop, &global->quic.event);
@@ -1953,7 +2081,13 @@ static void bridge_init_quic(opc_global* global) {
     //监听udp端口
     uv_udp_init(loop, &global->quic.udp);
     global->quic.udp.data = global;
-    uv_ip6_addr("::0", 0, &_addr);
+    //指定了本地端口
+    if (global->config.bind_ip) {
+
+    }
+    else {
+        uv_ip6_addr("::0", 0, &_addr);
+    }
     uv_udp_bind(&global->quic.udp, &_addr, 0);
     uv_udp_recv_start(&global->quic.udp, alloc_buffer, bridge_udp_recv_cb);
 }
@@ -2180,6 +2314,8 @@ static int load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.server_ip = "127.0.0.1";
     global->config.server_port = 8025;
+    global->config.use_quic = 0;
+
     //从配置文件加载参数
     const char* config_file = "opc.json";
     for (size_t i = 1; i < argc; i++) {
@@ -2219,6 +2355,10 @@ static int load_config(opc_global* global, int argc, char* argv[]) {
         if (item && item->valuestring) {
             global->config.bind_ip = strdup(item->valuestring);
         }
+        item = cJSON_GetObjectItem(config_json, "quic");
+        if (item && item->valuestring) {
+            global->config.use_quic = item->valueint;
+        }
         cJSON_free(config_json);
     }
     //从命令行加载参数
@@ -2246,6 +2386,9 @@ static int load_config(opc_global* global, int argc, char* argv[]) {
             char* buf = malloc(500);
             scanf("%s", buf);
             global->config.auth_key = buf;
+        }
+        else if (strcmp(argv[i], "-q") == 0) {
+            global->config.use_quic = 1;
         }
 #if defined(_WIN32) || defined(_WIN64)
         else if (strcmp(argv[i], "-install") == 0) {
