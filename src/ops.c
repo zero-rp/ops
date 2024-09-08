@@ -1256,6 +1256,10 @@ static int http_on_message_complete(http_parser* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
 
+    if (!req->host) {
+        return 0;
+    }
+
     //日志
     printf("New Request %s %s\r\n", req->host, req->url);
 
