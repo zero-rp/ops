@@ -1856,7 +1856,7 @@ static int bridge_start_connect(opc_global* global) {
             }
         }
         void* ctx = obj_ref(bridge);
-        bridge->conn = lsquic_engine_connect(global->quic.engine, N_LSQVER, &local, &_addr, global, ctx, "localhost", 0, NULL, 0, global->quic.token, global->quic.token_len);
+        bridge->conn = lsquic_engine_connect(global->quic.engine, N_LSQVER, &local, &_addr, global, ctx, "localhost", 0, NULL, 0, NULL, 0);// global->quic.token, global->quic.token_len);
         quic_process_conns(global);
         return 0;
     }
@@ -2025,6 +2025,7 @@ static void quic_on_write(struct lsquic_stream* stream, struct lsquic_stream_ctx
                 free(buffer->data);
                 send_buffer* temp = buffer;
                 buffer = buffer->next;
+                bridge->send = buffer;
                 free(temp);
                 //队列写完
                 if (buffer == NULL) {

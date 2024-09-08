@@ -2592,6 +2592,7 @@ static void quic_on_write(struct lsquic_stream* stream, struct lsquic_stream_ctx
                 free(buffer->data);
                 send_buffer* temp = buffer;
                 buffer = buffer->next;
+                bridge->send = buffer;
                 free(temp);
                 //队列写完
                 if (buffer == NULL) {
@@ -2738,7 +2739,7 @@ static int init_global(ops_global* global) {
     heap_init(&global->ping_heap);
     uv_timer_init(loop, &global->ping_timer);
     global->ping_timer.data = global;
-    uv_timer_start(&global->ping_timer, bridge_ping_timer_cb, 1000 * 5, 1000 * 5);
+    //uv_timer_start(&global->ping_timer, bridge_ping_timer_cb, 1000 * 5, 1000 * 5);
 
     //初始化数据
     data_init(global->config.db_file, global, &data_settings);
