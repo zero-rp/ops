@@ -42,6 +42,7 @@ if(ANDROID)
     add_library(opc SHARED
             src/opc.c
             src/sds.c
+			src/obj.c
             src/databuffer.c
             third_party/cJSON/cJSON.c
             third_party/cJSON/cJSON_Utils.c
@@ -50,7 +51,12 @@ if(ANDROID)
             uv_a
             z
             android
-            log)
+            log
+			ssl
+			crypto
+			decrepit
+			${LIBS}
+			)
 else ()
     add_executable(ops
             src/ops.c
