@@ -107,7 +107,9 @@ typedef struct _ops_bridge {
     uint16_t id;                        //客户端ID
     struct _ops_global* global;
     uv_tcp_t tcp;                       //连接
-    struct lsquic_stream* stream;                       //quic
+    lsquic_stream_t* stream;                       //quic
+    lsquic_conn_t* conn;
+    int type;                               
     send_buffer* send;                                  //发送缓冲
     send_buffer* tail;                                  //发送缓冲尾
     struct databuffer m_buffer;         //接收缓冲
@@ -2163,7 +2165,11 @@ static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, 
     if (data && len) {
         memcpy(pack->data, data, len);
     }
-    if (bridge->stream) {
+    if (bridge->type == 2) {
+        if (!bridge->stream) {
+            free(buf->base);
+            return;
+        }
         send_buffer* buffer = malloc(sizeof(send_buffer));
         memset(buffer, 0, sizeof(*buffer));
         buffer->data = buf->base;
@@ -2361,6 +2367,7 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
 
     uv_tcp_init(loop, &bridge->tcp);//初始化tcp bridge句柄
     bridge->tcp.data = bridge;
+    bridge->type = 1;
 
     if (uv_accept(tcp, (uv_stream_t*)&bridge->tcp) == 0) {
         //新客户
@@ -2390,7 +2397,14 @@ static void bridge_ping_timer_cb(uv_timer_t* handle) {
         //删除这个成员
         heap_remove(&global->ping_heap, &bridge->heap, ping_less_than);
         //踢掉用户
-        uv_close(&bridge->tcp, bridge_close_cb);
+        if (bridge->type == 2) {
+            if (bridge->conn) {
+                lsquic_conn_close(bridge->conn);
+            }
+        }
+        else {
+            uv_close(&bridge->tcp, bridge_close_cb);
+        }
     }
 }
 //事件
@@ -2531,6 +2545,10 @@ static lsquic_conn_ctx_t* quic_on_new_conn(void* stream_if_ctx, lsquic_conn_t* c
     }
     memset(bridge, 0, sizeof(*bridge));
     bridge->global = global;
+    bridge->type = 2;
+    bridge->conn = conn;
+    //新客户
+    printf("New Client\r\n");
     return bridge;
 }
 //链接关闭
@@ -2594,7 +2612,10 @@ static void quic_on_write(struct lsquic_stream* stream, struct lsquic_stream_ctx
 }
 //流关闭
 static void quic_on_close(lsquic_stream_t* stream, lsquic_stream_ctx_t* stream_ctx) {
-
+    ops_bridge* bridge = (ops_bridge*)stream_ctx;
+    if (bridge->stream == stream) {
+        bridge->stream = NULL;
+    }
 }
 
 static void bridge_init_quic(ops_global* global) {

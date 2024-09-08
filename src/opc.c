@@ -98,7 +98,8 @@ typedef struct _send_buffer {
 typedef struct _opc_bridge {
     obj_field ref;                                      //计数
     uv_tcp_t tcp;                                       //服务器通讯句柄
-    struct lsquic_stream* stream;                       //quic
+    lsquic_conn_t* conn;
+    lsquic_stream_t* stream;                            //quic
     send_buffer* send;                                  //发送缓冲
     send_buffer* tail;                                  //发送缓冲尾
     struct _opc_global* global;
@@ -1575,8 +1576,7 @@ static void bridge_keep_close_cb(uv_handle_t* handle) {
     obj_unref(bridge);//ref_4
 }
 //关闭
-static void bridge_close_cb(uv_handle_t* handle) {
-    opc_bridge* bridge = (opc_bridge*)handle->data;
+static void bridge_on_close(opc_bridge* bridge) {
     if (bridge->global->bridge == bridge) {
         bridge->global->bridge = NULL;
         obj_unref(bridge);//ref_3
@@ -1600,6 +1600,10 @@ static void bridge_close_cb(uv_handle_t* handle) {
     obj_unref(bridge);//ref_1
     //
 }
+static void bridge_close_cb(uv_handle_t* handle) {
+    opc_bridge* bridge = (opc_bridge*)handle->data;
+    bridge_on_close(bridge);
+}
 static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_bridge* bridge = (opc_bridge*)req->data;
     uv_close(&bridge->tcp, bridge_close_cb);
@@ -1613,7 +1617,14 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
         //暂停掉定时器
         uv_timer_stop(handle);
         //超时直接关闭
-        uv_close(&bridge->tcp, bridge_close_cb);
+        if (bridge->global->config.use_quic) {
+            if (bridge->conn) {
+                lsquic_conn_close(bridge->conn);
+            }
+        }
+        else {
+            uv_close(&bridge->tcp, bridge_close_cb);
+        }
         return;
     }
     //
@@ -1841,11 +1852,11 @@ static int bridge_start_connect(opc_global* global) {
             char tmp[1024] = { 0 };
             snprintf(tmp, sizeof(tmp), "::ffff:%s", global->config.server_ip);
             if (uv_ip6_addr(tmp, global->config.server_port, &_addr) < 0) {
-                
+
             }
         }
         void* ctx = obj_ref(bridge);
-        lsquic_engine_connect(global->quic.engine, N_LSQVER, &local, &_addr, global, ctx, "localhost", 0, NULL, 0, global->quic.token, global->quic.token_len);
+        bridge->conn = lsquic_engine_connect(global->quic.engine, N_LSQVER, &local, &_addr, global, ctx, "localhost", 0, NULL, 0, global->quic.token, global->quic.token_len);
         quic_process_conns(global);
         return 0;
     }
@@ -1960,6 +1971,9 @@ static lsquic_conn_ctx_t* quic_on_new_conn(void* stream_if_ctx, lsquic_conn_t* c
 }
 //链接关闭
 static void quic_on_conn_closed(lsquic_conn_t* conn) {
+    opc_bridge* bridge = (opc_bridge*)lsquic_conn_get_ctx(conn);
+    bridge->conn = NULL;
+    bridge_on_close(bridge);
     lsquic_conn_set_ctx(conn, NULL);
 }
 //握手完成
@@ -2031,7 +2045,10 @@ static void quic_on_write(struct lsquic_stream* stream, struct lsquic_stream_ctx
 }
 //流关闭
 static void quic_on_close(lsquic_stream_t* stream, lsquic_stream_ctx_t* stream_ctx) {
-
+    opc_bridge* bridge = (opc_bridge*)stream_ctx;
+    if (bridge->stream == stream) {
+        bridge->stream = NULL;
+    }
 }
 
 static void bridge_init_quic(opc_global* global) {
@@ -2314,7 +2331,7 @@ static int load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.server_ip = "127.0.0.1";
     global->config.server_port = 8025;
-    global->config.use_quic = 0;
+    global->config.use_quic = 1;
 
     //从配置文件加载参数
     const char* config_file = "opc.json";
