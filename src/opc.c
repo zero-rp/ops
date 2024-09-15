@@ -1745,6 +1745,8 @@ static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, 
         bridge->tail = buffer;
         //
         lsquic_stream_wantwrite(bridge->stream, 1);
+        //
+        lsquic_engine_process_conns(lsquic_conn_get_engine(bridge->conn));
     }
     else {
         uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
@@ -1993,6 +1995,7 @@ static void quic_on_new_token(lsquic_conn_t* c, const unsigned char* token, size
 static struct lsquic_stream_ctx* quic_on_new_stream(void* unused, struct lsquic_stream* stream) {
     opc_global* global = (opc_global*)unused;
     opc_bridge* bridge = (opc_bridge*)lsquic_conn_get_ctx(lsquic_stream_conn(stream));
+    lsquic_stream_set_ctx(stream, bridge);
     //开始读
     lsquic_stream_wantread(stream, 1);
     //主流
