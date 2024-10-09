@@ -2188,8 +2188,6 @@ static void bridge_send(ops_bridge* bridge, uint8_t  type, uint32_t service_id, 
         bridge->tail = buffer;
         //
         lsquic_stream_wantwrite(bridge->stream, 1);
-        //
-        lsquic_engine_process_conns(lsquic_conn_get_engine(bridge->conn));
     }
     else {
         uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));

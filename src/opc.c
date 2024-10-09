@@ -1745,8 +1745,6 @@ static void bridge_send(opc_bridge* bridge, uint8_t  type, uint32_t service_id, 
         bridge->tail = buffer;
         //
         lsquic_stream_wantwrite(bridge->stream, 1);
-        //
-        lsquic_engine_process_conns(lsquic_conn_get_engine(bridge->conn));
     }
     else {
         uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
@@ -2335,7 +2333,7 @@ static int load_config(opc_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.server_ip = "127.0.0.1";
     global->config.server_port = 8025;
-    global->config.use_quic = 1;
+    global->config.use_quic = 0;
 
     //从配置文件加载参数
     const char* config_file = "opc.json";
