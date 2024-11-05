@@ -2,8 +2,8 @@
 #include <cJSON.h>
 #include <uv/tree.h>
 #include <openssl/ssl.h>
-#include "databuffer.h"
-#include "common.h"
+#include <common/databuffer.h>
+#include <common/common.h>
 #include "obj.h"
 
 #if HAVE_QUIC

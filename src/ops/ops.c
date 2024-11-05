@@ -8,10 +8,10 @@
 #include <openssl/bio.h>
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
-#include "databuffer.h"
-#include "common.h"
+#include <common/databuffer.h>
+#include <common/common.h>
+#include <common/sds.h>
 #include "data.h"
-#include "sds.h"
 #include "heap.h"
 #if HAVE_QUIC
 #include <lsquic.h>
@@ -2743,7 +2743,7 @@ static int init_global(ops_global* global) {
     heap_init(&global->ping_heap);
     uv_timer_init(loop, &global->ping_timer);
     global->ping_timer.data = global;
-    //uv_timer_start(&global->ping_timer, bridge_ping_timer_cb, 1000 * 5, 1000 * 5);
+    uv_timer_start(&global->ping_timer, bridge_ping_timer_cb, 1000 * 5, 1000 * 5);
 
     //初始化数据
     data_init(global->config.db_file, global, &data_settings);

@@ -19,6 +19,7 @@ endif()
 
 
 #添加包含目录
+include_directories(src/)
 include_directories(third_party/boringssl/include)
 include_directories(third_party/libuv/include)
 include_directories(third_party/http-parser)
@@ -59,20 +60,20 @@ if(ANDROID)
 			)
 else ()
     add_executable(ops
-            src/ops.c
-            src/sds.c
-            src/databuffer.c
-            src/data.c
+            src/common/sds.c
+            src/common/databuffer.c
+            src/ops/ops.c
+            src/ops/data.c
             third_party/cJSON/cJSON.c
             third_party/cJSON/cJSON_Utils.c
             )
     target_link_libraries(ops uv_a http-parser sqlite ssl crypto decrepit ${LIBS} zlibstatic)
 
     add_executable(opc
-            src/opc.c
-            src/sds.c
+            "src/opc/opc.c"
+            "src/common/sds.c"
             src/obj.c
-            src/databuffer.c
+            "src/common/databuffer.c"
             third_party/cJSON/cJSON.c
             third_party/cJSON/cJSON_Utils.c
             )
