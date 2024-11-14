@@ -606,8 +606,8 @@ void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t d
     }
     host->id = id;
     host->host = strdup(src_host);
-    host->dst_id = dsts_id;
-    host->dst = dst_id;
+    host->dst_id = dst_id;
+    host->dst = dsts_id;
     if (host_rewrite) {
         host->host_rewrite = strdup(host_rewrite);
     }
