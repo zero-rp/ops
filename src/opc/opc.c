@@ -485,7 +485,7 @@ uv_thread_t* android_tid = NULL;
 static void android_thr(void* arg) {
     opc_global* global = (opc_global*)malloc(sizeof(opc_global));
     if (global == NULL)
-        return 0;
+        return;
     memset(global, 0, sizeof(*global));
     global->loop = uv_default_loop();
 
