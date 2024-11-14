@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <uv.h>
 #include <uv/tree.h>
 #include <common/sds.h>
