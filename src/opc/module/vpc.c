@@ -394,6 +394,9 @@ typedef struct _linux_tun {
     struct in6_addr ipv6_mask;                   //ipv4掩码
     opc_vpc* vpc;
 }linux_tun;
+static void write_cb(uv_write_t* req, int status) {
+    free(req->data);
+}
 static void tun_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     linux_tun* tun = (linux_tun*)tcp->data;
     if (nread <= 0) {
