@@ -3,7 +3,7 @@
 #include <uv/tree.h>
 #include <openssl/rand.h>
 #include <common/sds.h>
-#include <http_parser.h>
+#include <llhttp.h>
 #include <cJSON.h>
 #include "web.h"
 #include "data.h"
@@ -19,7 +19,7 @@ RB_HEAD(_ops_auth_tree, _ops_auth);
 typedef struct _web_conn {
     ops_web* web;
     uv_tcp_t tcp;                               //连接
-    struct http_parser parser;                  //解析器
+    llhttp_t parser;                            //解析器
     sds url;                                    //请求地址
     sds body;                                   //请求数据
 }web_conn;
@@ -616,7 +616,7 @@ err://未识别的地址
 }
 //HTTP应答解析回调
 //消息完毕
-static int web_on_message_complete(http_parser* p) {
+static int web_on_message_complete(llhttp_t* p) {
     web_conn* conn = (web_conn*)p->data;
     cJSON* body = NULL;
     if (conn->body) {
@@ -636,7 +636,7 @@ static int web_on_message_complete(http_parser* p) {
     return 0;
 }
 //解析到消息体
-static int web_on_body(http_parser* p, const char* buf, size_t len) {
+static int web_on_body(llhttp_t* p, const char* buf, size_t len) {
     web_conn* conn = (web_conn*)p->data;
     if (conn->body == NULL) {
         conn->body = sdsnewlen(buf, len);
@@ -647,7 +647,7 @@ static int web_on_body(http_parser* p, const char* buf, size_t len) {
     return 0;
 }
 //解析到域名
-static int web_on_url(http_parser* p, const char* buf, size_t len) {
+static int web_on_url(llhttp_t* p, const char* buf, size_t len) {
     web_conn* conn = (web_conn*)p->data;
     if (conn->url == NULL) {
         conn->url = sdsnewlen(buf, len);
@@ -657,7 +657,30 @@ static int web_on_url(http_parser* p, const char* buf, size_t len) {
     }
     return 0;
 }
-static http_parser_settings web_parser_settings = { NULL, web_on_url, NULL, NULL, NULL, NULL, web_on_body, web_on_message_complete, NULL, NULL };
+static llhttp_settings_t web_parser_settings = { 
+    NULL,
+    web_on_url,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    web_on_body,
+    web_on_message_complete,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL };
 //连接关闭
 static void web_close_cb(uv_handle_t* handle) {
     web_conn* web = (web_conn*)handle->data;
@@ -698,7 +721,7 @@ static void web_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         }
         return;
     }
-    http_parser_execute(&conn->parser, &web_parser_settings, buf->base, nread);
+    llhttp_execute(&conn->parser, buf->base, nread);
     free(buf->base);
 }
 static void web_connection_cb(uv_stream_t* tcp, int status) {
@@ -713,7 +736,7 @@ static void web_connection_cb(uv_stream_t* tcp, int status) {
     conn->tcp.data = conn;
 
     if (uv_accept(tcp, (uv_stream_t*)&conn->tcp) == 0) {
-        http_parser_init(&conn->parser, HTTP_REQUEST);//初始化解析器
+        llhttp_init(&conn->parser, HTTP_REQUEST, &web_parser_settings);//初始化解析器
         conn->parser.data = conn;
 
         uv_read_start((uv_stream_t*)&conn->tcp, alloc_buffer, web_read_cb);

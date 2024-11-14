@@ -8,7 +8,7 @@
 #include <openssl/bio.h>
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
-#include <http_parser.h>
+#include <llhttp.h>
 #include <common/sds.h>
 #include "http.h"
 #include "ops/module/dst.h"
@@ -33,7 +33,7 @@ typedef struct _ops_http_request {
     uint32_t id;                                //请求ID
     struct _ops_http_stream* stream;            //关联的流
 
-    uint32_t method;                            //请求方式
+    llhttp_method_t method;                     //请求方式
     sds host;                                   //主机
     sds url;                                    //请求地址
     sds body;                                   //请求数据
@@ -50,7 +50,7 @@ typedef struct _ops_http_stream {
     struct _ops_http_conn* conn;                //流对应的连接
     union {
         struct {
-            http_parser parser;                 //http解析器
+            llhttp_t parser;                 //http解析器
             uint8_t parser_step;                //解析进度
         }h1;
         struct {
@@ -186,7 +186,7 @@ static int http_send(ops_http_conn* conn, char* data, uint32_t size) {
 }
 //HTTP应答解析回调
 //消息完毕
-static int http_on_message_complete(http_parser* p) {
+static int http_on_message_complete(llhttp_t* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
 
@@ -219,7 +219,7 @@ static int http_on_message_complete(http_parser* p) {
     return 0;
 }
 //解析到消息体
-static int http_on_body(http_parser* p, const char* buf, size_t len) {
+static int http_on_body(llhttp_t* p, const char* buf, size_t len) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
     if (!req->body) {
@@ -231,7 +231,7 @@ static int http_on_body(http_parser* p, const char* buf, size_t len) {
     return 0;
 }
 //解析到头V
-static int http_on_header_value(http_parser* p, const char* buf, size_t len) {
+static int http_on_header_value(llhttp_t* p, const char* buf, size_t len) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
     if (req->cur_header->value == NULL)
@@ -240,7 +240,7 @@ static int http_on_header_value(http_parser* p, const char* buf, size_t len) {
     return 0;
 }
 //解析到头K
-static int http_on_header_field(http_parser* p, const char* buf, size_t len) {
+static int http_on_header_field(llhttp_t* p, const char* buf, size_t len) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
     if (req->header == NULL) {
@@ -268,14 +268,14 @@ static int http_on_header_field(http_parser* p, const char* buf, size_t len) {
     return 0;
 }
 //头部解析完毕
-static int http_on_headers_complete(http_parser* p) {
+static int http_on_headers_complete(llhttp_t* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
     req->cur_header = NULL;
     return 0;
 }
 //
-static int http_on_url(http_parser* p, const char* buf, size_t len) {
+static int http_on_url(llhttp_t* p, const char* buf, size_t len) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
     if (req->url == NULL) {
@@ -288,14 +288,38 @@ static int http_on_url(http_parser* p, const char* buf, size_t len) {
 }
 
 //解析开始
-static int http_on_message_begin(http_parser* p) {
+static int http_on_message_begin(llhttp_t* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
     req->method = p->method;
     return 0;
 }
-static http_parser_settings parser_settings = { http_on_message_begin, http_on_url, NULL, http_on_header_field, http_on_header_value, http_on_headers_complete, http_on_body, http_on_message_complete, NULL, NULL };
-
+//解析器设置
+static llhttp_settings_t  parser_settings = {
+    http_on_message_begin,
+    http_on_url,
+    NULL,
+    NULL,
+    NULL,
+    http_on_header_field,
+    http_on_header_value,
+    NULL,
+    NULL,
+    http_on_headers_complete,
+    http_on_body,
+    http_on_message_complete,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
 //创建流
 static ops_http_stream* http_conn_stream_create(ops_http_conn* conn) {
     if (!conn)
@@ -328,7 +352,7 @@ static ops_http_stream* http_conn_stream_create(ops_http_conn* conn) {
     }
     else {
         //准备解析器
-        http_parser_init(&s->u.h1.parser, HTTP_REQUEST);
+        llhttp_init(&s->u.h1.parser, HTTP_REQUEST, &parser_settings);
         s->u.h1.parser.data = s;
     }
     //创建请求
@@ -384,7 +408,7 @@ static int http_1_frame(ops_http_conn* conn, uint8_t* buf, size_t len) {
         if (!s)
             return 1;
     }
-    uint32_t parsed = http_parser_execute(&s->u.h1.parser, &parser_settings, buf, len);
+    uint32_t parsed = llhttp_execute(&s->u.h1.parser, buf, len);
     if (parsed != len) {
         //处理失败
 
@@ -534,7 +558,7 @@ void http_host_ctl(ops_http* http, ops_bridge* bridge, uint32_t stream_id, uint8
         //生成数据
         sds d = sdscatprintf(sdsempty(),
             "%s %s HTTP/%d.%d\r\n",
-            http_method_str(req->method), req->url, 1, 1);
+            llhttp_method_name(req->method), req->url, 1, 1);
 
         ops_http_header* header = req->header;
         while (header) {

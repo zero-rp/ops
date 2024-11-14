@@ -85,7 +85,7 @@ else ()
             third_party/cJSON/cJSON.c
             third_party/cJSON/cJSON_Utils.c
     )
-    target_link_libraries(ops uv_a http-parser sqlite ssl crypto decrepit ${LIBS} zlibstatic)
+    target_link_libraries(ops uv_a llhttp_static sqlite ssl crypto decrepit ${LIBS} zlibstatic)
 
     add_executable(opc
             src/opc/opc.c
