@@ -483,13 +483,13 @@ BOOL Install(int argc, char* argv[]) {
 uv_thread_t* android_tid = NULL;
 
 static void android_thr(void* arg) {
-    loop = uv_default_loop();
-    global = (opc_global*)malloc(sizeof(opc_global));
+    opc_global* global = (opc_global*)malloc(sizeof(opc_global));
     if (global == NULL)
-        return;
+        return 0;
     memset(global, 0, sizeof(*global));
+    global->loop = uv_default_loop();
 
-    run();
+    run(global);
 }
 
 
