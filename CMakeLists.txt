@@ -10,7 +10,7 @@ endif()
 
 set(CMAKE_EXE_LINKER_FLAGS "-static")
 
-option(USE_QUIC "quic" ON)
+option(USE_QUIC "quic" OFF)
 
 if(USE_QUIC)
     add_definitions(-DHAVE_QUIC)
@@ -41,12 +41,16 @@ endif()
 #生成
 if(ANDROID)
     add_library(opc SHARED
-            src/opc.c
-            src/sds.c
-			src/obj.c
-            src/databuffer.c
+            src/opc/opc.c
+            src/common/sds.c
+            src/common/obj.c
+            src/common/databuffer.c
             third_party/cJSON/cJSON.c
             third_party/cJSON/cJSON_Utils.c
+            src/opc/module/forward.c 
+            src/opc/module/vpc.c 
+            src/opc/module/dst.c
+            src/opc/bridge.c
             )
     target_link_libraries(opc
             uv_a
@@ -64,19 +68,29 @@ else ()
             src/common/databuffer.c
             src/ops/ops.c
             src/ops/data.c
+            src/ops/bridge.c
+            src/ops/http.c
+            src/ops/web.c
+            src/ops/module/forward.c
+            src/ops/module/dst.c
+            src/ops/module/vpc.c
             third_party/cJSON/cJSON.c
             third_party/cJSON/cJSON_Utils.c
-            )
+    )
     target_link_libraries(ops uv_a http-parser sqlite ssl crypto decrepit ${LIBS} zlibstatic)
 
     add_executable(opc
-            "src/opc/opc.c"
-            "src/common/sds.c"
-            src/obj.c
-            "src/common/databuffer.c"
+            src/opc/opc.c
+            src/common/sds.c
+            src/common/obj.c
+            src/common/databuffer.c
             third_party/cJSON/cJSON.c
             third_party/cJSON/cJSON_Utils.c
-            )
+            src/opc/module/forward.c 
+            src/opc/module/vpc.c 
+            src/opc/module/dst.c
+            src/opc/bridge.c
+    )
     target_link_libraries(opc uv_a ssl crypto decrepit ${LIBS} zlibstatic)
 endif ()
 

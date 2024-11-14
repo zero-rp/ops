@@ -5,37 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cJSON.h>
+#include "bridge.h"
 
 
-typedef void (*data_key_add_cb) (void*, uint16_t id, const char* key);
-typedef void (*data_key_del_cb) (void*, const char* key);
-typedef void (*data_key_new_cb) (void*, uint16_t id, const char* key);
-typedef void (*data_forward_add_cb)(void*, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* bind, const char* dst, uint16_t dst_port);
-typedef void (*data_forward_update_cb)(void*, uint32_t id, uint16_t src_id, uint16_t dst_id, uint8_t type, uint16_t src_port, const char* bind, const char* dst, uint16_t dst_port);
-typedef void (*data_forward_del_cb)(void*, uint32_t id);
-typedef void (*data_host_add_cb)(void*, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite);
-typedef void (*data_host_del_cb)(void*, const char* host);
-typedef void (*data_vpc_add_cb)(void*, uint16_t id, const char* ipv4, const char* ipv6);
-typedef void (*data_vpc_del_cb)(void*, uint16_t id);
-typedef void (*data_member_add_cb)(void*, uint32_t id, uint16_t bid, uint16_t vid, const char* ipv4, const char* ipv6);
-typedef void (*data_member_del_cb)(void*, uint32_t id);
-
-struct data_settings {
-    data_key_add_cb on_key_add;
-    data_key_del_cb on_key_del;
-    data_key_new_cb on_key_new;
-    data_forward_add_cb on_forward_add;
-    data_forward_update_cb on_forward_update;
-    data_forward_del_cb on_forward_del;
-    data_host_add_cb on_host_add;
-    data_host_del_cb on_host_del;
-    data_vpc_add_cb on_vpc_add;
-    data_vpc_del_cb on_vpc_del;
-    data_member_add_cb on_member_add;
-    data_member_del_cb on_member_del;
-};
-
-int data_init(const char* file, void* userdata, struct data_settings* settings);
+int data_init(const char* file, ops_global* g, ops_bridge_manager* mgr);
 
 cJSON* data_bridge_get();
 int data_bridge_add(const char* key, const char* info);

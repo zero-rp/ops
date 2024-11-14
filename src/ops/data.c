@@ -1,41 +1,70 @@
 ﻿#include <stdio.h>
-
 #include "data.h"
 #include <sqlite3.h>
+#include "bridge.h"
+#include "http.h"
+#include "module/forward.h"
+#include "module/vpc.h"
 
 static sqlite3* db = NULL;
-static struct data_settings* settings = NULL;
-static void* userdata = NULL;
+ops_bridge_manager* manager = NULL;
+ops_global* global = NULL;
 
 static int _key_callback(void* NotUsed, int argc, char** argv, char** azColName) {
-    settings->on_key_add(userdata, atoi(argv[0]), argv[1]);
+    ops_mgr_ctrl ctrl;
+    ctrl.type = ops_mgr_ctrl_key_add;
+    ctrl.add.id = atoi(argv[0]);
+    ctrl.add.k = argv[1];
+    bridge_mgr_ctrl(manager, &ctrl);
     return 0;
 }
 static int _forward_callback(void* NotUsed, int argc, char** argv, char** azColName) {
-    settings->on_forward_add(userdata, atoi(argv[0]), atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), argv[5], argv[6], atoi(argv[7]));
+    ops_forward_ctrl ctrl;
+    ctrl.type = ops_forward_ctrl_add;
+    ctrl.add.id = atoi(argv[0]);
+    ctrl.add.src_id = atoi(argv[1]);
+    ctrl.add.dst_id = atoi(argv[2]);
+    ctrl.add.type = atoi(argv[3]);
+    ctrl.add.src_port = atoi(argv[4]);
+    ctrl.add.bind = argv[5];
+    ctrl.add.dst = argv[6];
+    ctrl.add.dst_port = atoi(argv[7]);
+    bridge_mod_ctrl(manager, MODULE_FORWARD, &ctrl);
     return 0;
 }
 static int _host_callback(void* NotUsed, int argc, char** argv, char** azColName) {
-    settings->on_host_add(userdata, atoi(argv[0]), argv[1], atoi(argv[2]), atoi(argv[3]), argv[4], argv[5], atoi(argv[6]), argv[7]);
+    http_host_add(ops_get_http(global), atoi(argv[0]), argv[1], atoi(argv[2]), atoi(argv[3]), argv[4], argv[5], atoi(argv[6]), argv[7]);
     return 0;
 }
 static int _vpc_callback(void* NotUsed, int argc, char** argv, char** azColName) {
-    settings->on_vpc_add(userdata, atoi(argv[0]), argv[1], argv[2]);
+    ops_vpc_ctrl ctrl;
+    ctrl.type = ops_vpc_ctrl_vpc_add;
+    ctrl.member_add.id = atoi(argv[0]);
+    ctrl.member_add.ipv4 = argv[1];
+    ctrl.member_add.ipv6 = argv[2];
+    bridge_mod_ctrl(manager, MODULE_VPC, &ctrl);
     return 0;
 }
 static int _member_callback(void* NotUsed, int argc, char** argv, char** azColName) {
-    settings->on_member_add(userdata, atoi(argv[0]), atoi(argv[1]), atoi(argv[2]), argv[3], argv[4]);
+    ops_vpc_ctrl ctrl;
+    ctrl.type = ops_vpc_ctrl_member_add;
+    ctrl.member_add.id = atoi(argv[0]);
+    ctrl.member_add.bid = atoi(argv[1]);
+    ctrl.member_add.vid = atoi(argv[2]);
+    ctrl.member_add.ipv4 = argv[3];
+    ctrl.member_add.ipv6 = argv[4];
+    bridge_mod_ctrl(manager, MODULE_VPC, &ctrl);
     return 0;
 }
 //初始化
-int data_init(const char* file, void* ud, struct data_settings* set) {
+int data_init(const char* file, ops_global* g, ops_bridge_manager* mgr) {
     sqlite3_initialize();
     int ret = sqlite3_open_v2(file, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
     if (ret != SQLITE_OK) {
         return -1;
     }
-    userdata = ud;
-    settings = set;
+    manager = mgr;
+    global = g;
     //初始化
     char* zErrMsg = 0;
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS bridge (id INTEGER PRIMARY KEY AUTOINCREMENT, key VARCHAR(64) NOT NULL, info TEXT); ", NULL, 0, &zErrMsg);
@@ -84,7 +113,11 @@ int data_bridge_add(const char* key, const char* info) {
         uint32_t id = sqlite3_last_insert_rowid(db);
         if (id > 0) {
             //触发回调
-            settings->on_key_add(userdata, id, key);
+            ops_mgr_ctrl ctrl;
+            ctrl.type = ops_mgr_ctrl_key_add;
+            ctrl.add.id = id;
+            ctrl.add.k = key;
+            bridge_mgr_ctrl(manager, &ctrl);
             return 0;
         }
     }
@@ -119,7 +152,10 @@ int data_bridge_del(uint16_t id) {
     if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
         if (sqlite3_changes(db) == 1) {
             //触发回调
-            settings->on_key_del(userdata, key);
+            ops_mgr_ctrl ctrl;
+            ctrl.type = ops_mgr_ctrl_key_del;
+            ctrl.del.k = key;
+            bridge_mgr_ctrl(manager, &ctrl);
             return 0;
         }
     }
@@ -133,7 +169,11 @@ int data_bridge_new_key(uint16_t id, const char* key) {
     if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
         if (sqlite3_changes(db) == 1) {
             //触发回调
-            settings->on_key_new(userdata, id, key);
+            ops_mgr_ctrl ctrl;
+            ctrl.type = ops_mgr_ctrl_key_new;
+            ctrl.new.id = id;
+            ctrl.new.k = key;
+            bridge_mgr_ctrl(manager, &ctrl);
             return 0;
         }
     }
@@ -156,7 +196,17 @@ int data_forward_add(int src_id, int dst_id, int type, int src_port, const char*
         uint32_t id = sqlite3_last_insert_rowid(db);
         if (id > 0) {
             //触发回调
-            settings->on_forward_add(userdata, id, src_id, dst_id, type, src_port, bind, dst, dst_port);
+            ops_forward_ctrl ctrl;
+            ctrl.type = ops_forward_ctrl_add;
+            ctrl.add.id = id;
+            ctrl.add.src_id = src_id;
+            ctrl.add.dst_id = dst_id;
+            ctrl.add.type = type;
+            ctrl.add.src_port = src_port;
+            ctrl.add.bind = bind;
+            ctrl.add.dst = dst;
+            ctrl.add.dst_port = dst_port;
+            bridge_mod_ctrl(manager, MODULE_FORWARD, &ctrl);
             return 0;
         }
     }
@@ -164,7 +214,7 @@ int data_forward_add(int src_id, int dst_id, int type, int src_port, const char*
 }
 int data_forward_update(int id, int src_id, int dst_id, int type, int src_port, const char* bind, const char* dst, uint16_t dst_port, const char* info) {
     char sql[1024] = { 0 };
-    snprintf(sql, sizeof(sql), 
+    snprintf(sql, sizeof(sql),
         "UPDATE forward SET `src_id` = %d, `dst_id` = %d, `type` = %d, `src_port` = %d, `bind` = \"%s\", `dst` = \"%s\", `dst_port` = %d, `info` = \"%s\" WHERE id = %d",
         src_id, dst_id, type, src_port, bind, dst, dst_port, info ? info : "", id);
     //更新
@@ -172,7 +222,17 @@ int data_forward_update(int id, int src_id, int dst_id, int type, int src_port, 
     if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
         if (sqlite3_changes(db) == 1) {
             //触发回调
-            settings->on_forward_update(userdata, id, src_id, dst_id, type, src_port, bind, dst, dst_port);
+            ops_forward_ctrl ctrl;
+            ctrl.type = ops_forward_ctrl_update;
+            ctrl.update.id = id;
+            ctrl.update.src_id = src_id;
+            ctrl.update.dst_id = dst_id;
+            ctrl.update.type = type;
+            ctrl.update.src_port = src_port;
+            ctrl.update.bind = bind;
+            ctrl.update.dst = dst;
+            ctrl.update.dst_port = dst_port;
+            bridge_mod_ctrl(manager, MODULE_FORWARD, &ctrl);
             return 0;
         }
     }
@@ -185,7 +245,10 @@ int data_forward_del(uint32_t id) {
     if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
         if (sqlite3_changes(db) == 1) {
             //触发回调
-            settings->on_forward_del(userdata, id);
+            ops_forward_ctrl ctrl;
+            ctrl.type = ops_forward_ctrl_del;
+            ctrl.del.id = id;
+            bridge_mod_ctrl(manager, MODULE_FORWARD, &ctrl);
             return 0;
         }
     }
@@ -208,7 +271,7 @@ int data_host_add(const char* host, int dst_id, int type, const char* bind, cons
         uint32_t id = sqlite3_last_insert_rowid(db);
         if (id > 0) {
             //触发回调
-            settings->on_host_add(userdata, id, host, dst_id, type, bind, dst, dst_port, host_rewrite);
+            http_host_add(ops_get_http(global), id, host, dst_id, type, bind, dst, dst_port, host_rewrite);
             return 0;
         }
     }
@@ -243,7 +306,7 @@ int data_host_del(uint32_t id) {
     if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
         if (sqlite3_changes(db) == 1) {
             //触发回调
-            settings->on_host_del(userdata, host);
+            http_host_del(ops_get_http(global), host);
             return 0;
         }
     }
@@ -266,7 +329,12 @@ int data_vpc_add(const char* ipv4, const char* ipv6, const char* info) {
         uint32_t id = sqlite3_last_insert_rowid(db);
         if (id > 0) {
             //触发回调
-            settings->on_vpc_add(userdata, id, ipv4, ipv6);
+            ops_vpc_ctrl ctrl;
+            ctrl.type = ops_vpc_ctrl_vpc_add;
+            ctrl.vpc_add.id = id;
+            ctrl.vpc_add.ipv4 = ipv4;
+            ctrl.vpc_add.ipv6 = ipv6;
+            bridge_mod_ctrl(manager, MODULE_VPC, &ctrl);
             return 0;
         }
     }
@@ -280,7 +348,10 @@ int data_vpc_del(uint16_t id) {
     if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
         if (sqlite3_changes(db) == 1) {
             //触发回调
-            settings->on_vpc_del(userdata, id);
+            ops_vpc_ctrl ctrl;
+            ctrl.type = ops_vpc_ctrl_vpc_del;
+            ctrl.vpc_del.id = id;
+            bridge_mod_ctrl(manager, MODULE_VPC, &ctrl);
             return 0;
         }
     }
@@ -303,7 +374,14 @@ int data_member_add(uint16_t bid, uint16_t vid, const char* ipv4, const char* ip
         uint32_t id = sqlite3_last_insert_rowid(db);
         if (id > 0) {
             //触发回调
-            settings->on_member_add(userdata, id, bid, vid, ipv4, ipv6);
+            ops_vpc_ctrl ctrl;
+            ctrl.type = ops_vpc_ctrl_member_add;
+            ctrl.member_add.id = id;
+            ctrl.member_add.bid = bid;
+            ctrl.member_add.vid = vid;
+            ctrl.member_add.ipv4 = ipv4;
+            ctrl.member_add.ipv6 = ipv6;
+            bridge_mod_ctrl(manager, MODULE_VPC, &ctrl);
             return 0;
         }
     }
@@ -317,7 +395,10 @@ int data_member_del(uint32_t id) {
     if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
         if (sqlite3_changes(db) == 1) {
             //触发回调
-            settings->on_member_del(userdata, id);
+            ops_vpc_ctrl ctrl;
+            ctrl.type = ops_vpc_ctrl_member_del;
+            ctrl.member_del.id = id;
+            bridge_mod_ctrl(manager, MODULE_VPC, &ctrl);
             return 0;
         }
     }
