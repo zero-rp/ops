@@ -326,7 +326,7 @@ static int run(opc_global* global) {
 }
 //win系统服务
 #if defined(_WIN32) || defined(_WIN64)
-static int run();
+opc_global* _global = NULL;
 int install_service = 0;
 int run_service = 0;
 char* szServiceName = NULL;
@@ -372,7 +372,7 @@ void WINAPI ServiceMain() {
     status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(hServiceStatus, &status);
 
-    //run();
+    run(_global);
 
     status.dwCurrentState = SERVICE_STOPPED;
     SetServiceStatus(hServiceStatus, &status);
@@ -626,6 +626,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     if (run_service) {
+        _global = global;
         //初始化
         hServiceStatus = NULL;
         status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;

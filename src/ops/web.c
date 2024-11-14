@@ -1,5 +1,7 @@
+#include <time.h>
 #include <uv.h>
 #include <uv/tree.h>
+#include <openssl/rand.h>
 #include <common/sds.h>
 #include <http_parser.h>
 #include <cJSON.h>
