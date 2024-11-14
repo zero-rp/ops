@@ -30,9 +30,9 @@ typedef struct _ops_packet {
             uint8_t type;                   //包类型
             uint32_t stream_id;             //流ID
             uint32_t service_id;            //服务编号
-            uint8_t data[];                 //数据
+            uint8_t data[0];                //数据
         }mod;
-        uint8_t data[];                         //数据
+        uint8_t data[0];                    //数据
     };
 }ops_packet;
 
