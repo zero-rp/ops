@@ -394,6 +394,10 @@ typedef struct _linux_tun {
     struct in6_addr ipv6_mask;                   //ipv4掩码
     opc_vpc* vpc;
 }linux_tun;
+static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
+    buf->len = suggested_size;
+    buf->base = malloc(suggested_size);
+}
 static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
@@ -518,7 +522,7 @@ static linux_tun* new_tun(opc_vpc* vpc) {
 done:
     close(sockfd);
 
-    uv_tcp_init(loop, &tun->tcp);
+    uv_tcp_init(bridge_loop(vpc->mod->bridge), &tun->tcp);
     tun->tcp.data = tun;
     uv_tcp_open(&tun->tcp, tun->fd);
     uv_read_start((uv_stream_t*)&tun->tcp, alloc_buffer, tun_read_cb);
