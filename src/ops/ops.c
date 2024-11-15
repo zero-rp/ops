@@ -2,7 +2,6 @@
 #include <cJSON.h>
 #include <common/sds.h>
 #include "data.h"
-#include "heap.h"
 #include "ops.h"
 #include "bridge.h"
 #include "http.h"
@@ -30,28 +29,7 @@ typedef struct _ops_global {
     ops_bridge_manager* bridge_manager;
     ops_http* http;
     ops_web* web;
-
-    struct heap ping_heap;
-    uv_timer_t ping_timer;
 }ops_global;
-
-static int ping_less_than(const struct heap_node* ha, const struct heap_node* hb) {
-    /*
-    const ops_bridge* a;
-    const ops_bridge* b;
-#define container_of(ptr, type, member) \
-  ((type *) ((char *) (ptr) - offsetof(type, member)))
-    a = container_of(ha, ops_bridge, heap);
-    b = container_of(hb, ops_bridge, heap);
-
-    if (a->last_ping < b->last_ping)
-        return 1;
-    if (b->last_ping < a->last_ping)
-        return 0;
-
-    return a->id < b->id;
-    */
-}
 
 //获取配置
 const ops_config* opc_get_config(ops_global* global) {
@@ -344,16 +322,6 @@ static void bridge_init_quic(ops_global* global) {
 
 //全局初始化
 static int init_global(ops_global* global) {
-    struct sockaddr_in6 _addr;
-
-    //
-    /*
-    heap_init(&global->ping_heap);
-    uv_timer_init(loop, &global->ping_timer);
-    global->ping_timer.data = global;
-    uv_timer_start(&global->ping_timer, bridge_ping_timer_cb, 1000 * 5, 1000 * 5);
-    */
-
 #if HAVE_QUIC
     bridge_init_quic(global);
 #endif

@@ -36,12 +36,9 @@ typedef struct _opc_bridge {
     uint32_t keep_ping;                                 //延迟
     struct {
         uint8_t quit : 1;                               //当前连接已退出
+        uint8_t connect : 1;                            //已连接
     } b;
     opc_module* modules[256];             //模块
-    //----------------------------
-    //struct _opc_dst_tunnel_tree dst_tunnel;     //
-    //struct _opc_dst_tree dst;
-
 }opc_bridge;
 
 static void quic_process_conns(opc_global* global);
@@ -78,6 +75,7 @@ static void bridge_auth_send(opc_bridge* bridge) {
 }
 //成功连接上服务器
 static void bridge_connect_ok(opc_bridge* bridge) {
+    bridge->b.connect = 1;
     //启动心跳
     uv_timer_init(bridge->loop, &bridge->keep_timer);
     bridge->keep_timer.data = obj_ref(bridge);//ref_4
@@ -108,30 +106,40 @@ static void bridge_on_close(opc_bridge* bridge) {
     opc_on_close(bridge->global);
 }
 //ping检测定时器
+static void bridge_close_cb(uv_handle_t* handle);
 static void bridge_keep_timer_cb(uv_timer_t* handle) {
     opc_bridge* bridge = (opc_bridge*)handle->data;
     //检查是否超时
-    /*
-    if (bridge->keep_last < (loop->time - 1000 * 30)) {
+    if (bridge->keep_last < (bridge->loop->time - 1000 * 30)) {
         //暂停掉定时器
         uv_timer_stop(handle);
         //超时直接关闭
-        if (bridge->global->config.use_quic) {
-            if (bridge->conn) {
-                lsquic_conn_close(bridge->conn);
-            }
-        }
-        else {
-            uv_close(&bridge->tcp, bridge_close_cb);
-        }
+        //if (bridge->global->config.use_quic) {
+        //    if (bridge->conn) {
+        //        lsquic_conn_close(bridge->conn);
+        //    }
+        //}
+        //else {
+        uv_close(&bridge->tcp, bridge_close_cb);
+        //}
         return;
     }
     //
-    uint8_t buf[12];
-    *(uint64_t*)&buf[0] = loop->time;
-    *(uint32_t*)&buf[8] = htonl(bridge->keep_ping);
-    bridge_send(bridge, ops_packet_ping, 0, 0, buf, sizeof(buf));
-        */
+    uint8_t tmp[12];
+    *(uint64_t*)&tmp[0] = bridge->loop->time;
+    *(uint32_t*)&tmp[8] = htonl(bridge->keep_ping);
+    //发送ping
+    uv_buf_t buf[] = { 0 };
+    buf->len = 4 + sizeof(ops_packet) + sizeof(tmp);
+    buf->base = malloc(buf->len);
+    if (buf->base == NULL) {
+        return;
+    }
+    *(uint32_t*)(buf->base) = htonl(buf->len - 4);
+    ops_packet* pack = (ops_packet*)(buf->base + 4);
+    pack->type = ops_packet_ping;
+    memcpy(pack->data, tmp, sizeof(tmp));
+    bridge_send_raw(bridge, &buf);
 }
 //重鉴权定时器
 static void bridge_auth_timer_cb(uv_timer_t* handle) {
@@ -190,6 +198,10 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
 }
 //向服务器发送数据
 void bridge_send_raw(opc_bridge* bridge, uv_buf_t* buf) {
+    if (bridge->b.quit || bridge->b.connect == 0) {
+        free(buf->base);
+        return;
+    }
 #if HAVE_QUIC
     if (bridge->stream) {
         send_buffer* buffer = malloc(sizeof(send_buffer));
@@ -308,6 +320,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
     opc_global* global = bridge->global;
     if (nread <= 0) {
         printf("Server Disconnected\r\n");
+        bridge->b.connect = 0;
         if (UV_EOF != nread) {
             //连接异常断开
             uv_close(tcp, bridge_close_cb);
@@ -402,7 +415,12 @@ void bridge_delete(opc_bridge* bridge) {
 }
 //引用
 opc_bridge* bridge_ref(opc_bridge* bridge) {
-    return obj_ref(bridge);
+    obj_ref(bridge);
+    return bridge;
+}
+//解引用
+void bridge_unref(opc_bridge* bridge) {
+    obj_unref(bridge);
 }
 //
 uv_loop_t* bridge_loop(opc_bridge* bridge) {

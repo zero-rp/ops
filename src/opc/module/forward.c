@@ -471,13 +471,17 @@ static void forward_data(module_forward* mod, uint8_t type, uint32_t stream_id, 
         break;
     }
 }
-
+//回收对象
+static void module_forward_obj_free(module_forward* mod) {
+    bridge_unref(mod->bridge);
+}
 //创建转发模块
 module_forward* forward_module_new(opc_bridge* bridge) {
     obj_new(mod, module_forward);
     if (!mod) {
         return NULL;
     }
+    mod->ref.del = module_forward_obj_free;
     mod->bridge = bridge_ref(bridge);
     mod->mod.on_data = (opc_module_on_data)forward_data;
     mod->tunnel_id = 1;
@@ -501,4 +505,5 @@ void forward_module_delete(module_forward* mod) {
         uv_close((uv_handle_t*)&fsc->tcp, forward_close_cb);
         fsc = NULL;
     }
+    obj_unref(mod);
 }

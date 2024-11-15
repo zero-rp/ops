@@ -31,12 +31,14 @@ typedef struct _ops_bridge {
     lsquic_conn_t* conn;
     int type;
 #endif
-    send_buffer* send;                                  //发送缓冲
-    send_buffer* tail;                                  //发送缓冲尾
+    send_buffer* send;                  //发送缓冲
+    send_buffer* tail;                  //发送缓冲尾
     struct databuffer m_buffer;         //接收缓冲
     uint32_t ping;                      //延迟
     uint64_t last_ping;                 //上次
-    //struct heap_node heap;
+    struct {
+        uint8_t quit : 1;                               //当前连接已退出
+    } b;
     union {
         struct sockaddr_in v4;
         struct sockaddr_in6 v6;
@@ -49,14 +51,16 @@ typedef struct _ops_bridge {
 RB_HEAD(_ops_bridge_tree, _ops_bridge);
 //客户端管理器
 typedef struct _ops_bridge_manager {
-    struct _ops_global* global;         //全局
+    struct _ops_global* global;             //全局
+    uv_loop_t* loop;                        //事件循环
     struct _ops_key_tree key;               //授权数据
     struct _ops_bridge_tree bridge;         //客户端
-    uint32_t bridge_count;              //客户端数量
-    uint32_t bridge_online;             //在线客户端数量
-    uv_tcp_t listen;                    //监听
+    uint32_t bridge_count;                  //客户端数量
+    uint32_t bridge_online;                 //在线客户端数量
+    uv_tcp_t listen;                        //监听
     struct messagepool m_mp;                //接收缓冲
-    ops_module* modules[256];             //模块
+    uv_timer_t ping_timer;                  //ping定时器
+    ops_module* modules[256];               //模块
 }ops_bridge_manager;
 
 static int _ops_bridge_compare(ops_bridge* w1, ops_bridge* w2) {
@@ -160,6 +164,22 @@ void bridge_send_mod(ops_bridge* bridge, uint8_t mod, uint8_t type, uint32_t ser
     }
     bridge_send_raw(bridge, &buf);
 }
+//向客户发送数据
+static void bridge_send_ping(ops_bridge* bridge, const char* data, uint32_t len) {
+    uv_buf_t buf[] = { 0 };
+    buf->len = 4 + sizeof(ops_packet) + len;
+    buf->base = malloc(buf->len);
+    if (buf->base == NULL) {
+        return;
+    }
+    *(uint32_t*)(buf->base) = htonl(buf->len - 4);
+    ops_packet* pack = (ops_packet*)(buf->base + 4);
+    pack->type = ops_packet_ping;
+    if (data && len) {
+        memcpy(pack->mod.data, data, len);
+    }
+    bridge_send_raw(bridge, &buf);
+}
 //客户端鉴权成功
 static void bridge_auth_ok(ops_bridge* bridge) {
     //加载模块数据
@@ -207,8 +227,7 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
                 bridge->id = key->id;
                 RB_INSERT(_ops_bridge_tree, &bridge->manager->bridge, bridge);
                 //记录ping
-                //bridge->last_ping = loop->time;
-                //heap_insert(&bridge->global->ping_heap, &bridge->heap, ping_less_than);
+                bridge->last_ping = uv_now(bridge->manager->loop);
                 bridge_auth_ok(bridge);
             }
         }
@@ -217,10 +236,8 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
     case ops_packet_ping: {
         uint64_t t = *(uint64_t*)&packet->data[0];
         bridge->ping = ntohl(*(uint32_t*)&packet->data[8]);
-        //bridge_send(bridge, ops_packet_ping, 0, 0, packet->data, 8);
-        // heap_remove(&bridge->global->ping_heap, &bridge->heap, ping_less_than);
-        // bridge->last_ping = loop->time;
-        // heap_insert(&bridge->global->ping_heap, &bridge->heap, ping_less_than);
+        bridge_send_ping(bridge, packet->data, 8);
+        bridge->last_ping = uv_now(bridge->manager->loop);
         break;
     }
     case ops_packet_mod: {
@@ -336,35 +353,27 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
         uv_read_start((uv_stream_t*)&bridge->tcp, alloc_buffer, bridge_read_cb);
     }
 }
-/*
 //ping检查定时器
 static void bridge_ping_timer_cb(uv_timer_t* handle) {
-    ops_global* global = (ops_global*)handle->data;
-
-    struct heap_node* heap_node;
+    ops_bridge_manager* manager = (ops_bridge_manager*)handle->data;
     ops_bridge* bridge;
-    for (;;) {
-        heap_node = heap_min(&global->ping_heap);
-        if (heap_node == NULL)
-            break;
-
-        bridge = container_of(heap_node, ops_bridge, heap);
-        if (bridge->last_ping > (loop->time - 1000 * 30))
-            break;
-        //删除这个成员
-        heap_remove(&global->ping_heap, &bridge->heap, ping_less_than);
+    RB_FOREACH(bridge, _ops_bridge_tree, &manager->bridge) {
+        if (bridge->last_ping > (uv_now(manager->loop) - 1000 * 30))
+            continue;
         //踢掉用户
-        if (bridge->type == 2) {
-            if (bridge->conn) {
-                lsquic_conn_close(bridge->conn);
-            }
-        }
-        else {
+        //if (bridge->type == 2) {
+        //    if (bridge->conn) {
+        //        lsquic_conn_close(bridge->conn);
+        //    }
+        //}
+        //else {
+        if (bridge->b.quit == 0) {
+            bridge->b.quit = 1;
             uv_close(&bridge->tcp, bridge_close_cb);
         }
+        //}
     }
 }
-*/
 
 //创建网桥管理器
 ops_bridge_manager* bridge_manager_new(ops_global* global) {
@@ -373,6 +382,7 @@ ops_bridge_manager* bridge_manager_new(ops_global* global) {
         return NULL;
     memset(manager, 0, sizeof(*manager));
     manager->global = global;
+    manager->loop = ops_get_loop(global);
     RB_INIT(&manager->bridge);
     //创建模块
     manager->modules[MODULE_FORWARD] = forward_module_new(manager);
@@ -385,8 +395,11 @@ ops_bridge_manager* bridge_manager_new(ops_global* global) {
     uv_ip6_addr("::0", opc_get_config(global)->bridge_port, &addr);
     uv_tcp_bind(&manager->listen, &addr, 0);
     uv_listen((uv_stream_t*)&manager->listen, 128, bridge_connection_cb);
-
-
+    //
+    uv_timer_init(ops_get_loop(global), &manager->ping_timer);
+    manager->ping_timer.data = manager;
+    uv_timer_start(&manager->ping_timer, bridge_ping_timer_cb, 1000 * 5, 1000 * 5);
+    printf("Bridge Start\r\n");
     return manager;
 }
 //释放网桥管理器

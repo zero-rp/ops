@@ -24,6 +24,8 @@ opc_bridge* bridge_new(opc_global* global);
 void bridge_delete(opc_bridge* bridge);
 //引用
 opc_bridge* bridge_ref(opc_bridge* bridge);
+//解引用
+void bridge_unref(opc_bridge * bridge);
 //
 uv_loop_t* bridge_loop(opc_bridge* bridge);
 

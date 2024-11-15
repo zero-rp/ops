@@ -681,12 +681,17 @@ static void vpc_data(module_vpc* mod, uint8_t type, uint32_t stream_id, uint32_t
         break;
     }
 }
+//回收对象
+static void module_vpc_obj_free(module_vpc* mod) {
+    bridge_unref(mod->bridge);
+}
 //创建目标模块
 module_vpc* vpc_module_new(opc_bridge* bridge) {
     obj_new(mod, module_vpc);
     if (!mod) {
         return NULL;
     }
+    mod->ref.del = module_vpc_obj_free;
     mod->bridge = bridge_ref(bridge);
     mod->mod.on_data = (opc_module_on_data)vpc_data;
     RB_INIT(&mod->vpc);
@@ -700,4 +705,5 @@ void vpc_module_delete(module_vpc* mod) {
         vpc_del(c);
         cc = NULL;
     }
+    obj_unref(mod);
 }

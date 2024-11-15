@@ -375,12 +375,17 @@ static void dst_data(module_dst* mod, uint8_t type, uint32_t stream_id, uint32_t
     }
 }
 
+//回收对象
+static void module_dst_obj_free(module_dst* mod) {
+    bridge_unref(mod->bridge);
+}
 //创建目标模块
 module_dst* dst_module_new(opc_bridge* bridge) {
     obj_new(mod, module_dst);
     if (!mod) {
         return NULL;
     }
+    mod->ref.del = module_dst_obj_free;
     mod->bridge = bridge_ref(bridge);
     mod->mod.on_data = (opc_module_on_data)dst_data;
     RB_INIT(&mod->dst_tunnel);
@@ -404,5 +409,5 @@ void dst_module_delete(module_dst* mod) {
         dst_del(mod, fdc);
         fdc = NULL;
     }
-
+    obj_unref(mod);
 }
