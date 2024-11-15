@@ -92,6 +92,10 @@ typedef struct _ops_host {
     uint32_t id;                        //服务ID
     uint16_t dst_id;                    //目标客户ID
     uint32_t dst;                       //目标ID
+    struct {
+        uint8_t x_real_ip : 1;          //转发真实IP
+        uint8_t x_forwarded_for : 1;    //转发真实IP
+    }b;
 }ops_host;
 RB_HEAD(_ops_host_tree, _ops_host);
 typedef struct _ops_http {
@@ -136,7 +140,7 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 static void write_cb(uv_write_t* req, int status) {
     free(req->data);
 }
-
+//清理请求
 static void http_request_clean(ops_http_request* req) {
     if (req->body) {
         sdsfree(req->body);
@@ -166,6 +170,17 @@ static void http_request_clean(ops_http_request* req) {
     req->header = NULL;
 
 }
+//查找请求头
+static ops_http_header* http_request_find_header(ops_http_request* req, const char* key) {
+    ops_http_header* header = req->header;
+    while (header) {
+        if (strcasecmp(header->key, key) == 0) {
+            return header;
+        }
+        header = header->next;
+    }
+    return NULL;
+}
 //
 static int http_send(ops_http_conn* conn, char* data, uint32_t size) {
     //转发数据到远程
@@ -184,6 +199,20 @@ static int http_send(ops_http_conn* conn, char* data, uint32_t size) {
     req->data = buf->base;
     return uv_write(req, &conn->tcp, &buf, 1, write_cb);
 }
+//发送html应答
+static void http_respose_html(ops_http_conn* conn, const char* html, int len) {
+    //生成应答头
+    sds data = sdscatprintf(sdsempty(),
+        "HTTP/1.1 %d %s\r\n"
+        "Content-Length: %u\r\n"
+        "Content-Type: text/html;charset=utf-8;\r\n"
+        "\r\n",
+        200, "OK", len);
+    //数据
+    data = sdscatlen(data, html, len);
+    http_send(conn, data, sdslen(data));
+    sdsfree(data);
+}
 //HTTP应答解析回调
 //消息完毕
 static int http_on_message_complete(llhttp_t* p) {
@@ -191,6 +220,8 @@ static int http_on_message_complete(llhttp_t* p) {
     ops_http_request* req = s->request;
 
     if (!req->host) {
+        http_request_clean(req);
+        http_respose_html(s->conn, "Host Not Found", 13);
         return 0;
     }
 
@@ -203,11 +234,15 @@ static int http_on_message_complete(llhttp_t* p) {
     };
     ops_host* host = RB_FIND(_ops_host_tree, &s->conn->http->host, &the);
     if (host == NULL) {
+        http_request_clean(req);
+        http_respose_html(s->conn, "Client Not Found", 13);
         return 0;
     }
     //查找目标客户端是否在线
     ops_bridge* b = bridge_find(s->conn->http->manager, host->dst_id);
     if (b == NULL) {
+        http_request_clean(req);
+        http_respose_html(s->conn, "Client Offline", 13);
         return 0;
     }
     //给请求关联对应的服务
@@ -254,8 +289,6 @@ static int http_on_header_field(llhttp_t* p, const char* buf, size_t len) {
         if (strcasecmp(req->cur_header->key, "host") == 0) {
             req->host = sdsdup(req->cur_header->value);
         }
-
-
         //分配新的kv
         req->cur_header->next = malloc(sizeof(ops_http_header));
         memset(req->cur_header->next, 0, sizeof(ops_http_header));
@@ -286,7 +319,6 @@ static int http_on_url(llhttp_t* p, const char* buf, size_t len) {
     }
     return 0;
 }
-
 //解析开始
 static int http_on_message_begin(llhttp_t* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
@@ -396,7 +428,6 @@ void http_conn_stream_close(ops_http_conn* conn, int id) {
     RB_REMOVE(_ops_http_stream_tree, &conn->stream, s);
     free(s);
 }
-
 //处理http1帧数据
 static int http_1_frame(ops_http_conn* conn, uint8_t* buf, size_t len) {
     //查找流
@@ -425,7 +456,6 @@ static int http_conn_data(ops_http_conn* conn, uint8_t* buf, size_t len) {
     }
     return 0;
 }
-
 //连接关闭
 static void http_close_cb(uv_handle_t* handle) {
     ops_http_conn* conn = (ops_http_conn*)handle->data;
@@ -485,7 +515,6 @@ static void http_connection_cb(uv_stream_t* tcp, int status) {
         uv_read_start((uv_stream_t*)&conn->tcp, alloc_buffer, http_read_cb);
     }
 }
-//----------------------------------------------------------------------------------------------------------------------https
 //https连接进入
 static void https_connection_cb(uv_stream_t* tcp, int status) {
     ops_http* http = (ops_http*)tcp->data;
@@ -508,7 +537,6 @@ static void https_connection_cb(uv_stream_t* tcp, int status) {
         uv_read_start((uv_stream_t*)&conn->tcp, alloc_buffer, http_read_cb);
     }
 }
-
 //----------------------------------------------------------------------------------------------------------------------
 //创建主机模块
 ops_http* http_new(ops_global* global, ops_bridge_manager* manager) {
@@ -538,7 +566,7 @@ ops_http* http_new(ops_global* global, ops_bridge_manager* manager) {
 
     return http;
 }
-//
+//控制数据
 void http_host_ctl(ops_http* http, ops_bridge* bridge, uint32_t stream_id, uint8_t* data, int size) {
     ops_http_request the = {
         .id = stream_id
@@ -559,7 +587,53 @@ void http_host_ctl(ops_http* http, ops_bridge* bridge, uint32_t stream_id, uint8
         sds d = sdscatprintf(sdsempty(),
             "%s %s HTTP/%d.%d\r\n",
             llhttp_method_name(req->method), req->url, 1, 1);
-
+        //转发真实ip
+        if (req->service->b.x_forwarded_for || req->service->b.x_real_ip) {
+            //获取对端地址
+            struct sockaddr_storage name;
+            int namelen = sizeof(name);
+            uv_tcp_getpeername(&req->stream->conn->tcp, &name, &namelen);
+            //转换成字符串
+            char addr[INET6_ADDRSTRLEN] = { 0 };
+            uv_ip_name(&name, addr, sizeof(addr));
+            if (req->service->b.x_real_ip) {
+                //查找头部,存在则替换,不存在则添加
+                ops_http_header* header = http_request_find_header(req, "x-real-ip");
+                if (header == NULL) {
+                    header = malloc(sizeof(ops_http_header));
+                    if (header) {
+                        header->key = sdsnew("x-real-ip");
+                        header->value = sdsnew(addr);
+                        header->next = req->header;
+                        req->header = header;
+                    }
+                }
+                else {
+                    sdsfree(header->value);
+                    header->value = sdsnew(addr);
+                }
+            }
+            if (req->service->b.x_forwarded_for) {
+                //查找头部,存在则追加,不存在则添加
+                ops_http_header* header = http_request_find_header(req, "x-forwarded-for");
+                if (header == NULL) {
+                    header = malloc(sizeof(ops_http_header));
+                    if (header) {
+                        header->key = sdsnew("x-forwarded-for");
+                        header->value = sdsnew(addr);
+                        header->next = req->header;
+                        req->header = header;
+                    }
+                }
+                else {
+                    sds v = sdscat(header->value, ", ");
+                    v = sdscat(v, addr);
+                    sdsfree(header->value);
+                    header->value = v;
+                }
+            }
+        }
+        //头部
         ops_http_header* header = req->header;
         while (header) {
             d = sdscatsds(d, header->key);
@@ -608,7 +682,9 @@ void http_host_data(ops_http* http, uint32_t stream_id, uint8_t* data, int size)
     http_send(req->stream->conn, data, size);
 }
 //事件
-void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite) {
+void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, 
+    const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite,
+    uint8_t x_real_ip, uint8_t x_forwarded_for) {
     ops_host* host = malloc(sizeof(*host));
     if (host == NULL)
         return;
@@ -623,7 +699,6 @@ void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t d
     ctrl.add.dst = dst;
     ctrl.add.dst_port = dst_port;
     int dsts_id = bridge_mod_ctrl(http->manager, MODULE_DST, &ctrl);
-    //ops_dsts* dsts = dst_new(global, host, ops_src_type_host, dst_id, type, bind, dst, dst_port);
     if (!dst_id) {
         free(host);
         return;
@@ -632,6 +707,8 @@ void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t d
     host->host = strdup(src_host);
     host->dst_id = dst_id;
     host->dst = dsts_id;
+    host->b.x_real_ip = x_real_ip;
+    host->b.x_forwarded_for = x_forwarded_for;
     if (host_rewrite) {
         host->host_rewrite = strdup(host_rewrite);
     }

@@ -46,10 +46,21 @@ typedef struct _ops_module {
 ops_bridge_manager* bridge_manager_new(ops_global* global);
 //获取全局对象
 ops_global* bridge_manager_global(ops_bridge_manager* manager);
+//获取客户数量
+uint32_t bridge_manager_count(ops_bridge_manager* manager);
+//获取在线数量
+uint32_t bridge_manager_online(ops_bridge_manager* manager);
+
 //查找客户端
 ops_bridge* bridge_find(ops_bridge_manager* manager, uint16_t id);
 //获取客户端ID
 uint16_t bridge_id(ops_bridge* bridge);
+//获取客户端地址
+struct sockaddr_storage* bridge_peer(ops_bridge* bridge);
+//获取本地地址
+struct sockaddr_storage* bridge_local(ops_bridge* bridge);
+//获取延迟
+uint32_t bridge_ping(ops_bridge* bridge);
 //向客户发送数据
 void bridge_send_mod(ops_bridge* bridge, uint8_t mod, uint8_t type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len);
 //管理器控制

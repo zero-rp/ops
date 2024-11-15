@@ -126,7 +126,7 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
     }
     //
     uint8_t tmp[12];
-    *(uint64_t*)&tmp[0] = bridge->loop->time;
+    *(uint64_t*)&tmp[0] = uv_now(bridge->loop);
     *(uint32_t*)&tmp[8] = htonl(bridge->keep_ping);
     //发送ping
     uv_buf_t buf[] = { 0 };
@@ -164,7 +164,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
         case CTL_AUTH_OK: {
             printf("Auth Ok!\r\n");
             //启动定时器
-            bridge->keep_last = bridge->loop->time;
+            bridge->keep_last = uv_now(bridge->loop);
             uv_timer_start(&bridge->keep_timer, bridge_keep_timer_cb, 0, 1000 * 10);
             bridge_auth_ok(bridge);
             break;
@@ -182,7 +182,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     }
     case ops_packet_ping: {
         uint64_t t = *(uint64_t*)&packet->data[0];
-        bridge->keep_last = bridge->loop->time;
+        bridge->keep_last = uv_now(bridge->loop);
         bridge->keep_ping = bridge->keep_last - t;
         break;
     }

@@ -33,7 +33,7 @@ static int _forward_callback(void* NotUsed, int argc, char** argv, char** azColN
     return 0;
 }
 static int _host_callback(void* NotUsed, int argc, char** argv, char** azColName) {
-    http_host_add(ops_get_http(global), atoi(argv[0]), argv[1], atoi(argv[2]), atoi(argv[3]), argv[4], argv[5], atoi(argv[6]), argv[7]);
+    http_host_add(ops_get_http(global), atoi(argv[0]), argv[1], atoi(argv[2]), atoi(argv[3]), argv[4], argv[5], atoi(argv[6]), argv[7], atoi(argv[9]), atoi(argv[10]));
     return 0;
 }
 static int _vpc_callback(void* NotUsed, int argc, char** argv, char** azColName) {
@@ -70,14 +70,16 @@ int data_init(const char* file, ops_global* g, ops_bridge_manager* mgr) {
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS bridge (id INTEGER PRIMARY KEY AUTOINCREMENT, key VARCHAR(64) NOT NULL, info TEXT); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX key ON bridge (key);", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS forward (id INTEGER PRIMARY KEY AUTOINCREMENT,src_id INTEGER NOT NULL, dst_id INTEGER NOT NULL,type INTEGER NOT NULL, src_port INTEGER NOT NULL,bind TEXT, dst TEXT NOT NULL, dst_port INTEGER NOT NULL, info TEXT); ", NULL, 0, &zErrMsg);
-    sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS host (id INTEGER PRIMARY KEY AUTOINCREMENT, host VARCHAR(256) NOT NULL, dst_id INTEGER NOT NULL,type INTEGER NOT NULL, bind TEXT, dst TEXT NOT NULL, dst_port INTEGER NOT NULL, host_rewrite TEXT, info TEXT); ", NULL, 0, &zErrMsg);
+    sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS host (id INTEGER PRIMARY KEY AUTOINCREMENT, host VARCHAR(256) NOT NULL, dst_id INTEGER NOT NULL,type INTEGER NOT NULL, bind TEXT, dst TEXT NOT NULL, dst_port INTEGER NOT NULL, host_rewrite TEXT, info TEXT, x_real_ip INTEGER NOT NULL DEFAULT 1, x_forwarded_for INTEGER NOT NULL DEFAULT 1); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS vpc (id INTEGER PRIMARY KEY AUTOINCREMENT, ipv4 TEXT, ipv6 TEXT, info TEXT); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX vipv4 ON vpc (ipv4);", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX vipv6 ON vpc (ipv6);", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS member (id INTEGER PRIMARY KEY AUTOINCREMENT, bid INTEGER NOT NULL, vid INTEGER NOT NULL, ipv4 TEXT, ipv6 TEXT, info TEXT); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX mipv4 ON member (ipv4);", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX mipv6 ON member (ipv6);", NULL, 0, &zErrMsg);
-
+    //升级
+    sqlite3_exec(db, "ALTER TABLE host ADD COLUMN x_real_ip INTEGER NOT NULL DEFAULT 1;", NULL, 0, &zErrMsg);
+    sqlite3_exec(db, "ALTER TABLE host ADD COLUMN x_forwarded_for INTEGER NOT NULL DEFAULT 1;", NULL, 0, &zErrMsg);
     //加载数据
     sqlite3_exec(db, "SELECT id, key FROM bridge;", _key_callback, NULL, &zErrMsg);
     sqlite3_exec(db, "SELECT * FROM forward;", _forward_callback, NULL, &zErrMsg);
@@ -261,17 +263,17 @@ cJSON* data_host_get() {
     sqlite3_exec(db, "SELECT * FROM host;", _get_json_callback, list, &zErrMsg);
     return list;
 }
-int data_host_add(const char* host, int dst_id, int type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite, const char* info) {
+int data_host_add(const char* host, int dst_id, int type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite, const char* info, uint8_t x_real_ip, uint8_t x_forwarded_for) {
     char sql[1024] = { 0 };
-    snprintf(sql, sizeof(sql), "INSERT INTO host (`host`, `dst_id`, `type`, `bind`, `dst`, `dst_port`, `host_rewrite`, `info`)VALUES(\"%s\",%d, %d, \"%s\", \"%s\", %d, \"%s\", \"%s\");",
-        host, dst_id, type, bind, dst, dst_port, host_rewrite ? host_rewrite : "", info ? info : "");
+    snprintf(sql, sizeof(sql), "INSERT INTO host (`host`, `dst_id`, `type`, `bind`, `dst`, `dst_port`, `host_rewrite`, `info`, `x_real_ip`, `x_forwarded_for`)VALUES(\"%s\",%d, %d, \"%s\", \"%s\", %d, \"%s\", \"%s\",\"%d\",\"%d\");",
+        host, dst_id, type, bind, dst, dst_port, host_rewrite ? host_rewrite : "", info ? info : "", x_real_ip, x_forwarded_for);
     char* zErrMsg = 0;
     if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
         //查询
         uint32_t id = sqlite3_last_insert_rowid(db);
         if (id > 0) {
             //触发回调
-            http_host_add(ops_get_http(global), id, host, dst_id, type, bind, dst, dst_port, host_rewrite);
+            http_host_add(ops_get_http(global), id, host, dst_id, type, bind, dst, dst_port, host_rewrite, x_real_ip, x_forwarded_for);
             return 0;
         }
     }

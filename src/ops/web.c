@@ -323,8 +323,8 @@ static void web_on_request(web_conn* conn, cJSON* body) {
         cJSON_AddNumberToObject(config, "http_port", opc_get_config(conn->web->global)->http_proxy_port);
         cJSON_AddNumberToObject(config, "https_port", opc_get_config(conn->web->global)->https_proxy_port);
         cJSON* stat = cJSON_AddObjectToObject(data, "stat");
-        cJSON_AddNumberToObject(stat, "bridge_count", 0);//web->global->stat.bridge_count);
-        cJSON_AddNumberToObject(stat, "bridge_online", 0);//web->global->stat.bridge_online);
+        cJSON_AddNumberToObject(stat, "bridge_count", bridge_manager_count(ops_get_bridge_manager(conn->web->global)));
+        cJSON_AddNumberToObject(stat, "bridge_online", bridge_manager_online(ops_get_bridge_manager(conn->web->global)));
         goto ok;
     }
     //客户列表
@@ -338,19 +338,17 @@ static void web_on_request(web_conn* conn, cJSON* body) {
             if (!id || !id->valuestring) {
                 continue;
             }
-            /*
-            ops_bridge* b = bridge_find(, atoi(id->valuestring));
+            ops_bridge* b = bridge_find(ops_get_bridge_manager(conn->web->global), atoi(id->valuestring));
             if (b) {
                 cJSON_AddBoolToObject(item, "online", 1);
-                cJSON_AddNumberToObject(item, "ping", b->ping);
+                cJSON_AddNumberToObject(item, "ping", bridge_ping(b));
                 char ip[INET6_ADDRSTRLEN] = { 0 };
-                uv_ip_name(&b->peer, ip, INET6_ADDRSTRLEN);
+                uv_ip_name(bridge_peer(b), ip, INET6_ADDRSTRLEN);
                 cJSON_AddStringToObject(item, "peer", ip);
                 ip[0] = 0;
-                uv_ip_name(&b->local, ip, INET6_ADDRSTRLEN);
+                uv_ip_name(bridge_local(b), ip, INET6_ADDRSTRLEN);
                 cJSON_AddStringToObject(item, "local", ip);
             }
-            */
         }
         cJSON_AddItemToObject(data, "list", list);
         goto ok;
@@ -501,8 +499,11 @@ static void web_on_request(web_conn* conn, cJSON* body) {
             goto err_data;
         cJSON* bind = cJSON_GetObjectItem(body, "bind");
         cJSON* info = cJSON_GetObjectItem(body, "info");
-
-        if (data_host_add(host->valuestring, dst_id->valueint, type->valueint, bind ? bind->valuestring : "", dst->valuestring, dst_port->valueint, host_rewrite ? host_rewrite->valuestring : "", info ? info->valuestring : "") == 0) {
+        cJSON* x_real_ip = cJSON_GetObjectItem(body, "x_real_ip");
+        cJSON* x_forwarded_for = cJSON_GetObjectItem(body, "x_forwarded_for");
+        if (data_host_add(host->valuestring, dst_id->valueint, type->valueint, bind ? bind->valuestring : "", dst->valuestring,
+            dst_port->valueint, host_rewrite ? host_rewrite->valuestring : "", info ? info->valuestring : "",
+            x_real_ip ? x_real_ip->valueint : 1, x_forwarded_for ? x_forwarded_for->valueint : 1) == 0) {
             goto ok;
         }
         else {
@@ -657,7 +658,7 @@ static int web_on_url(llhttp_t* p, const char* buf, size_t len) {
     }
     return 0;
 }
-static llhttp_settings_t web_parser_settings = { 
+static llhttp_settings_t web_parser_settings = {
     NULL,
     web_on_url,
     NULL,

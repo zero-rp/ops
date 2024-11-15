@@ -39,14 +39,8 @@ typedef struct _ops_bridge {
     struct {
         uint8_t quit : 1;                               //当前连接已退出
     } b;
-    union {
-        struct sockaddr_in v4;
-        struct sockaddr_in6 v6;
-    } peer;
-    union {
-        struct sockaddr_in v4;
-        struct sockaddr_in6 v6;
-    } local;
+    struct sockaddr_storage peer;
+    struct sockaddr_storage local;
 }ops_bridge;
 RB_HEAD(_ops_bridge_tree, _ops_bridge);
 //客户端管理器
@@ -91,9 +85,30 @@ ops_bridge* bridge_find(ops_bridge_manager* manager, uint16_t id) {
     };
     return RB_FIND(_ops_bridge_tree, &manager->bridge, &ths);
 }
+//获取客户数量
+uint32_t bridge_manager_count(ops_bridge_manager* manager) {
+    return manager->bridge_count;
+}
+//获取在线数量
+uint32_t bridge_manager_online(ops_bridge_manager* manager) {
+    return manager->bridge_online;
+}
+
 //获取客户端ID
 uint16_t bridge_id(ops_bridge* bridge) {
     return bridge->id;
+}
+//获取客户端地址
+struct sockaddr_storage* bridge_peer(ops_bridge* bridge) {
+    return &bridge->peer;
+}
+//获取本地地址
+struct sockaddr_storage* bridge_local(ops_bridge* bridge) {
+    return &bridge->local;
+}
+//获取延迟
+uint32_t bridge_ping(ops_bridge* bridge) {
+    return bridge->ping;
 }
 //获取全局对象
 ops_global* bridge_manager_global(ops_bridge_manager* manager) {
@@ -176,7 +191,7 @@ static void bridge_send_ping(ops_bridge* bridge, const char* data, uint32_t len)
     ops_packet* pack = (ops_packet*)(buf->base + 4);
     pack->type = ops_packet_ping;
     if (data && len) {
-        memcpy(pack->mod.data, data, len);
+        memcpy(pack->data, data, len);
     }
     bridge_send_raw(bridge, &buf);
 }
@@ -234,7 +249,6 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
         break;
     }
     case ops_packet_ping: {
-        uint64_t t = *(uint64_t*)&packet->data[0];
         bridge->ping = ntohl(*(uint32_t*)&packet->data[8]);
         bridge_send_ping(bridge, packet->data, 8);
         bridge->last_ping = uv_now(bridge->manager->loop);

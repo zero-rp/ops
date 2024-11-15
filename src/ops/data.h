@@ -22,7 +22,7 @@ int data_forward_del(uint32_t id);
 
 
 cJSON* data_host_get();
-int data_host_add(const char* host, int dst_id, int type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite, const char* info);
+int data_host_add(const char* host, int dst_id, int type, const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite, const char* info, uint8_t x_real_ip, uint8_t x_forwarded_for);
 int data_host_del(uint32_t id);
 
 cJSON* data_vpc_get();
