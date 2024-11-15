@@ -439,17 +439,25 @@ void bridge_mgr_ctrl(ops_bridge_manager* manager, ops_mgr_ctrl* ctrl) {
         break;
     }
     case ops_mgr_ctrl_key_new: {
-        ops_key _key = {
-            .key = ctrl->new.k
-        };
-        ops_key* key = RB_FIND(_ops_key_tree, &manager->key, &_key);
+        ops_key* key;
+        RB_FOREACH(key, _ops_key_tree, &manager->key) {
+            if (key->id == ctrl->new.id) {
+                break;
+            }
+        }
         if (key == NULL) {
             return;
         }
+        RB_REMOVE(_ops_key_tree, &manager->key, key);//先删除
         free(key->key);
         key->key = strdup(ctrl->new.k);
+        RB_INSERT(_ops_key_tree, &manager->key, key);//再插入
         //重置后踢出相关客户端
-
+        ops_bridge* bridge = bridge_find(manager, key->id);
+        if (bridge != NULL) {
+            bridge->b.quit = 1;
+            uv_close(&bridge->tcp, bridge_close_cb);
+        }
         break;
     }
     default:

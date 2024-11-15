@@ -438,7 +438,14 @@ static load_config(ops_global* global, int argc, char* argv[]) {
             i++;
             global->config.key_file = strdup(argv[i]);
         }
-
+        else if (strcmp(argv[i], "-web_user") == 0) {
+            i++;
+            global->config.admin_user = strdup(argv[i]);
+        }
+        else if (strcmp(argv[i], "-web_pass") == 0) {
+            i++;
+            global->config.admin_pass = strdup(argv[i]);
+        }
     }
 }
 
