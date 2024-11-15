@@ -27,7 +27,7 @@ ops默认配置文件使用了80，443，8088，8025端口
 
 对于linux|darwin ```sudo ops``` 或者 ```sudo ops -c ops.json```
 
-对于windows，管理员身份运行cmd，进入程序目录 ```ops.exe``` 或者 ```ops.exe -c ops.json```
+对于windows，管理员身份运行cmd，进入程序目录 ```ops.exe``` 或者 ```ops.exe -c ops.json```, 在windows环境下可使用-install指定服务名称注册成系统服务,可携带配置参数
 
 程序会默认读取运行目录下的ops.json文件加载配置
 
@@ -42,6 +42,8 @@ ops默认配置文件使用了80，443，8088，8025端口
   - -h: http模式端口,默认80
   - -s: https模式端口,默认443
   - -d: 数据库保存路径,默认当前目录
+  - -web_user: web管理账号
+  - -web_pass: web管理密码
 
 ### 客户端连接
 - 点击web管理中客户端前的+号，复制启动命令
