@@ -131,6 +131,7 @@ static int _ops_http_stream_compare(ops_http_stream* w1, ops_http_stream* w2) {
 }
 RB_GENERATE_STATIC(_ops_http_stream_tree, _ops_http_stream, entry, _ops_http_stream_compare)
 
+static void http_close_cb(uv_handle_t* handle);
 //分配内存
 static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
     buf->len = suggested_size;
@@ -326,6 +327,13 @@ static int http_on_message_begin(llhttp_t* p) {
     req->method = p->method;
     return 0;
 }
+//重置请求
+static int http_on_reset(llhttp_t* p) {
+    ops_http_stream* s = (ops_http_stream*)p->data;
+    ops_http_request* req = s->request;
+    http_request_clean(req);
+    return 0;
+}
 //解析器设置
 static llhttp_settings_t  parser_settings = {
     http_on_message_begin,
@@ -350,7 +358,7 @@ static llhttp_settings_t  parser_settings = {
     NULL,
     NULL,
     NULL,
-    NULL
+    http_on_reset
 };
 //创建流
 static ops_http_stream* http_conn_stream_create(ops_http_conn* conn) {
@@ -439,10 +447,10 @@ static int http_1_frame(ops_http_conn* conn, uint8_t* buf, size_t len) {
         if (!s)
             return 1;
     }
-    uint32_t parsed = llhttp_execute(&s->u.h1.parser, buf, len);
-    if (parsed != len) {
+    enum llhttp_errno err = llhttp_execute(&s->u.h1.parser, buf, len);
+    if (err != HPE_OK) {
         //处理失败
-
+        uv_close(&conn->tcp, http_close_cb);
     }
     return 1;
 }
@@ -459,7 +467,7 @@ static int http_conn_data(ops_http_conn* conn, uint8_t* buf, size_t len) {
 //连接关闭
 static void http_close_cb(uv_handle_t* handle) {
     ops_http_conn* conn = (ops_http_conn*)handle->data;
-
+    
     free(conn);
 }
 static void http_shutdown_cb(uv_shutdown_t* req, int status) {
