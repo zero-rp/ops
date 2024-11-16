@@ -110,7 +110,7 @@ static void bridge_close_cb(uv_handle_t* handle);
 static void bridge_keep_timer_cb(uv_timer_t* handle) {
     opc_bridge* bridge = (opc_bridge*)handle->data;
     //检查是否超时
-    if (bridge->keep_last < (bridge->loop->time - 1000 * 30)) {
+    if (bridge->keep_last < (uv_now(bridge->loop) - 1000 * 60)) {
         //暂停掉定时器
         uv_timer_stop(handle);
         //超时直接关闭

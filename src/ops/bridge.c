@@ -372,7 +372,7 @@ static void bridge_ping_timer_cb(uv_timer_t* handle) {
     ops_bridge_manager* manager = (ops_bridge_manager*)handle->data;
     ops_bridge* bridge;
     RB_FOREACH(bridge, _ops_bridge_tree, &manager->bridge) {
-        if (bridge->last_ping > (uv_now(manager->loop) - 1000 * 30))
+        if (bridge->last_ping > (uv_now(manager->loop) - 1000 * 60))
             continue;
         //踢掉用户
         //if (bridge->type == 2) {
