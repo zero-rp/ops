@@ -634,10 +634,8 @@ void http_host_ctl(ops_http* http, ops_bridge* bridge, uint32_t stream_id, uint8
                     }
                 }
                 else {
-                    sds v = sdscat(header->value, ", ");
-                    v = sdscat(v, addr);
-                    sdsfree(header->value);
-                    header->value = v;
+                    header->value = sdscat(header->value, ", ");
+                    header->value = sdscat(header->value, addr);
                 }
             }
         }
