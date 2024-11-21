@@ -110,7 +110,9 @@ static void bridge_close_cb(uv_handle_t* handle);
 static void bridge_keep_timer_cb(uv_timer_t* handle) {
     opc_bridge* bridge = (opc_bridge*)handle->data;
     //检查是否超时
-    if (bridge->keep_last < (uv_now(bridge->loop) - 1000 * 60)) {
+    uv_timespec64_t now;
+    uv_clock_gettime(UV_CLOCK_REALTIME, &now);
+    if (bridge->keep_last < (now.tv_sec - 60)) {
         //暂停掉定时器
         uv_timer_stop(handle);
         //超时直接关闭
@@ -126,7 +128,7 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
     }
     //
     uint8_t tmp[12];
-    *(uint64_t*)&tmp[0] = uv_now(bridge->loop);
+    *(uint64_t*)&tmp[0] = uv_hrtime();
     *(uint32_t*)&tmp[8] = htonl(bridge->keep_ping);
     //发送ping
     uv_buf_t buf[] = { 0 };
@@ -182,8 +184,10 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
     }
     case ops_packet_ping: {
         uint64_t t = *(uint64_t*)&packet->data[0];
-        bridge->keep_last = uv_now(bridge->loop);
-        bridge->keep_ping = bridge->keep_last - t;
+        uv_timespec64_t now;
+        uv_clock_gettime(UV_CLOCK_REALTIME, &now);
+        bridge->keep_last = now.tv_sec;
+        bridge->keep_ping = (uv_hrtime() - t) / 1000;
         break;
     }
     case ops_packet_mod: {

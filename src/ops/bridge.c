@@ -242,7 +242,9 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
                 bridge->id = key->id;
                 RB_INSERT(_ops_bridge_tree, &bridge->manager->bridge, bridge);
                 //记录ping
-                bridge->last_ping = uv_now(bridge->manager->loop);
+                uv_timespec64_t now;
+                uv_clock_gettime(UV_CLOCK_REALTIME, &now);
+                bridge->last_ping = now.tv_sec;
                 bridge_auth_ok(bridge);
             }
         }
@@ -251,7 +253,9 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
     case ops_packet_ping: {
         bridge->ping = ntohl(*(uint32_t*)&packet->data[8]);
         bridge_send_ping(bridge, packet->data, 8);
-        bridge->last_ping = uv_now(bridge->manager->loop);
+        uv_timespec64_t now;
+        uv_clock_gettime(UV_CLOCK_REALTIME, &now);
+        bridge->last_ping = now.tv_sec;
         break;
     }
     case ops_packet_mod: {
@@ -371,8 +375,10 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
 static void bridge_ping_timer_cb(uv_timer_t* handle) {
     ops_bridge_manager* manager = (ops_bridge_manager*)handle->data;
     ops_bridge* bridge;
+    uv_timespec64_t now;
+    uv_clock_gettime(UV_CLOCK_REALTIME, &now);
     RB_FOREACH(bridge, _ops_bridge_tree, &manager->bridge) {
-        if (bridge->last_ping > (uv_now(manager->loop) - 1000 * 60))
+        if (bridge->last_ping > (now.tv_sec - 60))
             continue;
         //踢掉用户
         //if (bridge->type == 2) {
