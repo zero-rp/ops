@@ -166,7 +166,9 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
         case CTL_AUTH_OK: {
             printf("Auth Ok!\r\n");
             //启动定时器
-            bridge->keep_last = uv_now(bridge->loop);
+            uv_timespec64_t now;
+            uv_clock_gettime(UV_CLOCK_REALTIME, &now);
+            bridge->keep_last = now.tv_sec;
             uv_timer_start(&bridge->keep_timer, bridge_keep_timer_cb, 0, 1000 * 10);
             bridge_auth_ok(bridge);
             break;
@@ -187,7 +189,7 @@ static void bridge_on_data(opc_bridge* bridge, char* data, int size) {
         uv_timespec64_t now;
         uv_clock_gettime(UV_CLOCK_REALTIME, &now);
         bridge->keep_last = now.tv_sec;
-        bridge->keep_ping = (uv_hrtime() - t) / 1000;
+        bridge->keep_ping = (uv_hrtime() - t) / 1000000;
         break;
     }
     case ops_packet_mod: {
