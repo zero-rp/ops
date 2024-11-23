@@ -198,16 +198,16 @@ static void bridge_send_ping(ops_bridge* bridge, const char* data, uint32_t len)
 }
 //客户端鉴权成功
 static void bridge_auth_ok(ops_bridge* bridge, uint16_t id) {
-    //加载模块数据
-    for (size_t i = 0; i < 3; i++) {
-        bridge->manager->modules[i]->on_load(bridge->manager->modules[i], bridge);
-    }
-    //更新统计
-    bridge->manager->bridge_online++;
     //记录客户端
     bridge->id = id;
     bridge->b.auth = 1;
     RB_INSERT(_ops_bridge_tree, &bridge->manager->bridge, bridge);
+    //更新统计
+    bridge->manager->bridge_online++;
+    //加载模块数据
+    for (size_t i = 0; i < 3; i++) {
+        bridge->manager->modules[i]->on_load(bridge->manager->modules[i], bridge);
+    }
 }
 //收到客户端数据
 static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
