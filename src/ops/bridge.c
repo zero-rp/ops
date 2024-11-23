@@ -37,6 +37,7 @@ typedef struct _ops_bridge {
     uint32_t ping;                      //延迟
     uint64_t last_ping;                 //上次
     struct {
+        uint8_t auth : 1;                               //已鉴权
         uint8_t quit : 1;                               //当前连接已退出
     } b;
     struct sockaddr_storage peer;
@@ -196,13 +197,17 @@ static void bridge_send_ping(ops_bridge* bridge, const char* data, uint32_t len)
     bridge_send_raw(bridge, &buf);
 }
 //客户端鉴权成功
-static void bridge_auth_ok(ops_bridge* bridge) {
+static void bridge_auth_ok(ops_bridge* bridge, uint16_t id) {
     //加载模块数据
     for (size_t i = 0; i < 3; i++) {
         bridge->manager->modules[i]->on_load(bridge->manager->modules[i], bridge);
     }
     //更新统计
     bridge->manager->bridge_online++;
+    //记录客户端
+    bridge->id = id;
+    bridge->b.auth = 1;
+    RB_INSERT(_ops_bridge_tree, &bridge->manager->bridge, bridge);
 }
 //收到客户端数据
 static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
@@ -238,14 +243,12 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
                 char buf[1];
                 buf[0] = CTL_AUTH_OK;//鉴权成功
                 bridge_send_auth(bridge, buf, sizeof(buf));
-                //记录客户端
-                bridge->id = key->id;
-                RB_INSERT(_ops_bridge_tree, &bridge->manager->bridge, bridge);
                 //记录ping
                 uv_timespec64_t now;
                 uv_clock_gettime(UV_CLOCK_REALTIME, &now);
                 bridge->last_ping = now.tv_sec;
-                bridge_auth_ok(bridge);
+                //成功
+                bridge_auth_ok(bridge, key->id);
             }
         }
         break;
@@ -275,25 +278,25 @@ static void bridge_on_data(ops_bridge* bridge, char* data, int size) {
 }
 //关闭
 static void bridge_on_close(ops_bridge* bridge) {
-    //通知对端服务
-    /*
-    ops_forwards* fc = NULL;
-    RB_FOREACH(fc, _ops_forwards_tree, &bridge->global->forwards) {
-        //来源
-        if (fc->src_id == bridge->id) {
+    if (bridge->b.auth == 1) {
+        //通知对端服务
+        /*
+        ops_forwards* fc = NULL;
+        RB_FOREACH(fc, _ops_forwards_tree, &bridge->global->forwards) {
+            //来源
+            if (fc->src_id == bridge->id) {
 
-        }
-        //出口
-        if (fc->dst_id == bridge->id) {
+            }
+            //出口
+            if (fc->dst_id == bridge->id) {
 
+            }
         }
+        */
+        //从句柄树中移除
+        RB_REMOVE(_ops_bridge_tree, &bridge->manager->bridge, bridge);
+        bridge->manager->bridge_online--;
     }
-    */
-    //从句柄树中移除
-    RB_REMOVE(_ops_bridge_tree, &bridge->manager->bridge, bridge);
-    //
-    //heap_remove(&bridge->global->ping_heap, &bridge->heap, ping_less_than);
-    bridge->manager->bridge_online--;
     //回收资源
     databuffer_clear(&bridge->m_buffer, &bridge->manager->m_mp);
     free(bridge);
@@ -326,6 +329,7 @@ static void bridge_on_read(ops_bridge* bridge, uint8_t* buf, size_t len) {
 static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ops_bridge* bridge = (ops_bridge*)tcp->data;
     if (nread <= 0) {
+        printf("Recv Error\r\n");
         if (UV_EOF != nread) {
             //连接异常断开
             uv_close(tcp, bridge_close_cb);
