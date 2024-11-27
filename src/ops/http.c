@@ -222,7 +222,7 @@ static int http_on_message_complete(llhttp_t* p) {
 
     if (!req->host) {
         http_request_clean(req);
-        http_respose_html(s->conn, "Host Not Found", 13);
+        http_respose_html(s->conn, "Host Not Found", 14);
         return 0;
     }
 
@@ -236,14 +236,14 @@ static int http_on_message_complete(llhttp_t* p) {
     ops_host* host = RB_FIND(_ops_host_tree, &s->conn->http->host, &the);
     if (host == NULL) {
         http_request_clean(req);
-        http_respose_html(s->conn, "Client Not Found", 13);
+        http_respose_html(s->conn, "Client Not Found", 14);
         return 0;
     }
     //查找目标客户端是否在线
     ops_bridge* b = bridge_find(s->conn->http->manager, host->dst_id);
     if (b == NULL) {
         http_request_clean(req);
-        http_respose_html(s->conn, "Client Offline", 13);
+        http_respose_html(s->conn, "Client Offline", 14);
         return 0;
     }
     //给请求关联对应的服务
