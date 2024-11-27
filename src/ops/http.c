@@ -309,6 +309,13 @@ static int http_on_headers_complete(llhttp_t* p) {
     return 0;
 }
 //
+static int http_on_method(llhttp_t* p, const char* buf, size_t len) {
+    ops_http_stream* s = (ops_http_stream*)p->data;
+    ops_http_request* req = s->request;
+    req->method = p->method;
+    return 0;
+}
+//
 static int http_on_url(llhttp_t* p, const char* buf, size_t len) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
@@ -324,7 +331,6 @@ static int http_on_url(llhttp_t* p, const char* buf, size_t len) {
 static int http_on_message_begin(llhttp_t* p) {
     ops_http_stream* s = (ops_http_stream*)p->data;
     ops_http_request* req = s->request;
-    req->method = p->method;
     return 0;
 }
 //重置请求
@@ -339,7 +345,7 @@ static llhttp_settings_t  parser_settings = {
     http_on_message_begin,
     http_on_url,
     NULL,
-    NULL,
+    http_on_method,
     NULL,
     http_on_header_field,
     http_on_header_value,
@@ -467,7 +473,7 @@ static int http_conn_data(ops_http_conn* conn, uint8_t* buf, size_t len) {
 //连接关闭
 static void http_close_cb(uv_handle_t* handle) {
     ops_http_conn* conn = (ops_http_conn*)handle->data;
-    
+
     free(conn);
 }
 static void http_shutdown_cb(uv_shutdown_t* req, int status) {
@@ -688,7 +694,7 @@ void http_host_data(ops_http* http, uint32_t stream_id, uint8_t* data, int size)
     http_send(req->stream->conn, data, size);
 }
 //事件
-void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type, 
+void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t dst_id, uint8_t type,
     const char* bind, const char* dst, uint16_t dst_port, const char* host_rewrite,
     uint8_t x_real_ip, uint8_t x_forwarded_for) {
     ops_host* host = malloc(sizeof(*host));
