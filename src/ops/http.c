@@ -416,6 +416,26 @@ static ops_http_stream* http_conn_stream_create(ops_http_conn* conn) {
     RB_INSERT(_ops_http_stream_tree, &conn->stream, s);
     return s;
 }
+//释放流
+static void http_conn_stream_free(ops_http_stream* s) {
+    if (!s) {
+        return;
+    }
+    //HTTP2
+    if (s->conn->http_major == 2) {
+
+
+    }
+    else {
+        //http1只支持1个流
+        s->conn->sid = 0;
+    }
+    //释放请求
+    http_request_clean(s->request);
+
+    RB_REMOVE(_ops_http_stream_tree, &s->conn->stream, s);
+    free(s);
+}
 //关闭流
 void http_conn_stream_close(ops_http_conn* conn, int id) {
     if (!conn)
@@ -427,20 +447,7 @@ void http_conn_stream_close(ops_http_conn* conn, int id) {
     if (!s) {
         return;
     }
-    //HTTP2
-    if (conn->http_major == 2) {
-
-
-    }
-    else {
-        //http1只支持1个流
-        conn->sid = 0;
-    }
-    //释放请求
-
-
-    RB_REMOVE(_ops_http_stream_tree, &conn->stream, s);
-    free(s);
+    http_conn_stream_free(s);
 }
 //处理http1帧数据
 static int http_1_frame(ops_http_conn* conn, uint8_t* buf, size_t len) {
@@ -473,7 +480,12 @@ static int http_conn_data(ops_http_conn* conn, uint8_t* buf, size_t len) {
 //连接关闭
 static void http_close_cb(uv_handle_t* handle) {
     ops_http_conn* conn = (ops_http_conn*)handle->data;
-
+    ops_http_stream* sc = NULL;
+    ops_http_stream* scc = NULL;
+    RB_FOREACH_SAFE(sc, _ops_http_stream_tree, &conn->stream, scc) {
+        http_conn_stream_free(sc);
+        sc = NULL;
+    }
     free(conn);
 }
 static void http_shutdown_cb(uv_shutdown_t* req, int status) {
