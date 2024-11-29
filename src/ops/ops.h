@@ -24,11 +24,13 @@ typedef struct _ops_global ops_global;
 typedef struct _ops_http ops_http;
 typedef struct _ops_bridge_manager ops_bridge_manager;
 typedef struct _ops_web ops_web;
+typedef struct _ops_public ops_public;
 //获取配置
 const ops_config* opc_get_config(ops_global* global);
 //
 uv_loop_t* ops_get_loop(ops_global* global);
 ops_http* ops_get_http(ops_global* global);
+ops_public* ops_get_public(ops_global* global);
 ops_bridge_manager* ops_get_bridge_manager(ops_global* global);
 //ops_web* ops_get_web(ops_global* global);
 #endif // !__ops_h__

@@ -7,6 +7,7 @@
 enum ops_src_type {
     ops_src_type_host = 1,
     ops_src_type_forward,
+    ops_src_type_public,
 };
 
 enum ops_dst_ctrl_type {

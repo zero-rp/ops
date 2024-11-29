@@ -6,6 +6,7 @@
 #include "bridge.h"
 #include "http.h"
 #include "web.h"
+#include "public.h"
 
 #if HAVE_QUIC
 #include <lsquic.h>
@@ -29,6 +30,7 @@ typedef struct _ops_global {
     ops_bridge_manager* bridge_manager;
     ops_http* http;
     ops_web* web;
+    ops_public* public;
 }ops_global;
 
 //获取配置
@@ -52,6 +54,9 @@ ops_web* ops_get_web(ops_global* global) {
     return global->web;
 }
 
+ops_public* ops_get_public(ops_global* global) {
+    return global->public;
+}
 //----------------------------------------------------------quic
 #if HAVE_QUIC
 static SSL_CTX* get_ssl_ctx(void* peer_ctx, const struct sockaddr* unused) {
@@ -330,6 +335,8 @@ static int init_global(ops_global* global) {
     global->http = http_new(global, global->bridge_manager);
     //启动web管理
     global->web = web_new(global);
+    //启动公网服务
+    global->public = public_new(global, global->bridge_manager);
     //初始化数据
     data_init(global->config.db_file, global, global->bridge_manager);
     return 0;

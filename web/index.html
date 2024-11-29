@@ -69,11 +69,12 @@
       <li class="layui-nav-item"><a lay-id="1" href="javascript:;">客户端</a></li>
       <li class="layui-nav-item"><a lay-id="2" href="javascript:;">主机</a></li>
       <li class="layui-nav-item"><a lay-id="3" href="javascript:;">转发</a></li>
+      <li class="layui-nav-item"><a lay-id="4" href="javascript:;">公网转发</a></li>
       <li class="layui-nav-item">
         <a href="javascript:;">虚拟网络</a>
         <dl class="layui-nav-child">
-          <dd><a lay-id="4" href="javascript:;">VPC</a></dd>
-          <dd><a lay-id="5" href="javascript:;">VPC成员</a></dd>
+          <dd><a lay-id="5" href="javascript:;">VPC</a></dd>
+          <dd><a lay-id="6" href="javascript:;">VPC成员</a></dd>
         </dl>
       </li>
     </ul>
@@ -159,6 +160,15 @@
       <div class="layui-tab-item">
         <table class="layui-hide" id="table-forward"></table>
         <script type="text/html" id="toolbar-forward">
+          <div class="layui-btn-container">
+           <button class="layui-btn layui-btn-sm" lay-event="add">新增</button>
+          </div>
+        </script>
+      </div>
+      <!--公网转发-->
+      <div class="layui-tab-item">
+        <table class="layui-hide" id="table-public"></table>
+        <script type="text/html" id="toolbar-public">
           <div class="layui-btn-container">
            <button class="layui-btn layui-btn-sm" lay-event="add">新增</button>
           </div>
@@ -382,6 +392,87 @@
       <div class="layui-form-item">
         <div class="layui-input-block">
           <button type="submit" class="layui-btn" lay-submit lay-filter="submit-forward">立即提交</button>
+          <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+      </div>
+    </form>
+  </script>
+
+  <!-- 公网转发 -->
+  <script type="text/html" id="tool-public">
+    <div class="layui-clear-space">
+      <button type="button" class="layui-btn layui-btn-xs layui-bg-blue" lay-event="edit">编辑</button>
+      <button type="button" class="layui-btn layui-btn-xs layui-bg-red" lay-event="delete">删除</button>
+    </div>
+  </script>
+
+  <script type="text/html" id="form-public">
+    <form class="layui-form" action="" style="padding: 10px 16px" lay-filter="form-public-view">
+      <div class="layui-form-item">
+        <label class="layui-form-label">目标客户端ID</label>
+        <div class="layui-input-block">
+          <select name="dst_id">
+            {{#  if(d.options.list.length === 0){ }}
+              <option value="">请先添加客户端信息</option>
+            {{#  } }}
+            {{#  layui.each(d.options.list, function(index, item){ }}
+            <option value={{item.id}} {{ d.data.dst_id == item.id ? 'selected' : '' }}>{{item.id}}-{{item.info}}</option>
+            {{#  }); }}
+          </select>
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">type</label>
+        <div class="layui-input-block" lay-filter="aihao">
+          <select name="type">
+            <option value="1" {{ d.data.type == "1" ? 'selected' : '' }}>TCP</option>
+            <option value="2" {{ d.data.type == "2" ? 'selected' : '' }}>UDP</option>
+            <option value="3" {{ d.data.type == "3" ? 'selected' : '' }}>SOCKS5</option>
+          </select>
+        </div>
+      </div> 
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">源监听端口</label>
+        <div class="layui-input-block">
+          <input type="text" name="src_port" lay-verify="required|number" placeholder="请输入" autocomplete="off" class="layui-input" value="{{ d.data.src_port }}">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">目标主机</label>
+        <div class="layui-input-block">
+          <input type="text" name="dst" lay-verify="required|host" placeholder="请输入" autocomplete="off" class="layui-input" value="{{ d.data.dst }}">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">目标端口</label>
+        <div class="layui-input-block">
+          <input type="number" name="dst_port" lay-verify="required|number" placeholder="请输入" autocomplete="off" class="layui-input" value="{{ d.data.dst_port }}">
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <label class="layui-form-label">出口地址</label>
+        <div class="layui-input-block">
+          <input type="text" name="bind" lay-verify="ipv46" placeholder="请输入" autocomplete="off" class="layui-input" value="{{ d.data.bind }}">
+        </div>
+      </div>
+
+      <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">备注</label>
+        <div class="layui-input-block">
+          <textarea name="info" placeholder="请输入内容" class="layui-textarea">{{ d.data.info }}</textarea>
+        </div>
+      </div>
+
+      <input type="hidden" name="id" value="{{ d.data.id || '' }}">
+
+      <div class="layui-form-item">
+        <div class="layui-input-block">
+          <button type="submit" class="layui-btn" lay-submit lay-filter="submit-public">立即提交</button>
           <button type="reset" class="layui-btn layui-btn-primary">重置</button>
         </div>
       </div>
@@ -887,6 +978,97 @@
       });
     }
 
+    function ShowPublic() {
+      table.render({
+        elem: '#table-public',
+        toolbar: '#toolbar-public',
+        url: '/api/public',
+        cols: [[ //标题栏
+          { field: 'id', title: 'id', sort: true },
+          { field: 'dst_id', title: '目标客户端' },
+          { field: 'type', title: '类型', templet: function(d) { return d.type == "1" ? "TCP" : d.type == "2" ? "UDP" : d.type == "3" ? "SOCKS5" : ""; } },
+          { field: 'port', title: '监听端口' },
+          { field: 'bind', title: '出口IP' },
+          { field: 'dst', title: '目标主机' },
+          { field: 'dst_port', title: '目标端口' },
+          { field: 'info', title: '备注' },
+          { field: '', title: '操作', toolbar: '#tool-public' },
+        ]]
+      });
+
+      var public_form = function(public_data){
+        let view = laytpl($("#form-public").html());
+        request({
+          url: '/api/bridge',
+          done: function (res) {
+            layer.open({
+              type: 1,//弹出框类型
+              area: ['720px', '760px'], // 宽高
+              title: false, // 不显示标题栏
+              closeBtn: 0,
+              shadeClose: true, // 点击遮罩关闭层v版本
+              content: view.render({
+                options: res,
+                data: public_data ? public_data : {}
+              }),
+              success: function (layero, index, that) {
+                //渲染表单
+                form.render(null, 'form-public-view');
+                // public-提交事件
+                form.on('submit(submit-public)', function (data) {
+                  var field = data.field;
+                  field.src_id = Number(field.src_id);
+                  field.dst_id = Number(field.dst_id);
+                  field.type = Number(field.type);
+                  field.src_port = Number(field.src_port);
+                  field.dst_port = Number(field.dst_port);
+                  if(data.field.id != undefined && data.field.id.length > 0){
+                    data.field.id = Number(data.field.id);
+                  }
+                  request({
+                    url: public_data ? '/api/public_update' : '/api/public_add',
+                    data: data.field,
+                    done: function (res) {
+                      layer.close(index);
+                      table.reload('table-public');
+                    }
+                  });
+                  return false; // 阻止默认 form 跳转
+                });
+              }
+            });
+          }
+        });
+      }
+
+      //public-工具栏事件
+      table.on('toolbar(table-public)', function (obj) {
+        switch (obj.event) {
+          case 'add':
+            public_form();
+            break;
+          default:
+            break;
+        }
+      });
+
+      //public-单行的点击
+      table.on('tool(table-public)', function (params) {
+        if (params.event == 'delete') {
+          request({
+            url: '/api/public_del',
+            data: { id: Number(params.data.id) },
+            done: function (res) {
+              layer.close(layer.index);
+              table.reload('table-public');
+            }
+          });
+        } else if (params.event == 'edit') {
+          public_form(params.data);
+        }
+      });
+    }
+
     function ShowVPC() {
       table.render({
         elem: '#table-vpc',
@@ -1040,7 +1222,7 @@
       })
     }
 
-    var tab_func = [ShowConsole, ShowBridge, ShowHost, ShowForward, ShowVPC, ShowMember];
+    var tab_func = [ShowConsole, ShowBridge, ShowHost, ShowForward, ShowPublic, ShowVPC, ShowMember];
     // 导航点击事件
     element.on('nav(filter-nav)', function (elem) {
       var current = Number($(this).attr('lay-id'));

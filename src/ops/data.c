@@ -3,6 +3,7 @@
 #include <sqlite3.h>
 #include "bridge.h"
 #include "http.h"
+#include "public.h"
 #include "module/forward.h"
 #include "module/vpc.h"
 
@@ -30,6 +31,10 @@ static int _forward_callback(void* NotUsed, int argc, char** argv, char** azColN
     ctrl.add.dst = argv[6];
     ctrl.add.dst_port = atoi(argv[7]);
     bridge_mod_ctrl(manager, MODULE_FORWARD, &ctrl);
+    return 0;
+}
+static int _public_callback(void* NotUsed, int argc, char** argv, char** azColName) {
+    public_add(ops_get_public(global), atoi(argv[0]), atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), argv[4], argv[5], atoi(argv[6]));
     return 0;
 }
 static int _host_callback(void* NotUsed, int argc, char** argv, char** azColName) {
@@ -72,6 +77,7 @@ int data_init(const char* file, ops_global* g, ops_bridge_manager* mgr) {
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS forward (id INTEGER PRIMARY KEY AUTOINCREMENT,src_id INTEGER NOT NULL, dst_id INTEGER NOT NULL,type INTEGER NOT NULL, src_port INTEGER NOT NULL,bind TEXT, dst TEXT NOT NULL, dst_port INTEGER NOT NULL, info TEXT); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS host (id INTEGER PRIMARY KEY AUTOINCREMENT, host VARCHAR(256) NOT NULL, dst_id INTEGER NOT NULL,type INTEGER NOT NULL, bind TEXT, dst TEXT NOT NULL, dst_port INTEGER NOT NULL, host_rewrite TEXT, info TEXT, x_real_ip INTEGER NOT NULL DEFAULT 1, x_forwarded_for INTEGER NOT NULL DEFAULT 1); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS vpc (id INTEGER PRIMARY KEY AUTOINCREMENT, ipv4 TEXT, ipv6 TEXT, info TEXT); ", NULL, 0, &zErrMsg);
+    sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS public (id INTEGER PRIMARY KEY AUTOINCREMENT, port INTEGER NOT NULL, dst_id INTEGER NOT NULL,type INTEGER NOT NULL, bind TEXT, dst TEXT NOT NULL, dst_port INTEGER NOT NULL, info TEXT); ", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX vipv4 ON vpc (ipv4);", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE UNIQUE INDEX vipv6 ON vpc (ipv6);", NULL, 0, &zErrMsg);
     sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS member (id INTEGER PRIMARY KEY AUTOINCREMENT, bid INTEGER NOT NULL, vid INTEGER NOT NULL, ipv4 TEXT, ipv6 TEXT, info TEXT); ", NULL, 0, &zErrMsg);
@@ -83,6 +89,7 @@ int data_init(const char* file, ops_global* g, ops_bridge_manager* mgr) {
     //加载数据
     sqlite3_exec(db, "SELECT id, key FROM bridge;", _key_callback, NULL, &zErrMsg);
     sqlite3_exec(db, "SELECT * FROM forward;", _forward_callback, NULL, &zErrMsg);
+    sqlite3_exec(db, "SELECT * FROM public;", _public_callback, NULL, &zErrMsg);
     sqlite3_exec(db, "SELECT * FROM host;", _host_callback, NULL, &zErrMsg);
     sqlite3_exec(db, "SELECT * FROM vpc;", _vpc_callback, NULL, &zErrMsg);
     sqlite3_exec(db, "SELECT * FROM member;", _member_callback, NULL, &zErrMsg);
@@ -251,6 +258,57 @@ int data_forward_del(uint32_t id) {
             ctrl.type = ops_forward_ctrl_del;
             ctrl.del.id = id;
             bridge_mod_ctrl(manager, MODULE_FORWARD, &ctrl);
+            return 0;
+        }
+    }
+    return -1;
+}
+
+cJSON* data_public_get() {
+    char* zErrMsg = 0;
+    cJSON* list = cJSON_CreateArray();
+    sqlite3_exec(db, "SELECT * FROM public;", _get_json_callback, list, &zErrMsg);
+    return list;
+}
+int data_public_add(int dst_id, int type, int src_port, const char* bind, const char* dst, uint16_t dst_port, const char* info) {
+    char sql[1024] = { 0 };
+    snprintf(sql, sizeof(sql), "INSERT INTO public (`dst_id`, `type`, `port`, `bind`, `dst`, `dst_port`, `info`)VALUES(%d, %d, %d, \"%s\", \"%s\", %d, \"%s\");",
+        dst_id, type, src_port, bind, dst, dst_port, info ? info : "");
+    char* zErrMsg = 0;
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        //查询
+        uint32_t id = sqlite3_last_insert_rowid(db);
+        if (id > 0) {
+            //触发回调
+            return 0;
+        }
+    }
+    return -1;
+}
+int data_public_update(int id, int dst_id, int type, int src_port, const char* bind, const char* dst, uint16_t dst_port, const char* info) {
+    char sql[1024] = { 0 };
+    snprintf(sql, sizeof(sql),
+        "UPDATE public SET `dst_id` = %d, `type` = %d, `port` = %d, `bind` = \"%s\", `dst` = \"%s\", `dst_port` = %d, `info` = \"%s\" WHERE id = %d",
+        dst_id, type, src_port, bind, dst, dst_port, info ? info : "", id);
+    //更新
+    char* zErrMsg = 0;
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        if (sqlite3_changes(db) == 1) {
+            //触发回调
+
+            return 0;
+        }
+    }
+}
+int data_public_del(uint32_t id) {
+    char* zErrMsg = 0;
+    char sql[256] = { 0 };
+    //删除
+    snprintf(sql, sizeof(sql), "DELETE FROM public WHERE id = %d;", id);
+    if (sqlite3_exec(db, sql, NULL, NULL, &zErrMsg) == SQLITE_OK) {
+        if (sqlite3_changes(db) == 1) {
+            //触发回调
+
             return 0;
         }
     }

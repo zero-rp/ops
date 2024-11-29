@@ -7,6 +7,7 @@
 #include "forward.h"
 #include "../http.h"
 #include "../ops.h"
+#include "../public.h"
 
 //目标服务
 typedef struct _ops_dsts {
@@ -51,8 +52,11 @@ static void _ctl(ops_module_dst* module, ops_bridge* bridge, uint32_t stream_id,
     switch (p->src_type)
     {
     case ops_src_type_host: {
-        //host_ctl(bridge, p, packet, size);
         http_host_ctl(ops_get_http(bridge_manager_global(module->manager)), bridge, stream_id, data, size);
+        break;
+    }
+    case ops_src_type_public: {
+        public_ctl(ops_get_public(bridge_manager_global(module->manager)), bridge, stream_id, data, size);
         break;
     }
     case ops_src_type_forward: {
@@ -106,8 +110,11 @@ static void _data(ops_module_dst* module, ops_bridge* bridge, uint32_t stream_id
     switch (p->src_type)
     {
     case ops_src_type_host: {
-        //转发数据到http模块
         http_host_data(ops_get_http(bridge_manager_global(module->manager)), stream_id, data, size);
+        break;
+    }
+    case ops_src_type_public: {
+        public_data(ops_get_public(bridge_manager_global(module->manager)), stream_id, data, size);
         break;
     }
     case ops_src_type_forward: {

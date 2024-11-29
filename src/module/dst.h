@@ -11,7 +11,11 @@ enum dst_packet_type {
     dst_packet_ctl,                     //目标控制
     dst_packet_data,                    //目标数据
 };
-
+//服务类型
+enum dst_type {
+    dst_type_tcp = 1,                   //TCP
+    dst_type_udp,                       //UDP
+};
 
 //目标定义
 #define CTL_DST_ADD  0x01                       //添加目标

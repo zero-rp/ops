@@ -701,6 +701,8 @@ void http_host_data(ops_http* http, uint32_t stream_id, uint8_t* data, int size)
     };
     ops_http_request* req = RB_FIND(_ops_http_request_tree, &http->request, &the);
     if (req == NULL) {
+        //目标已经不在了,关闭连接
+
         return;
     }
     http_send(req->stream->conn, data, size);
@@ -723,7 +725,7 @@ void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t d
     ctrl.add.dst = dst;
     ctrl.add.dst_port = dst_port;
     int dsts_id = bridge_mod_ctrl(http->manager, MODULE_DST, &ctrl);
-    if (!dst_id) {
+    if (!dsts_id) {
         free(host);
         return;
     }

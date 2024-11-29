@@ -470,6 +470,65 @@ static void web_on_request(web_conn* conn, cJSON* body) {
             return web_respose_json(conn, -1, "del error", data);
         }
     }
+    //公网转发列表
+    else if (strcmp(url, "public") == 0) {
+        cJSON* list = data_public_get();
+        cJSON_AddItemToObject(data, "list", list);
+        goto ok;
+    }
+    //添加转发
+    else if (strcmp(url, "public_add") == 0 || strcmp(url, "public_update") == 0) {
+        cJSON* dst_id = cJSON_GetObjectItem(body, "dst_id");
+        if (!dst_id || dst_id->valueint < 1)
+            goto err_data;
+        cJSON* type = cJSON_GetObjectItem(body, "type");
+        if (!type || type->valueint < 1)
+            goto err_data;
+        cJSON* src_port = cJSON_GetObjectItem(body, "src_port");
+        if (!src_port || src_port->valueint < 1)
+            goto err_data;
+        cJSON* dst = cJSON_GetObjectItem(body, "dst");
+        if (!dst || !dst->valuestring)
+            goto err_data;
+        cJSON* dst_port = cJSON_GetObjectItem(body, "dst_port");
+        if (!dst_port || dst_port->valueint < 1)
+            goto err_data;
+        cJSON* bind = cJSON_GetObjectItem(body, "bind");
+        cJSON* info = cJSON_GetObjectItem(body, "info");
+        cJSON* id = cJSON_GetObjectItem(body, "id");
+        if (id && id->valueint) {
+            if (data_public_update(id->valueint, dst_id->valueint, type->valueint, src_port->valueint, bind ? bind->valuestring : "", dst->valuestring, dst_port->valueint, info ? info->valuestring : "") == 0) {
+                goto ok;
+            }
+            else {
+                return web_respose_json(conn, -1, "update error", data);
+            }
+        }
+        else {
+            if (data_public_add(dst_id->valueint, type->valueint, src_port->valueint, bind ? bind->valuestring : "", dst->valuestring, dst_port->valueint, info ? info->valuestring : "") == 0) {
+                goto ok;
+            }
+            else {
+                return web_respose_json(conn, -1, "add error", data);
+            }
+        }
+    }
+    //删除转发
+    else if (strcmp(url, "public_del") == 0) {
+        cJSON* id = cJSON_GetObjectItem(body, "id");
+        if (!id) {
+            goto err_data;
+        }
+        if (id->valueint == 0) {
+            goto err_data;
+        }
+        if (data_public_del(id->valueint) == 0) {
+            goto ok;
+        }
+        else {
+            return web_respose_json(conn, -1, "del error", data);
+        }
+    }
     //主机列表
     else if (strcmp(url, "host") == 0) {
         cJSON* list = data_host_get();

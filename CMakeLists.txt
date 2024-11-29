@@ -79,6 +79,7 @@ else ()
             src/ops/bridge.c
             src/ops/http.c
             src/ops/web.c
+            src/ops/public.c
             src/ops/module/forward.c
             src/ops/module/dst.c
             src/ops/module/vpc.c
