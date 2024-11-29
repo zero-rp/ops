@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
-
+#include <uv/tree.h>
 #include "public.h"
 #include "module/dst.h"
 typedef struct _ops_pub_conn {
