@@ -191,16 +191,16 @@ void public_data(ops_public* pub, uint32_t stream_id, uint8_t* data, int size) {
     buf->len = size;
     buf->base = malloc(size);
     if (buf->base == NULL) {
-        return -1;
+        return;
     }
     memcpy(buf->base, data, size);
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     if (req == NULL) {
         free(buf->base);
-        return -1;
+        return;
     }
     req->data = buf->base;
-    return uv_write(req, &conn->tcp, &buf, 1, write_cb);
+    uv_write(req, &conn->tcp, &buf, 1, write_cb);
 }
 void public_add(ops_public* public, uint32_t id, uint16_t port, uint16_t dst_id, uint8_t type, const char* bind, const char* dst, uint16_t dst_port) {
     ops_pub* pub = malloc(sizeof(*pub));
