@@ -762,6 +762,7 @@ static void web_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     web_conn* conn = (web_conn*)tcp->data;
     ops_web* web = conn->web;
     if (nread <= 0) {
+        free(buf->base);
         if (UV_EOF != nread) {
             //连接异常断开
             uv_close(tcp, web_close_cb);

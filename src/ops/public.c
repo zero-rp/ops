@@ -117,6 +117,7 @@ static void _connection_cb(uv_stream_t* tcp, int status) {
 static void _read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ops_pub_conn* conn = (ops_pub_conn*)tcp->data;
     if (nread <= 0) {
+        free(buf->base);
         if (UV_EOF != nread) {
             //连接异常断开
             uv_close(tcp, public_close_cb);
@@ -136,6 +137,14 @@ static void _read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     }
     bridge_send_mod(b, MODULE_DST, dst_packet_data, conn->pub->dst, conn->id, buf->base, nread);
     free(buf->base);
+}
+static void _udp_recv_cb(uv_udp_t* udp, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags) {
+    ops_pub_conn* conn = (ops_pub_conn*)udp->data;
+    if (nread <= 0) {
+        free(buf->base);
+        return;
+    }
+
 }
 ops_public* public_new(ops_global* global, ops_bridge_manager* manager) {
     ops_public* public = (ops_public*)malloc(sizeof(*public));
@@ -223,7 +232,7 @@ void public_add(ops_public* public, uint32_t id, uint16_t port, uint16_t dst_id,
         struct sockaddr_in6 addr;
         uv_ip6_addr("::0", port, &addr);
         uv_udp_bind(&pub->udp, (const struct sockaddr*)&addr, 0);
-        uv_udp_recv_start(&pub->udp, NULL, NULL);
+        uv_udp_recv_start(&pub->udp, alloc_buffer, _udp_recv_cb);
     }
     else {
         free(pub);

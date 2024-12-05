@@ -498,6 +498,7 @@ static void http_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ops_http_conn* conn = (ops_http_conn*)tcp->data;
     ops_http* http = conn->http;
     if (nread <= 0) {
+        free(buf->base);
         if (UV_EOF != nread) {
             //连接异常断开
             uv_close(tcp, http_close_cb);

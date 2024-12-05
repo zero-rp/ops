@@ -329,6 +329,7 @@ static void bridge_on_read(ops_bridge* bridge, uint8_t* buf, size_t len) {
 static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ops_bridge* bridge = (ops_bridge*)tcp->data;
     if (nread <= 0) {
+        free(buf->base);
         printf("Recv Error\r\n");
         if (UV_EOF != nread) {
             //连接异常断开
