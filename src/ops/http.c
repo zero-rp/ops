@@ -599,7 +599,7 @@ void http_host_ctl(ops_http* http, ops_bridge* bridge, uint32_t stream_id, uint8
         .id = stream_id
     };
     ops_http_request* req = RB_FIND(_ops_http_request_tree, &http->request, &the);
-    if (req == NULL) {
+    if (req == NULL || !req->service) {
         return;
     }
     //读取类型
