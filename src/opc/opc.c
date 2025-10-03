@@ -3,6 +3,7 @@
 #include <uv/tree.h>
 #include <openssl/ssl.h>
 #include <common/common.h>
+#include <common/obj.h>
 #if HAVE_QUIC
 #include <lsquic.h>
 #endif
