@@ -193,10 +193,10 @@ static void* dst_ctrl(ops_module_dst* module, ops_dst_ctrl* ctrl) {
         dst->dst.port = ctrl->add.dst_port;
         strncpy(dst->dst.dst, ctrl->add.dst, sizeof(dst->dst.dst) - 1);
         dst->dst.dst[sizeof(dst->dst.dst) - 1] = 0;
-        strncpy(dst->dst.bind, bind, sizeof(dst->dst.bind) - 1);
+        strncpy(dst->dst.bind, ctrl->add.bind, sizeof(dst->dst.bind) - 1);
         dst->dst.bind[sizeof(dst->dst.bind) - 1] = 0;
         RB_INSERT(_ops_dsts_tree, &module->dst, dst);
-        return dst->id;
+        return (void *)dst->id;
     }
     default:
         break;
@@ -209,8 +209,8 @@ ops_module_dst* dst_module_new(ops_bridge_manager* manager) {
         return NULL;
     memset(mod, 0, sizeof(*mod));
     mod->manager = manager;
-    mod->mod.on_load = dst_load;
-    mod->mod.on_data = dst_data;
-    mod->mod.on_ctrl = dst_ctrl;
+    mod->mod.on_load = (ops_module_on_load)dst_load;
+    mod->mod.on_data = (ops_module_on_data)dst_data;
+    mod->mod.on_ctrl = (ops_module_on_ctrl)dst_ctrl;
     return mod;
 }

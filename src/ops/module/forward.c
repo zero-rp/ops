@@ -177,7 +177,7 @@ static void on_data_forward_add(ops_module_forward* module, uint32_t id, uint16_
     ctrl.add.bind = bind;
     ctrl.add.dst = dst;
     ctrl.add.dst_port = dst_port;
-    uint32_t dsts_id = bridge_mod_ctrl(module->manager, MODULE_DST, &ctrl);
+    uint32_t dsts_id = (uint32_t)bridge_mod_ctrl(module->manager, MODULE_DST, &ctrl);
     if (!dsts_id) {
         free(forward);
         return;
@@ -303,9 +303,9 @@ ops_module_forward* forward_module_new(ops_bridge_manager* manager) {
     memset(module, 0, sizeof(*module));
     RB_INIT(&module->forwards);
     module->manager = manager;
-    module->mod.on_load = forward_load;
-    module->mod.on_data = forward_data;
-    module->mod.on_ctrl = forward_ctrl;
+    module->mod.on_load = (ops_module_on_load)forward_load;
+    module->mod.on_data = (ops_module_on_data)forward_data;
+    module->mod.on_ctrl = (ops_module_on_ctrl)forward_ctrl;
     return module;
 }
 

@@ -499,7 +499,7 @@ BOOL Install(int argc, char* argv[]) {
 }
 #endif
 //加载配置
-static load_config(ops_global* global, int argc, char* argv[]) {
+static void load_config(ops_global* global, int argc, char* argv[]) {
     //默认参数
     global->config.db_file = "data.db";
     global->config.bridge_port = 8025;

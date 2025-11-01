@@ -19,7 +19,7 @@ typedef struct _ops_pub {
     uint32_t dst;                       //目标ID
     union {
         uv_tcp_t tcp;
-        uv_tcp_t udp;
+        uv_udp_t udp;
     };
 }ops_pub;
 RB_HEAD(_ops_pub_tree, _ops_pub);
@@ -63,7 +63,7 @@ static void public_close_cb(uv_handle_t* handle) {
 }
 static void public_shutdown_cb(uv_shutdown_t* req, int status) {
     ops_pub_conn* conn = (ops_pub_conn*)req->data;
-    uv_close(&conn->tcp, public_close_cb);
+    uv_close((uv_handle_t*)&conn->tcp, public_close_cb);
     free(req);
 }
 static void public_shutdown(ops_pub_conn* conn) {
@@ -72,11 +72,11 @@ static void public_shutdown(ops_pub_conn* conn) {
     if (req != NULL) {
         memset(req, 0, sizeof(*req));
         req->data = conn;
-        uv_shutdown(req, &conn->tcp, public_shutdown_cb);
+        uv_shutdown(req, (uv_stream_t*)&conn->tcp, public_shutdown_cb);
     }
     else {
         //分配内存失败,直接强制关闭
-        uv_close(&conn->tcp, public_close_cb);
+        uv_close((uv_handle_t*)&conn->tcp, public_close_cb);
     }
 }
 //tcp连接进入
@@ -120,7 +120,7 @@ static void _read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         free(buf->base);
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, public_close_cb);
+            uv_close((uv_handle_t*)tcp, public_close_cb);
         }
         else {
             //shutdown
@@ -209,7 +209,7 @@ void public_data(ops_public* pub, uint32_t stream_id, uint8_t* data, int size) {
         return;
     }
     req->data = buf->base;
-    uv_write(req, &conn->tcp, &buf, 1, write_cb);
+    uv_write(req, (uv_stream_t*)&conn->tcp, buf, 1, write_cb);
 }
 void public_add(ops_public* public, uint32_t id, uint16_t port, uint16_t dst_id, uint8_t type, const char* bind, const char* dst, uint16_t dst_port) {
     ops_pub* pub = malloc(sizeof(*pub));
@@ -247,7 +247,7 @@ void public_add(ops_public* public, uint32_t id, uint16_t port, uint16_t dst_id,
     ctrl.add.bind = bind;
     ctrl.add.dst = dst;
     ctrl.add.dst_port = dst_port;
-    int dsts_id = bridge_mod_ctrl(public->manager, MODULE_DST, &ctrl);
+    int dsts_id = (int)bridge_mod_ctrl(public->manager, MODULE_DST, &ctrl);
     if (!dsts_id) {
         free(pub);
         return;

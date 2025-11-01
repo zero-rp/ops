@@ -361,9 +361,9 @@ ops_module_vpc* vpc_module_new(ops_bridge_manager* manager) {
     mod->manager = manager;
     RB_INIT(&mod->vpc);
     RB_INIT(&mod->members);
-    mod->mod.on_load = vpc_load;
-    mod->mod.on_data = vpc_data;
-    mod->mod.on_ctrl = vpc_ctrl;
+    mod->mod.on_load = (ops_module_on_load)vpc_load;
+    mod->mod.on_data = (ops_module_on_data)vpc_data;
+    mod->mod.on_ctrl = (ops_module_on_ctrl)vpc_ctrl;
     return mod;
 }
 

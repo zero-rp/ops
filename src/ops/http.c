@@ -198,7 +198,7 @@ static int http_send(ops_http_conn* conn, char* data, uint32_t size) {
         return -1;
     }
     req->data = buf->base;
-    return uv_write(req, &conn->tcp, &buf, 1, write_cb);
+    return uv_write(req, (uv_stream_t*)&conn->tcp, buf, 1, write_cb);
 }
 //发送html应答
 static void http_respose_html(ops_http_conn* conn, const char* html, int len) {
@@ -463,7 +463,7 @@ static int http_1_frame(ops_http_conn* conn, uint8_t* buf, size_t len) {
     enum llhttp_errno err = llhttp_execute(&s->u.h1.parser, buf, len);
     if (err != HPE_OK) {
         //处理失败
-        uv_close(&conn->tcp, http_close_cb);
+        uv_close((uv_handle_t*)&conn->tcp, http_close_cb);
     }
     return 1;
 }
@@ -490,7 +490,7 @@ static void http_close_cb(uv_handle_t* handle) {
 }
 static void http_shutdown_cb(uv_shutdown_t* req, int status) {
     ops_http_conn* conn = (ops_http_conn*)req->data;
-    uv_close(&conn->tcp, http_close_cb);
+    uv_close((uv_handle_t*)&conn->tcp, http_close_cb);
     free(req);
 }
 //读取到数据
@@ -501,7 +501,7 @@ static void http_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         free(buf->base);
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, http_close_cb);
+            uv_close((uv_handle_t*)tcp, http_close_cb);
         }
         else {
             //shutdown
@@ -513,7 +513,7 @@ static void http_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             }
             else {
                 //分配内存失败,直接强制关闭
-                uv_close(tcp, http_close_cb);
+                uv_close((uv_handle_t*)tcp, http_close_cb);
             }
         }
         return;
@@ -581,14 +581,14 @@ ops_http* http_new(ops_global* global, ops_bridge_manager* manager) {
     http->http.data = http;
     uv_tcp_init(ops_get_loop(global), &http->http);
     uv_ip6_addr("::0", opc_get_config(global)->http_proxy_port, &addr);
-    uv_tcp_bind(&http->http, &addr, 0);
+    uv_tcp_bind(&http->http, (const struct sockaddr*)&addr, 0);
     uv_listen((uv_stream_t*)&http->http, 128, http_connection_cb);
 
     //https端口
     http->https.tcp.data = http;
     uv_tcp_init(ops_get_loop(global), &http->https.tcp);
     uv_ip6_addr("::0", opc_get_config(global)->https_proxy_port, &addr);
-    uv_tcp_bind(&http->https.tcp, &addr, 0);
+    uv_tcp_bind(&http->https.tcp, (const struct sockaddr*)&addr, 0);
     uv_listen((uv_stream_t*)&http->https.tcp, 128, https_connection_cb);
 
     return http;
@@ -619,10 +619,10 @@ void http_host_ctl(ops_http* http, ops_bridge* bridge, uint32_t stream_id, uint8
             //获取对端地址
             struct sockaddr_storage name;
             int namelen = sizeof(name);
-            uv_tcp_getpeername(&req->stream->conn->tcp, &name, &namelen);
+            uv_tcp_getpeername(&req->stream->conn->tcp, (struct sockaddr*)&name, &namelen);
             //转换成字符串
             char addr[INET6_ADDRSTRLEN] = { 0 };
-            uv_ip_name(&name, addr, sizeof(addr));
+            uv_ip_name((const struct sockaddr*)&name, addr, sizeof(addr));
             if (req->service->b.x_real_ip) {
                 //查找头部,存在则替换,不存在则添加
                 ops_http_header* header = http_request_find_header(req, "x-real-ip");
@@ -725,7 +725,7 @@ void http_host_add(ops_http* http, uint32_t id, const char* src_host, uint16_t d
     ctrl.add.bind = bind;
     ctrl.add.dst = dst;
     ctrl.add.dst_port = dst_port;
-    int dsts_id = bridge_mod_ctrl(http->manager, MODULE_DST, &ctrl);
+    int dsts_id = (int)bridge_mod_ctrl(http->manager, MODULE_DST, &ctrl);
     if (!dsts_id) {
         free(host);
         return;

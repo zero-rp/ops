@@ -142,7 +142,7 @@ void bridge_send_raw(ops_bridge* bridge, uv_buf_t* buf) {
 #endif
     uv_write_t* req = (uv_write_t*)malloc(sizeof(uv_write_t));
     req->data = buf->base;
-    uv_write(req, &bridge->tcp, buf, 1, write_cb);
+    uv_write(req, (uv_stream_t*)&bridge->tcp, buf, 1, write_cb);
 }
 //向客户发送数据
 void bridge_send_auth(ops_bridge* bridge, const char* data, uint32_t len) {
@@ -158,7 +158,7 @@ void bridge_send_auth(ops_bridge* bridge, const char* data, uint32_t len) {
     if (data && len) {
         memcpy(pack->data, data, len);
     }
-    bridge_send_raw(bridge, &buf);
+    bridge_send_raw(bridge, buf);
 }
 //向客户发送数据
 void bridge_send_mod(ops_bridge* bridge, uint8_t mod, uint8_t type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
@@ -178,7 +178,7 @@ void bridge_send_mod(ops_bridge* bridge, uint8_t mod, uint8_t type, uint32_t ser
     if (data && len) {
         memcpy(pack->mod.data, data, len);
     }
-    bridge_send_raw(bridge, &buf);
+    bridge_send_raw(bridge, buf);
 }
 //向客户发送数据
 static void bridge_send_ping(ops_bridge* bridge, const char* data, uint32_t len) {
@@ -194,7 +194,7 @@ static void bridge_send_ping(ops_bridge* bridge, const char* data, uint32_t len)
     if (data && len) {
         memcpy(pack->data, data, len);
     }
-    bridge_send_raw(bridge, &buf);
+    bridge_send_raw(bridge, buf);
 }
 //客户端鉴权成功
 static void bridge_auth_ok(ops_bridge* bridge, uint16_t id) {
@@ -307,7 +307,7 @@ static void bridge_close_cb(uv_handle_t* handle) {
 }
 static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
     ops_bridge* bridge = (ops_bridge*)req->data;
-    uv_close(&bridge->tcp, bridge_close_cb);
+    uv_close((uv_handle_t*)&bridge->tcp, bridge_close_cb);
     free(req);
 }
 //读取到数据
@@ -333,7 +333,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
         printf("Recv Error\r\n");
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, bridge_close_cb);
+            uv_close((uv_handle_t*)tcp, bridge_close_cb);
         }
         else {
             //shutdown
@@ -345,7 +345,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
             }
             else {
                 //分配内存失败,直接强制关闭
-                uv_close(tcp, bridge_close_cb);
+                uv_close((uv_handle_t*)tcp, bridge_close_cb);
             }
         }
         return;
@@ -354,7 +354,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
 }
 //连接进入
 static void bridge_connection_cb(uv_stream_t* tcp, int status) {
-    ops_bridge_manager* manager = (ops_global*)tcp->data;
+    ops_bridge_manager* manager = (ops_bridge_manager*)tcp->data;
     ops_bridge* bridge = (ops_bridge*)malloc(sizeof(ops_bridge));//为tcp bridge申请资源
     if (!bridge)
         return;
@@ -370,9 +370,9 @@ static void bridge_connection_cb(uv_stream_t* tcp, int status) {
         printf("New Client\r\n");
         //提取ip
         int namelen = sizeof(bridge->peer);
-        uv_tcp_getpeername(&bridge->tcp, &bridge->peer, &namelen);
+        uv_tcp_getpeername(&bridge->tcp, (struct sockaddr*)&bridge->peer, &namelen);
         namelen = sizeof(bridge->peer);
-        uv_tcp_getsockname(&bridge->tcp, &bridge->local, &namelen);
+        uv_tcp_getsockname(&bridge->tcp, (struct sockaddr*)&bridge->local, &namelen);
         uv_read_start((uv_stream_t*)&bridge->tcp, alloc_buffer, bridge_read_cb);
     }
 }
@@ -394,7 +394,7 @@ static void bridge_ping_timer_cb(uv_timer_t* handle) {
         //else {
         if (bridge->b.quit == 0) {
             bridge->b.quit = 1;
-            uv_close(&bridge->tcp, bridge_close_cb);
+            uv_close((uv_handle_t*)&bridge->tcp, bridge_close_cb);
         }
         //}
     }
@@ -410,15 +410,15 @@ ops_bridge_manager* bridge_manager_new(ops_global* global) {
     manager->loop = ops_get_loop(global);
     RB_INIT(&manager->bridge);
     //创建模块
-    manager->modules[MODULE_FORWARD] = forward_module_new(manager);
-    manager->modules[MODULE_DST] = dst_module_new(manager);
-    manager->modules[MODULE_VPC] = vpc_module_new(manager);
+    manager->modules[MODULE_FORWARD] = (ops_module*)forward_module_new(manager);
+    manager->modules[MODULE_DST] = (ops_module*)dst_module_new(manager);
+    manager->modules[MODULE_VPC] = (ops_module*)vpc_module_new(manager);
     //开始监听
     manager->listen.data = manager;
     uv_tcp_init(ops_get_loop(global), &manager->listen);
     struct sockaddr_in6 addr;
     uv_ip6_addr("::0", opc_get_config(global)->bridge_port, &addr);
-    uv_tcp_bind(&manager->listen, &addr, 0);
+    uv_tcp_bind(&manager->listen, (const struct sockaddr*)&addr, 0);
     uv_listen((uv_stream_t*)&manager->listen, 128, bridge_connection_cb);
     //
     uv_timer_init(ops_get_loop(global), &manager->ping_timer);
@@ -481,7 +481,7 @@ void bridge_mgr_ctrl(ops_bridge_manager* manager, ops_mgr_ctrl* ctrl) {
         ops_bridge* bridge = bridge_find(manager, key->id);
         if (bridge != NULL) {
             bridge->b.quit = 1;
-            uv_close(&bridge->tcp, bridge_close_cb);
+            uv_close((uv_handle_t*)&bridge->tcp, bridge_close_cb);
         }
         break;
     }

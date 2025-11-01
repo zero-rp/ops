@@ -100,7 +100,7 @@ static void bridge_on_close(opc_bridge* bridge) {
     vpc_module_delete(bridge->modules[MODULE_VPC]);
     //关闭定时器
     if (bridge->keep_timer.data) {
-        uv_close(&bridge->keep_timer, bridge_keep_close_cb);
+        uv_close((uv_handle_t*)&bridge->keep_timer, bridge_keep_close_cb);
     }
     //触发
     opc_on_close(bridge->global);
@@ -122,7 +122,7 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
         //    }
         //}
         //else {
-        uv_close(&bridge->tcp, bridge_close_cb);
+        uv_close((uv_handle_t*)&bridge->tcp, bridge_close_cb);
         //}
         return;
     }
@@ -233,7 +233,7 @@ void bridge_send_raw(opc_bridge* bridge, uv_buf_t* buf) {
         return;
     }
     req->data = buf->base;
-    uv_write(req, &bridge->tcp, buf, 1, write_cb);
+    uv_write(req, (uv_stream_t*)&bridge->tcp, buf, 1, write_cb);
 }
 //向服务器发送数据
 void bridge_send_mod(opc_bridge* bridge, uint8_t mod, uint8_t  type, uint32_t service_id, uint32_t stream_id, const char* data, uint32_t len) {
@@ -318,7 +318,7 @@ static void bridge_close_cb(uv_handle_t* handle) {
 }
 static void bridge_shutdown_cb(uv_shutdown_t* req, int status) {
     opc_bridge* bridge = (opc_bridge*)req->data;
-    uv_close(&bridge->tcp, bridge_close_cb);
+    uv_close((uv_handle_t*)&bridge->tcp, bridge_close_cb);
     free(req);
 }
 static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
@@ -329,7 +329,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
         bridge->b.connect = 0;
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, bridge_close_cb);
+            uv_close((uv_handle_t*)tcp, bridge_close_cb);
         }
         else {
             //shutdown
@@ -341,7 +341,7 @@ static void bridge_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf)
             }
             else {
                 //分配内存失败,直接强制关闭
-                uv_close(tcp, bridge_close_cb);
+                uv_close((uv_handle_t*)tcp, bridge_close_cb);
             }
         }
         return;
@@ -356,7 +356,7 @@ static void bridge_connect_cb(uv_connect_t* req, int status) {
     if (status < 0) {
         printf("Connect Error %s\r\n", uv_strerror(status));
         //关闭
-        uv_close(&bridge->tcp, bridge_close_cb);
+        uv_close((uv_handle_t*)&bridge->tcp, bridge_close_cb);
         return;
     }
     //开始接收数据
@@ -379,11 +379,11 @@ static int bridge_connect_tcp(opc_bridge* bridge) {
     if (opc_get_config(bridge->global)->bind_ip) {
         struct sockaddr_in _bind;
         uv_ip4_addr(opc_get_config(bridge->global)->bind_ip, 0, &_bind);
-        uv_tcp_bind(&bridge->tcp, &_bind, 0);
+        uv_tcp_bind(&bridge->tcp, (const struct sockaddr*)&_bind, 0);
     }
     struct sockaddr_in _addr;
     uv_ip4_addr(opc_get_config(bridge->global)->server_ip, opc_get_config(bridge->global)->server_port, &_addr);
-    uv_tcp_connect(req, &bridge->tcp, &_addr, bridge_connect_cb);
+    uv_tcp_connect(req, &bridge->tcp, (const struct sockaddr*)&_addr, bridge_connect_cb);
     printf("Start Connect\r\n");
     return 0;
 }

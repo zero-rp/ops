@@ -103,7 +103,7 @@ static int web_respose_raw(web_conn* conn, sds data) {
         return -1;
     }
     req->data = data;
-    return uv_write(req, &conn->tcp, &buf, 1, web_write_cb);
+    return uv_write(req, (uv_stream_t*)&conn->tcp, buf, 1, web_write_cb);
 }
 //
 static void web_respose_html(web_conn* conn, const char* html, int len) {
@@ -343,10 +343,10 @@ static void web_on_request(web_conn* conn, cJSON* body) {
                 cJSON_AddBoolToObject(item, "online", 1);
                 cJSON_AddNumberToObject(item, "ping", bridge_ping(b));
                 char ip[INET6_ADDRSTRLEN] = { 0 };
-                uv_ip_name(bridge_peer(b), ip, INET6_ADDRSTRLEN);
+                uv_ip_name((const struct sockaddr*)bridge_peer(b), ip, INET6_ADDRSTRLEN);
                 cJSON_AddStringToObject(item, "peer", ip);
                 ip[0] = 0;
-                uv_ip_name(bridge_local(b), ip, INET6_ADDRSTRLEN);
+                uv_ip_name((const struct sockaddr*)bridge_local(b), ip, INET6_ADDRSTRLEN);
                 cJSON_AddStringToObject(item, "local", ip);
             }
         }
@@ -754,7 +754,7 @@ static void web_close_cb(uv_handle_t* handle) {
 }
 static void web_shutdown_cb(uv_shutdown_t* req, int status) {
     web_conn* conn = (web_conn*)req->data;
-    uv_close(&conn->tcp, web_close_cb);
+    uv_close((uv_handle_t*)&conn->tcp, web_close_cb);
     free(req);
 }
 //读取到数据
@@ -765,7 +765,7 @@ static void web_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         free(buf->base);
         if (UV_EOF != nread) {
             //连接异常断开
-            uv_close(tcp, web_close_cb);
+            uv_close((uv_handle_t*)tcp, web_close_cb);
         }
         else {
             //shutdown
@@ -777,7 +777,7 @@ static void web_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             }
             else {
                 //分配内存失败,直接强制关闭
-                uv_close(tcp, web_close_cb);
+                uv_close((uv_handle_t*)tcp, web_close_cb);
             }
         }
         return;
@@ -815,7 +815,7 @@ ops_web* web_new(ops_global* global) {
     uv_tcp_init(ops_get_loop(global), &web->tcp);
     struct sockaddr_in6 addr;
     uv_ip6_addr("::0", opc_get_config(global)->web_port, &addr);
-    uv_tcp_bind(&web->tcp, &addr, 0);
+    uv_tcp_bind(&web->tcp, (const struct sockaddr*)&addr, 0);
     uv_listen((uv_stream_t*)&web->tcp, 32, web_connection_cb);
     return web;
 }

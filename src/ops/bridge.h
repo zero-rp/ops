@@ -32,6 +32,7 @@ typedef struct _ops_bridge ops_bridge;
 typedef struct _ops_bridge_manager ops_bridge_manager;
 
 //模块
+struct _ops_module;
 typedef void (*ops_module_on_load) (struct _ops_module* mod, ops_bridge* bridge);
 typedef void (*ops_module_on_data) (struct _ops_module* mod, ops_bridge* bridge, uint8_t type, uint32_t stream_id, uint32_t service_id, uint8_t* data, int size);
 typedef void* (*ops_module_on_ctrl) (struct _ops_module* mod, void* ctrl);
