@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <uv.h>
 #include <uv/tree.h>
 #include <common/obj.h>
@@ -151,14 +152,14 @@ static void dst_tunnel_getaddrinfo_cb(uv_getaddrinfo_t* req, int status, struct 
     //绑定本地地址
     int bind_family = 0;
     if (strlen(tunnel->dst->bind) > 0) {
-        struct sockaddr_in6 addr;
-        if (uv_ip6_addr(tunnel->dst->bind, 0, &addr) == 0) {
-            bind_family = addr.sin6_family;
-            uv_tcp_bind(&tunnel->req, &addr, 0);
+        struct sockaddr_storage addr;
+        if (uv_ip6_addr(tunnel->dst->bind, 0, (struct sockaddr_in6*)&addr) == 0) {
+            bind_family = AF_INET6;
+            uv_tcp_bind(&tunnel->tcp, (const struct sockaddr*)&addr, 0);
         }
-        else if (uv_ip4_addr(tunnel->dst->bind, 0, &addr) == 0) {
-            bind_family = addr.sin6_family;
-            uv_tcp_bind(&tunnel->req, &addr, 0);
+        else if (uv_ip4_addr(tunnel->dst->bind, 0, (struct sockaddr_in*)&addr) == 0) {
+            bind_family = AF_INET;
+            uv_tcp_bind(&tunnel->tcp, (const struct sockaddr*)&addr, 0);
         }
     }
     struct addrinfo* addr = res;
@@ -187,7 +188,7 @@ static opc_dst_tunnel* dst_tunnel_new(module_dst* mod, opc_dst* dst, uint32_t pr
     obj_new(tunnel, opc_dst_tunnel);//ref_14
     if (!tunnel)
         return NULL;
-    tunnel->ref.del = dst_tunnel_free;
+    tunnel->ref.del = (obj_del)dst_tunnel_free;
 
     tunnel->dst = obj_ref(dst);//ref_16
     tunnel->mod = obj_ref(mod);//ref_17
@@ -354,7 +355,7 @@ static void _data(module_dst* mod, uint32_t stream_id, uint32_t service_id, uint
         return;
     }
     req->data = buf->base;
-    uv_write(req, (uv_stream_t*)&tunnel->tcp, &buf, 1, write_cb);
+    uv_write(req, (uv_stream_t*)&tunnel->tcp, buf, 1, write_cb);
 }
 
 //处理数据
@@ -385,7 +386,7 @@ module_dst* dst_module_new(opc_bridge* bridge) {
     if (!mod) {
         return NULL;
     }
-    mod->ref.del = module_dst_obj_free;
+    mod->ref.del = (obj_del)module_dst_obj_free;
     mod->bridge = bridge_ref(bridge);
     mod->mod.on_data = (opc_module_on_data)dst_data;
     RB_INIT(&mod->dst_tunnel);

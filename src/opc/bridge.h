@@ -6,6 +6,7 @@
 typedef struct _opc_bridge  opc_bridge;
 
 //模块
+struct _opc_module;
 typedef void (*opc_module_on_data) (struct _opc_module* mod, uint8_t type, uint32_t stream_id, uint32_t service_id, uint8_t* data, int size);
 typedef struct _opc_module {
     opc_module_on_data on_data;

@@ -93,11 +93,11 @@ static void bridge_on_close(opc_bridge* bridge) {
     //回收资源
     databuffer_clear(&bridge->m_buffer, &bridge->m_mp);
     //回收目标
-    dst_module_delete(bridge->modules[MODULE_DST]);
+    dst_module_delete((module_dst*)bridge->modules[MODULE_DST]);
     //回收转发器
-    forward_module_delete(bridge->modules[MODULE_FORWARD]);
+    forward_module_delete((module_forward*)bridge->modules[MODULE_FORWARD]);
     //回收vpc
-    vpc_module_delete(bridge->modules[MODULE_VPC]);
+    vpc_module_delete((module_vpc*)bridge->modules[MODULE_VPC]);
     //关闭定时器
     if (bridge->keep_timer.data) {
         uv_close((uv_handle_t*)&bridge->keep_timer, bridge_keep_close_cb);
@@ -141,7 +141,7 @@ static void bridge_keep_timer_cb(uv_timer_t* handle) {
     ops_packet* pack = (ops_packet*)(buf->base + 4);
     pack->type = ops_packet_ping;
     memcpy(pack->data, tmp, sizeof(tmp));
-    bridge_send_raw(bridge, &buf);
+    bridge_send_raw(bridge, buf);
 }
 //重鉴权定时器
 static void bridge_auth_timer_cb(uv_timer_t* handle) {
@@ -268,7 +268,7 @@ void bridge_send_auth(opc_bridge* bridge, const char* data, uint32_t len) {
     if (data && len) {
         memcpy(pack->data, data, len);
     }
-    bridge_send_raw(bridge, &buf);
+    bridge_send_raw(bridge, buf);
 }
 //数据到达
 static void bridge_on_read(opc_bridge* bridge, char* buf, int len) {
@@ -405,13 +405,13 @@ opc_bridge* bridge_new(opc_global* global) {
     obj_new(bridge, opc_bridge);//ref_1
     if (bridge == NULL)
         return 0;
-    bridge->ref.del = bridge_obj_free;
+    bridge->ref.del = (obj_del)bridge_obj_free;
     bridge->global = global;
     bridge->loop = opc_get_loop(global);
     //创建模块
-    bridge->modules[MODULE_FORWARD] = forward_module_new(bridge);
-    bridge->modules[MODULE_DST] = dst_module_new(bridge);
-    bridge->modules[MODULE_VPC] = vpc_module_new(bridge);
+    bridge->modules[MODULE_FORWARD] = (opc_module*)forward_module_new(bridge);
+    bridge->modules[MODULE_DST] = (opc_module*)dst_module_new(bridge);
+    bridge->modules[MODULE_VPC] = (opc_module*)vpc_module_new(bridge);
 
     return bridge;
 }

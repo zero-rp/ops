@@ -1,3 +1,4 @@
+#include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <uv.h>
@@ -378,6 +379,7 @@ static void send_tun(opc_vpc* vpc, const char* data, int size) {
 }
 #else
 
+#include <unistd.h>
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <fcntl.h>
@@ -472,7 +474,7 @@ static linux_tun* new_tun(opc_vpc* vpc) {
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         perror("socket");
-        return -1;
+        return NULL;
     }
 
     memset(&addr, 0, sizeof(addr));
@@ -535,7 +537,7 @@ static void tun_close_cb(uv_handle_t* handle) {
 }
 //关闭
 static void delete_tun(linux_tun* tun) {
-    uv_close(&tun->tcp, tun_close_cb);
+    uv_close((uv_handle_t*)&tun->tcp, tun_close_cb);
 }
 //往接口发送数据
 static void send_tun(opc_vpc* vpc, const char* data, int size) {
@@ -553,7 +555,7 @@ static void send_tun(opc_vpc* vpc, const char* data, int size) {
         return;
     }
     req->data = buf->base;
-    uv_write(req, &tun->tcp, &buf, 1, write_cb);
+    uv_write(req, (uv_stream_t*)&tun->tcp, buf, 1, write_cb);
 }
 #endif
 
@@ -593,7 +595,7 @@ static void _vpc(module_vpc* mod, uint32_t stream_id, uint32_t service_id, uint8
             if (!vpc) {
                 continue;
             }
-            vpc->ref.del = vpc_obj_free;
+            vpc->ref.del = (obj_del)vpc_obj_free;
             vpc->mod = obj_ref(mod);//ref_22
             vpc->id = mem.id;
             vpc->vid = mem.vid;
@@ -691,7 +693,7 @@ module_vpc* vpc_module_new(opc_bridge* bridge) {
     if (!mod) {
         return NULL;
     }
-    mod->ref.del = module_vpc_obj_free;
+    mod->ref.del = (obj_del)module_vpc_obj_free;
     mod->bridge = bridge_ref(bridge);
     mod->mod.on_data = (opc_module_on_data)vpc_data;
     RB_INIT(&mod->vpc);

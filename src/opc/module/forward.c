@@ -126,7 +126,7 @@ static void forward_tunnel_send(opc_forward_tunnel* tunnel, uint8_t* data, int s
         return;
     }
     req->data = buf->base;
-    uv_write(req, &tunnel->tcp, &buf, 1, write_cb);
+    uv_write(req, (uv_stream_t*)&tunnel->tcp, buf, 1, write_cb);
 }
 //握手
 static void forward_tunnel_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf);
@@ -304,7 +304,7 @@ static void forward_connection_cb(uv_stream_t* tcp, int status) {
     obj_new(tunnel, opc_forward_tunnel);//ref_7
     if (!tunnel)
         return;
-    tunnel->ref.del = forward_tunnel_free;
+    tunnel->ref.del = (obj_del)forward_tunnel_free;
 
     uv_tcp_init(bridge_loop(src->mod->bridge), &tunnel->tcp);//初始化tcp bridge句柄
     tunnel->tcp.data = obj_ref(tunnel);//ref_8
@@ -350,7 +350,7 @@ static int forward_new(module_forward* mod, ops_forward* src) {
     if (!s) {
         return -1;
     }
-    s->ref.del = forward_obj_free;
+    s->ref.del = (obj_del)forward_obj_free;
     s->id = src->sid;
     s->type = src->type;
     s->mod = obj_ref(mod);//ref_6
@@ -364,10 +364,10 @@ static int forward_new(module_forward* mod, ops_forward* src) {
         //绑定
         struct sockaddr_in6 _addr;
         uv_ip6_addr("::0", src->port, &_addr);
-        uv_tcp_bind(&s->tcp.tcp, &_addr, 0);
+        uv_tcp_bind(&s->tcp.tcp, (const struct sockaddr*)&_addr, 0);
         //允许复用
         uv_os_fd_t fd;
-        if (uv_fileno(&s->tcp.tcp, &fd) == 0) {
+        if (uv_fileno((uv_handle_t*)&s->tcp.tcp, &fd) == 0) {
             int val = 1;
             setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
         }
@@ -481,7 +481,7 @@ module_forward* forward_module_new(opc_bridge* bridge) {
     if (!mod) {
         return NULL;
     }
-    mod->ref.del = module_forward_obj_free;
+    mod->ref.del = (obj_del)module_forward_obj_free;
     mod->bridge = bridge_ref(bridge);
     mod->mod.on_data = (opc_module_on_data)forward_data;
     mod->tunnel_id = 1;
