@@ -668,6 +668,9 @@ int main(int argc, char* argv[]) {
         }
         return 0;
     }
+#else
+    //忽略管道信号,防止程序崩溃
+    signal(SIGPIPE, SIG_IGN);
 #endif
     //初始化
     if (init_global(global)) {

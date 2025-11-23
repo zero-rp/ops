@@ -500,6 +500,8 @@ jint JNICALL Java_org_ops_client_MainActivity_init(JNIEnv* env, jobject* this) {
     if (android_tid) {
         return -1;
     }
+    //忽略管道信号,防止程序崩溃
+    signal(SIGPIPE, SIG_IGN);
     android_tid = (uv_thread_t*)malloc(sizeof(*android_tid));
     if (uv_thread_create(android_tid, android_thr, NULL) == 0) {
         return 0;
@@ -646,6 +648,9 @@ int main(int argc, char* argv[]) {
         }
         return 0;
     }
+#else
+    //忽略管道信号,防止程序崩溃
+    signal(SIGPIPE, SIG_IGN);
 #endif
     run(global);
     return 0;
